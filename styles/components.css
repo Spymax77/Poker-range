@@ -1,0 +1,153 @@
+.tree-panel h3,
+.profiles-panel h3 {
+    margin: 0 0 18px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 8px;
+}
+
+.tree-node {
+    margin-bottom: 2px;
+}
+
+.tree-item {
+    border-radius: 12px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: 0.1s;
+    background: transparent;
+    font-size: 0.9rem;
+}
+
+.tree-item:hover {
+    background: var(--tree-hover);
+}
+
+.tree-item.active {
+    background: var(--bg-active-blue);
+    color: white;
+}
+
+.tree-item-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.tree-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: 0.1s;
+}
+
+.tree-item:hover .tree-actions {
+    opacity: 0.85;
+}
+
+.tree-actions button {
+    background: #2c2f3a;
+    border: none;
+    border-radius: 30px;
+    padding: 4px 10px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.tree-actions button:hover {
+    background: var(--bg-active-blue);
+    color: white;
+}
+
+.tree-children {
+    margin-left: 20px;
+    border-left: 1px solid var(--border-light);
+    padding-left: 14px;
+    display: none;
+}
+
+.tree-children.open {
+    display: block;
+}
+
+.add-node-btn,
+.add-profile-btn {
+    margin-top: 10px;
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--bg-active-blue);
+    color: var(--text-secondary);
+    padding: 8px;
+    border-radius: 40px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: 0.2s;
+    font-weight: 500;
+}
+
+.add-node-btn:hover,
+.add-profile-btn:hover {
+    background: rgba(47,128,237,0.1);
+    border-color: var(--bg-active-blue);
+    color: var(--text-primary);
+}
+
+.button-bar {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn-oval {
+    background: var(--bg-button);
+    border: 1px solid #3a3e48;
+    padding: 6px 20px;
+    border-radius: 40px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: 0.2s;
+    font-family: inherit;
+}
+
+.btn-oval:hover {
+    background: var(--bg-button-hover);
+    border-color: var(--bg-active-blue);
+    transform: translateY(-1px);
+}
+
+.btn-oval.active {
+    background: var(--bg-active);
+    border-color: var(--bg-active);
+    color: white;
+}
+
+#constructorChildButtons,
+#constructorNavButtons {
+    display: none;
+}
+
+.profiles-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    margin-top: 8px;
+}
+
+.info-hint {
+    font-size: 0.7rem;
+    margin-top: 18px;
+    text-align: center;
+    opacity: 0.7;
+}

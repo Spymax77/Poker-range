@@ -1,0 +1,226 @@
+.palette-section {
+    margin-bottom: 28px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.palette-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.palette-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: #9aa7b9;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+.round-add-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #2f80ed;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 500;
+    color: white;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.round-add-btn:hover {
+    background: #1c6ac2;
+    transform: scale(1.03);
+}
+
+.palette-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.palette-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: transparent;
+    padding: 4px 0;
+}
+
+.palette-color-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid #4a4f5c;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: 0.1s;
+}
+
+.palette-name {
+    background: transparent;
+    border: none;
+    color: #e6edf5;
+    font-size: 13px;
+    padding: 6px 0;
+    flex: 1;
+    border-bottom: 1px dotted #5a5e6a;
+    outline: none;
+    font-family: inherit;
+}
+
+.palette-name:focus {
+    border-bottom-color: #2f80ed;
+}
+
+.remove-palette-btn {
+    background: transparent;
+    border: none;
+    color: #8e9aaf;
+    font-size: 16px;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-palette-btn:hover {
+    background: rgba(142, 154, 175, 0.15);
+    color: #ff8a7a;
+}
+
+.profile-card {
+    margin-bottom: 20px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.profile-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.profile-radio {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #7e8a9c;
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.profile-radio.active {
+    background: #8e9aaf;
+    border-color: #cbd5e6;
+}
+
+.side-btn {
+    background: #2c3038;
+    border: none;
+    font-size: 18px;
+    font-weight: bold;
+    color: #e6edf5;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.side-btn:hover {
+    background: #3d424e;
+}
+
+.gradient-preview {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid #3a3e48;
+    background: #2c2f36;
+    flex-shrink: 0;
+    cursor: help;
+}
+
+.slider-wrapper {
+    flex: 1;
+    min-width: 150px;
+}
+
+.slider-track-container {
+    position: relative;
+    height: 40px;
+    width: 100%;
+}
+
+.slider-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #4f5562;
+    transform: translateY(-50%);
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+.slider-thumb {
+    position: absolute;
+    top: 50%;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    text-shadow: 0 0 2px black;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    transition: 0.05s linear;
+}
+
+.delete-profile-btn {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #8e9aaf;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 30px;
+}
+
+.delete-profile-btn:hover {
+    background: rgba(142, 154, 175, 0.15);
+    color: #ff8a7a;
+}
+
+@media (max-width: 900px) {
+    .profile-row { gap: 6px; }
+    .slider-thumb { width: 26px; height: 26px; font-size: 9px; }
+    .gradient-preview { width: 38px; height: 38px; }
+}
