@@ -3,73 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Poker Range | Модульная версия (без сборки)</title>
+    <title>Poker Range | Сет и трипс раздельно</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="app-card">
-        <div class="tabs">
-            <button class="tab-btn active" data-page="constructor">Конструктор</button>
-            <button class="tab-btn" data-page="work">Работа</button>
-        </div>
+<div class="app-card">
+    <div class="tabs">
+        <button class="tab-btn active" data-page="constructor">Редактор</button>
+        <button class="tab-btn" data-page="work">Просмотр</button>
+    </div>
 
-        <div id="constructorPage" class="page active-page">
-            <div class="three-columns">
-                <div class="tree-panel">
-                    <h3>📁 Дерево узлов</h3>
-                    <div id="constructorTree"></div>
-                    <button id="addRootNodeBtn" class="add-node-btn">+ Добавить корневой узел</button>
+    <!-- КОНСТРУКТОР -->
+    <div id="constructorPage" class="page active-page">
+        <div class="three-columns">
+            <!-- ЛЕВАЯ КОЛОНКА: ДЕРЕВО -->
+            <div class="tree-panel">
+                <!-- НАВИГАЦИОННАЯ ПАНЕЛЬ ДЕРЕВА -->
+                <div class="tree-toolbar">
+                    <!-- Свернуть все -->
+                    <button class="toolbar-btn" id="treeCollapseAllBtn" title="Свернуть все">
+                        <svg class="icon" viewBox="0 0 16 16" fill="var(--text-primary)">
+                            <path d="m 5 2 c -0.265625 0 -0.519531 0.105469 -0.707031 0.292969 l -4 4 c -0.3906252 0.390625 -0.3906252 1.023437 0 1.414062 l 4 4 c 0.390625 0.390625 1.023437 0.390625 1.414062 0 s 0.390625 -1.023437 0 -1.414062 l -3.292969 -3.292969 l 3.292969 -3.292969 c 0.390625 -0.390625 0.390625 -1.023437 0 -1.414062 c -0.1875 -0.1875 -0.441406 -0.292969 -0.707031 -0.292969 z m 4 0 c -0.265625 0 -0.519531 0.105469 -0.707031 0.292969 l -4 4 c -0.390625 0.390625 -0.390625 1.023437 0 1.414062 l 4 4 c 0.390625 0.390625 1.023437 0.390625 1.414062 0 s 0.390625 -1.023437 0 -1.414062 l -2.292969 -2.292969 h 4.585938 c 1.117188 0 2 0.882812 2 2 v 3 c 0 0.550781 0.449219 1 1 1 s 1 -0.449219 1 -1 v -3 c 0 -0.023438 0 -0.046875 -0.003906 -0.070312 c -0.035156 -2.164063 -1.820313 -3.929688 -3.996094 -3.929688 h -4.585938 l 2.292969 -2.292969 c 0.390625 -0.390625 0.390625 -1.023437 0 -1.414062 c -0.1875 -0.1875 -0.441406 -0.292969 -0.707031 -0.292969 z m 0 0"/>
+                        </svg>
+                    </button>
+                    <div class="divider"></div>
+                    <button class="toolbar-btn" id="treeAddFolderBtn" title="Создать папку">
+                        <svg class="plus-icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="2"/><rect x="11" y="5" width="2" height="14"/></svg>
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    </button>
+                    <button class="toolbar-btn" id="treeAddRangeBtn" title="Создать диапазон">
+                        <svg class="plus-icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="2"/><rect x="11" y="5" width="2" height="14"/></svg>
+                        <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/><rect x="2" y="13" width="9" height="9" rx="1"/><rect x="13" y="13" width="9" height="9" rx="1"/></svg>
+                    </button>
+                    <div class="divider"></div>
+                    <button class="toolbar-btn" id="treeRenameBtn" title="Переименовать">
+                        <svg class="icon" viewBox="0 0 512 512"><path d="M136.6 138.79a64.003 64.003 0 0 0-43.31 41.35L0 460l14.69 14.69L164.8 324.58c-2.99-6.26-4.8-13.18-4.8-20.58 0-26.51 21.49-48 48-48s48 21.49 48 48-21.49 48-48 48c-7.4 0-14.32-1.81-20.58-4.8L37.31 497.31 52 512l279.86-93.29a64.003 64.003 0 0 0 41.35-43.31L416 224 288 96l-151.4 42.79zm361.34-64.62l-60.11-60.11c-18.75-18.75-49.16-18.75-67.91 0l-56.55 56.55 128.02 128.02 56.55-56.55c18.75-18.75 18.75-49.15 0-67.91z"/></svg>
+                    </button>
+                    <div class="divider"></div>
+                    <button class="toolbar-btn" id="treeMoveUpBtn" title="Вверх">
+                        <svg class="icon" viewBox="0 0 24 24"><polygon points="12,3 3,15 9,15 9,21 15,21 15,15 21,15"/></svg>
+                    </button>
+                    <button class="toolbar-btn" id="treeMoveDownBtn" title="Вниз">
+                        <svg class="icon" viewBox="0 0 24 24"><polygon points="12,21 3,9 9,9 9,3 15,3 15,9 21,9"/></svg>
+                    </button>
+                    <div class="divider"></div>
+                    <button class="toolbar-btn" id="treeDeleteBtn" title="Удалить">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M17,4V5H15V4H9V5H7V4A2,2,0,0,1,9,2h6A2,2,0,0,1,17,4Z"/><path d="M20,6H4A1,1,0,0,0,4,8H5.07l.87,12.14a2,2,0,0,0,2,1.86h8.14a2,2,0,0,0,2-1.86L18.93,8H20a1,1,0,0,0,0-2ZM13,17a1,1,0,0,1-2,0V11a1,1,0,0,1,2,0Z"/></svg>
+                    </button>
                 </div>
-
-                <div class="table-panel">
-                    <div class="stats-bar">
-                        <div class="stats-left">
-                            <div><span id="rangeStats">Комбинаций: 0 / 1326</span></div>
-                        </div>
-                    </div>
-                    <div id="constructorGrid" class="hands-grid"></div>
-                    <div id="constructorChildButtons" class="button-bar"></div>
-                    <div id="constructorNavButtons" class="button-bar" style="justify-content: space-between;">
-                        <button id="backButton" class="btn-oval" style="display: none;">← Назад</button>
-                    </div>
-                </div>
-
-                <div class="profiles-panel">
-                    <div class="palette-section">
-                        <div class="palette-header">
-                            <div class="palette-title">🎨 Мои цвета</div>
-                            <button id="addPaletteColorBtn" class="round-add-btn" title="Добавить цвет">+</button>
-                        </div>
-                        <div id="paletteList" class="palette-list"></div>
-                        <div style="font-size: 10px; color: #7a8494; margin-top: 4px;">макс. 10 цветов · клик на квадрат</div>
-                    </div>
-                    <div>
-                        <div class="profiles-header">
-                            <div class="palette-title">⚙️ Ползунки (профили)</div>
-                            <button id="newProfileBtn" class="round-add-btn" title="Добавить профиль">+</button>
-                        </div>
-                        <div id="profileList"></div>
-                    </div>
-                    <div class="info-hint">✓ Выберите профиль → клик по ячейке (повторно — очистить)</div>
-                </div>
+                
+                <div id="constructorTree"></div>
             </div>
-            <footer>Улучшенный модуль: палитра цветов, ползунки с процентами, градиенты</footer>
-        </div>
 
-        <div id="workPage" class="page">
-            <div class="work-single-panel">
-                <div class="stats-bar">
-                    <div class="stats-left">
-                        <div><span id="workStats">Комбинаций: 0 / 1326</span></div>
+            <!-- НОВЫЙ БЛОК: ОБЪЕДИНЯЕТ ТАБЛИЦУ И ПРОФИЛИ -->
+            <div class="table-profiles-wrapper">
+                <!-- НАВИГАЦИОННАЯ ПАНЕЛЬ (теперь над таблицей и профилями) -->
+<div class="table-toolbar">
+    <!-- Левая часть: название диапазона -->
+    <div class="toolbar-left">
+        <span id="currentRangeName" class="toolbar-range-name">Новый диапазон</span>
+    </div>
+    
+    <!-- Правая часть: кнопки -->
+    <div class="toolbar-right">
+        <button class="toolbar-btn" id="tableClearBtn" title="Очистить таблицу">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M17,4V5H15V4H9V5H7V4A2,2,0,0,1,9,2h6A2,2,0,0,1,17,4Z"/><path d="M20,6H4A1,1,0,0,0,4,8H5.07l.87,12.14a2,2,0,0,0,2,1.86h8.14a2,2,0,0,0,2-1.86L18.93,8H20a1,1,0,0,0,0-2ZM13,17a1,1,0,0,1-2,0V11a1,1,0,0,1,2,0Z"/></svg>
+            <span class="toolbar-btn-label">Очистить</span>
+        </button>
+        
+        <button class="toolbar-btn" id="tableSaveBtn" title="Сохранить диапазон">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M17,3H5C3.89,3,3,3.9,3,5V19a2,2,0,0,0,2,2H19a2,2,0,0,0,2-2V7ZM12,19a3,3,0,1,1,3-3A3,3,0,0,1,12,19ZM15,9H5V5H15Z"/></svg>
+            <span class="toolbar-btn-label">Сохранить</span>
+        </button>
+        
+        <button class="toolbar-btn" id="tableUndoBtn" title="Отменить изменения">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12.5,8c-2.65,0-5.05,0.99-6.9,2.6L2,7v9h9l-3.62-3.62C8.53,12.35,10.39,11.5,12.5,11.5 c2.87,0,5.37,1.63,6.68,4.05l2.03-1.19C19.6,11.57,16.26,8,12.5,8z"/></svg>
+            <span class="toolbar-btn-label">Отменить</span>
+        </button>
+    </div>
+</div>
+                
+                <!-- Горизонтальный контейнер для таблицы и профилей -->
+                <div class="table-profiles-row">
+                    <!-- ЦЕНТРАЛЬНАЯ КОЛОНКА: МАТРИЦА -->
+                    <div class="table-panel">
+                        <div class="constructor-wrapper">
+                            <div id="constructorGrid" class="hands-grid"></div>
+                        </div>
+                        <div id="constructorChildButtons" class="button-bar"></div>
+                        <div id="constructorNavButtons" class="button-bar">
+                            <button id="backButton" class="btn-oval" style="display: none;">← Назад</button>
+                        </div>
                     </div>
-                    <div class="rng-widget" id="rngNumber">42</div>
+
+                    <!-- ПРАВАЯ КОЛОНКА: ПРОФИЛИ -->
+                    <div class="profiles-panel">
+                        <div class="palette-section">
+                            <div id="paletteList" class="palette-list"></div>
+                            <div class="add-color-block" id="addPaletteColorBtn">
+                                <span class="round-add-btn"></span>
+                                <span class="add-color-text">Добавить цвет</span>
+                            </div>
+                        </div>
+                        <div class="profiles-container">
+                            <div id="profileList"></div>
+                            <div class="add-profile-block" id="newProfileBtn">
+                                <span class="round-add-btn"></span>
+                                <span class="add-profile-text">Добавить профиль</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="workGrid" class="hands-grid readonly"></div>
-                <div id="workLevelsContainer"></div>
-                <footer>Режим просмотра • многоуровневая навигация</footer>
             </div>
         </div>
     </div>
-   <script src="js/all.js"></script>
+
+    <!-- РАБОТА -->
+    <div id="workPage" class="page">
+        <div class="work-single-panel">
+            <div class="work-layout">
+                <div class="left-area">
+                    <div id="workRangeTitle">
+                        <span id="workRangeName">—</span>
+                    </div>
+                    <div class="work-table-wrapper" id="workTableWrapper">
+                        <div id="workGrid" class="hands-grid"></div>
+                        <div id="workStatsFooter">
+                            <div class="rng-widget" id="rngNumber">42</div>
+                            <div id="workStats">0.0% (0/1326)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="right-area">
+                    <div id="workLevelsContainer" class="button-bar"></div>
+                </div>
+            </div>
+        </div>
+        <footer>Просмотр диапазонов по узлам</footer>
+    </div>
+
+    <!-- ===== ЦВЕТОВОЙ ПИКЕР (НОВЫЙ) ===== -->
+    <div class="picker-overlay" id="pickerOverlay"></div>
+    <div class="picker-window" id="pickerWindow">
+        <div class="picker-header" id="pickerHeader">
+            <h3>🎨 Цвет</h3>
+            <button class="picker-close" id="pickerClose">&times;</button>
+        </div>
+        <div class="picker-body">
+            <div class="picker-canvas">
+                <canvas id="paletteCanvas" width="400" height="200"></canvas>
+            </div>
+            <div class="picker-slider-group">
+                <div class="picker-preview" id="colorPreview"></div>
+                <input type="range" id="hueSlider" min="0" max="360" value="0">
+            </div>
+            <div class="picker-format-selector" id="formatSelector">
+                <button class="picker-format-btn active" data-format="hex">HEX</button>
+                <button class="picker-format-btn" data-format="rgba">RGBA</button>
+                <button class="picker-format-btn" data-format="hsla">HSLA</button>
+            </div>
+            <div class="picker-hex-input">
+                <input type="text" id="hexInput" value="#9b5378" maxlength="30" />
+            </div>
+            <div class="picker-grid" id="presetGrid"></div>
+            <div class="picker-actions">
+                <button class="picker-btn picker-btn-reset" id="resetBtn">↺</button>
+                <button class="picker-btn picker-btn-ok" id="okBtn">OK</button>
+                <button class="picker-btn picker-btn-cancel" id="cancelBtn">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения -->
+    <div id="confirmModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: transparent; z-index: 10000; align-items: center; justify-content: center; pointer-events: none;">
+        <div style="background: var(--bg-side); border-radius: var(--radius-lg); border: 1px solid var(--border-light); padding: 24px; max-width: 320px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.5); pointer-events: auto;">
+            <p id="confirmMessage" style="margin-bottom: 24px; color: var(--text-primary); font-size: 14px;">Удалить профиль?</p>
+            <div style="display: flex; gap: 16px; justify-content: center;">
+                <button id="confirmYes" class="btn-oval" style="background: var(--bg-active-blue); color: white; border: none;">Удалить</button>
+                <button id="confirmNo" class="btn-oval">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/all.js"></script>
+    <script src="js/ui-utils.js"></script>
+
 </body>
 </html>

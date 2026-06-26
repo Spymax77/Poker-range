@@ -1,7 +1,11 @@
+.profiles-container {
+    width: 500px;
+    max-width: 500px;      /* или любая нужная ширина */
+}
 .palette-section {
     margin-bottom: 28px;
     padding-bottom: 4px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    max-width: 260px;
 }
 
 .palette-header {
@@ -20,25 +24,28 @@
 }
 
 .round-add-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: #2f80ed;
-    border: none;
+    border: 2px solid #D4AF37;
+    width: 20px;
+    height: 20px;
+    background: transparent;
+    color: #D4AF37;
+    font-size: 14px;
+    padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 18px;
-    font-weight: 500;
-    color: white;
+    border-radius: 50%;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    line-height: 1;
+    text-indent: 0;
+    text-align: center;
 }
 
-.round-add-btn:hover {
-    background: #1c6ac2;
-    transform: scale(1.03);
+.round-add-btn::before {
+    content: '+';
+    font-size: 14px;
+    color: #D4AF37;
 }
 
 .palette-list {
@@ -51,15 +58,15 @@
 .palette-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 20px;
     background: transparent;
     padding: 4px 0;
 }
 
 .palette-color-box {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
     border: 1px solid #4a4f5c;
     cursor: pointer;
     flex-shrink: 0;
@@ -69,13 +76,14 @@
 .palette-name {
     background: transparent;
     border: none;
-    color: #e6edf5;
+    color: #a9afb5;
     font-size: 13px;
     padding: 6px 0;
     flex: 1;
     border-bottom: 1px dotted #5a5e6a;
     outline: none;
     font-family: inherit;
+    
 }
 
 .palette-name:focus {
@@ -85,7 +93,7 @@
 .remove-palette-btn {
     background: transparent;
     border: none;
-    color: #8e9aaf;
+    color: #d2d2d3;
     font-size: 16px;
     cursor: pointer;
     width: 28px;
@@ -102,9 +110,8 @@
 }
 
 .profile-card {
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     padding: 4px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .profile-row {
@@ -118,15 +125,32 @@
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    border: 2px solid #7e8a9c;
+    border: 2px solid #64625A;
     background: transparent;
     cursor: pointer;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
 }
 
 .profile-radio.active {
-    background: #8e9aaf;
-    border-color: #cbd5e6;
+    border: 2px solid #d2d2d3;   /* толстая рамка */
+    background: transparent;
+}
+
+.profile-radio.active::after {
+    content: '';
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #d2d2d3;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .side-btn {
@@ -134,7 +158,7 @@
     border: none;
     font-size: 18px;
     font-weight: bold;
-    color: #e6edf5;
+    color: #a9afb5;
     cursor: pointer;
     width: 28px;
     height: 28px;
@@ -149,9 +173,9 @@
 }
 
 .gradient-preview {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 35px;
+    height: 35px;
+    border-radius: 5px;
     border: 1px solid #3a3e48;
     background: #2c2f36;
     flex-shrink: 0;
@@ -175,7 +199,7 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: #4f5562;
+    background: #4a4a50;
     transform: translateY(-50%);
     border-radius: 2px;
     pointer-events: none;
@@ -184,8 +208,8 @@
 .slider-thumb {
     position: absolute;
     top: 50%;
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     display: flex;
@@ -195,28 +219,63 @@
     font-weight: bold;
     text-shadow: 0 0 2px black;
     cursor: pointer;
-    border: 2px solid white;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    border: none;
+    background: currentColor;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.5), inset 0 -1px 1px rgba(0,0,0,0.2);
     transition: 0.05s linear;
 }
 
 .delete-profile-btn {
     background: transparent;
     border: none;
-    font-size: 18px;
+    font-size: 16px;
     cursor: pointer;
-    color: #8e9aaf;
+    color: #d2d2d3;
     width: 28px;
     height: 28px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: 30px;
+    margin-left: 10px
 }
 
 .delete-profile-btn:hover {
     background: rgba(142, 154, 175, 0.15);
     color: #ff8a7a;
+}
+
+.add-color-block {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    padding: 8px 10px;
+    color: #D4AF37;
+}
+
+.add-color-block:hover {
+    background: #2d2f34;
+}
+
+.add-profile-block {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    padding: 8px 10px;
+    color: #D4AF37;
+}
+
+.add-profile-block:hover {
+    background: #2d2f34;
+
+.add-profile-block:hover .round-add-btn {
+    border-color: #e6edf5;
 }
 
 @media (max-width: 900px) {

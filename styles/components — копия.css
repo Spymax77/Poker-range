@@ -22,21 +22,20 @@
     transition: 0.1s;
     background: transparent;
     font-size: 16px;
-    color: #a9afb5;
 }
 
 .tree-item:hover {
-    background: #2c2e32;
+    background: #2d2f34;
    }
 
 .tree-item:hover .tree-actions-popup {
     opacity: 1;
 }
 .tree-item.active {
-    background: #3a3c43;
+    background: #3a3d45;
+    color: #e6edf5;
     border-radius: 0;
-    margin: 0; 
-    color: #e5eaf0;                   
+    margin: 0;                     /* убираем отрицательные отступы */
 }
 .tree-item.active:hover {
     box-shadow: none;
@@ -62,30 +61,6 @@
 .tree-item:hover .tree-actions {
     opacity: 0.85;
 }
-
-/* ===== ИКОНКИ В ДЕРЕВЕ ===== */
-
-
-
-
-.tree-item svg {
-    fill: #a9afb5;
-}
-
-.tree-item.active svg {
-    fill: #e5eaf0;
-}
-
-
-#constructorTree {
-    margin-top: 12px;
-    padding: 12px 16px;
-    background: #1a1c1f;
-    border-radius: 8px;
-    border: 1px solid #2c2e32;
-    min-height: 100%;
-}
-
 
 .tree-actions button {
     background: #2c2f3a;
@@ -262,17 +237,20 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 2px;
-    padding: 6px 8px;
-    background: #2c2e32;
+    padding: 4px 6px;
+    background: #2d2f34;
     border-radius: 6px;
-    border: 1px solid #3c3e45;
-    min-height: 45px;
-    margin-bottom: 20px;
+    border: 1px solid #3d3f46;
+    min-height: 40px;
+    margin-bottom: 10px;
 }
 
+.tree-toolbar {
+    background: #2d2f34;
+}
 
 .table-toolbar {
-    justify-content: flex-start;
+    justify-content: space-between;
 }
 
 .profiles-toolbar-placeholder {
@@ -287,15 +265,15 @@
 .toolbar-btn {
     background: transparent;
     border: none;
-    padding: 5px 6px;
+    padding: 4px 6px;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 32px;
-    min-height: 32px;
+    min-width: 28px;
+    min-height: 28px;
 }
 
 .toolbar-btn:hover {
@@ -309,15 +287,16 @@
 .toolbar-btn .icon,
 .toolbar-btn .plus-icon {
     display: block;
-    width: 22px;
-    height: 22px;
-    fill: #8a848a;
+    width: 18px;
+    height: 18px;
+    fill: #888899;
     transition: fill 0.15s ease;
 }
 
 .toolbar-btn:hover .icon,
 .toolbar-btn:hover .plus-icon {
-    fill: #e5eaf0;
+    fill: #d0d0d8;
+   transform: scale(0.92);
 }
 
 .toolbar-btn .plus-icon {
@@ -606,7 +585,6 @@
         transform: translateX(-50%);
     }
 }
-
 /* ===== НОВЫЙ БЛОК: ТАБЛИЦА + ПРОФИЛИ ===== */
 .table-profiles-wrapper {
     flex: 0 1 auto;
@@ -614,15 +592,14 @@
     flex-direction: column;
     gap: 12px;
     min-width: 0;
-    padding: 0 15px;
+    padding-right: 20px;
 }
 
 .table-profiles-row {
     display: flex;
-    gap: 30px;
+    gap: 20px;
     flex: 1;
     min-width: 0;
-    margin-top: 10px;
 }
 
 /* Центральная панель (таблица) - сохраняем ширину */
@@ -643,71 +620,12 @@
     max-width: 500px;
 }
 
-/* Тулбар теперь на всю ширину только над таблицей и профилями */
+/* Тулбар теперь на всю ширину */
 .table-profiles-wrapper .table-toolbar {
     width: 100%;
     margin-bottom: 0;
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 12px;
-    padding: 6px 12px;
-    background: #2d2f34;
-    border-radius: 6px;
-    border: 1px solid #3d3f46;
-    min-height: 45px;
+    justify-content: flex-end;
 }
-
-/* Левая часть тулбара */
-.toolbar-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.toolbar-range-name {
-    font-size: 14px;
-    color: #D4AF37;
-    white-space: nowrap;
-}
-
-/* Правая часть тулбара */
-.toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-left: 40px;
-}
-
-/* Кнопки с подписями в тулбаре таблицы */
-.table-profiles-wrapper .toolbar-btn {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: transparent;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-family: inherit;
-    min-width: unset;
-    min-height: unset;
-}
-
-
-.table-profiles-wrapper .toolbar-btn:hover .toolbar-btn-label {
- color: #d0d0d8;
- transition: color 0.15s ease;
-}
-
-.toolbar-btn-label {
-    font-size: 16px;
-    color: #8a848a;
-}
-
 
 /* Убираем старый тулбар из таблицы (если вдруг остался) */
 .table-panel .table-toolbar {
@@ -716,9 +634,6 @@
 
 /* Адаптив для новой обёртки */
 @media (max-width: 1100px) {
-    .table-profiles-wrapper {
-        flex: 1 1 100%;
-    }
     .table-profiles-row {
         flex-wrap: wrap;
     }
@@ -733,7 +648,6 @@
         min-width: unset;
     }
 }
-
 /* Адаптив для панелей */
 @media (max-width: 768px) {
     .tree-toolbar,
@@ -769,20 +683,6 @@
         font-size: 11px;
         padding: 0 4px;
     }
-}
 
-/* Адаптив для мобильных (скрываем подписи кнопок) */
-@media (max-width: 600px) {
-    .table-profiles-wrapper .table-toolbar {
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-    
-    .table-profiles-wrapper .toolbar-btn .toolbar-btn-label {
-        display: none;
-    }
-    
-    .toolbar-range-name {
-        font-size: 12px;
-    }
+
 }

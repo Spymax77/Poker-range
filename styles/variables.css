@@ -1,12 +1,12 @@
 :root {
-    --bg-page: #1e2024;
-    --bg-card: #2a2c32;
+    --bg-page: #212325;
+    --bg-card: #38373d;
     --bg-side: #24262b;
     --bg-button: #2c2f36;
     --bg-button-hover: #3a3e48;
     --bg-active: #2a7e3b;
     --bg-active-blue: #2f80ed;
-    --text-primary: #e6edf5;
+    --text-primary: #a9afb5;
     --text-secondary: #8e9aaf;
     --text-muted: #6c7a91;
     --cell-bg: #1f2128;
@@ -15,5 +15,4 @@
     --scroll-thumb: #3f4a60;
     --scroll-track: #1b212c;
     --border-light: #2c2f3a;
-    --radius-lg: 16px;
 }
