@@ -239,7 +239,7 @@ function openPicker(colorId, callback) {
 
   // Если редактируем цвет — загружаем его
   if (editColorId !== null) {
-    const color = paletteColors.find(c => c.id === editColorId);
+    const color = getColors().find(c => c.id === editColorId);
     if (color) {
       const hsl = hexToHsl(color.color);
       h = hsl.h; s = hsl.s; l = hsl.l;
@@ -301,6 +301,7 @@ function openPicker(colorId, callback) {
   if (editColorId !== null && typeof editCallback === 'function') {
     // === РЕЖИМ РЕДАКТИРОВАНИЯ ===
     editCallback(hex);
+	markUnsaved();
   } else {
     // === РЕЖИМ СОЗДАНИЯ ===
   // === ПРОВЕРКА currentNodeId ===
@@ -310,27 +311,29 @@ if (!currentNodeId) {
     return;
 }
 
-let newId = paletteColors.length > 0 ? Math.max(...paletteColors.map(c => c.id)) + 1 : 1;
-paletteColors.push({
+// === РЕЖИМ СОЗДАНИЯ ===
+const nodeId = getCurrentNodeId();
+if (!colorsPerNode[nodeId]) {
+    colorsPerNode[nodeId] = [];
+}
+
+const newId = nextColorId++;
+colorsPerNode[nodeId].push({
     id: newId,
-    name: `Цвет ${paletteColors.length + 1}`,
+    name: `Цвет ${colorsPerNode[nodeId].length}`,
     color: hex
 });
 
-let nodeId = getTableId(currentNodeId);
-if (!nodePaletteMap[nodeId]) {
-    nodePaletteMap[nodeId] = [];
+// ===== ЕСЛИ ЭТО ПЕРВЫЙ ЦВЕТ — ДЕЛАЕМ ЕГО АКТИВНЫМ =====
+if (colorsPerNode[nodeId].length === 1) {
+    setActiveColor(newId);
 }
-nodePaletteMap[nodeId].push(newId);
-
-// Принудительно сохраняем
-savePalette();
-persistAll();  // ← добавить, если нет
 
 renderPalette(true);
 refreshAllProfiles();
 refreshAllGrids();
 updateProfileButtonVisibility();
+markUnsaved();  // ← отмечаем, что есть изменения
   }
   
   // Сброс
@@ -389,6 +392,8 @@ updateProfileButtonVisibility();
   closePicker();
 
 window.openColorPicker = function(colorId, callback) {
-  openPicker(colorId, callback);
+    setTimeout(function() {
+        openPicker(colorId, callback);
+    }, 100);
 };
 })();

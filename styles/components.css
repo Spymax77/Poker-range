@@ -36,21 +36,23 @@
     background: #3a3c43;
     border-radius: 0;
     margin: 0; 
-    color: #e5eaf0;                   
+    color: #e5eaf0; 
+    	
 }
 .tree-item.active:hover {
-    box-shadow: none;
+    
 }
 
     .tree-item-name {
     flex: 1;
     font-weight: 500;
     display: flex;
+	align-items: center;
     gap: 6px;
 
 }
 .tree-item.active .tree-actions-popup {
-    opacity: 1;
+
 }
 .tree-actions {
     display: flex;
@@ -70,6 +72,10 @@
 
 .tree-item svg {
     fill: #a9afb5;
+	display: block;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
 }
 
 .tree-item.active svg {
@@ -79,7 +85,7 @@
 
 #constructorTree {
     margin-top: 12px;
-    padding: 12px 16px;
+    padding: 12px 0;
     background: #1a1c1f;
     border-radius: 8px;
     border: 1px solid #2c2e32;
@@ -153,11 +159,13 @@
 }
 
 .button-bar {
+	display: flex;
     margin-top: 10px;
     flex-wrap: wrap;
     gap: 10px;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
+	width: fit-content;
+	max-width: 100%;
 }
 
 .btn-oval {
@@ -246,7 +254,7 @@
     border: none;
     padding: 4px 10px;     /* ← уменьшенные отступы */
     color: var(--text-primary);
-    font-size: 0.8rem;
+    font-size: 1.1rem;
     cursor: pointer;
     font-family: inherit;
 }
@@ -666,7 +674,7 @@
 }
 
 .toolbar-range-name {
-    font-size: 14px;
+    font-size: 18px;
     color: #D4AF37;
     white-space: nowrap;
 }
@@ -686,7 +694,7 @@
     gap: 4px;
     background: transparent;
     border: none;
-    padding: 4px 8px;
+    padding: 4px 18px;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -713,7 +721,490 @@
 .table-panel .table-toolbar {
     display: none;
 }
+/* ===== МОДАЛЬНЫЕ ОКНА ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
 
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-box {
+    background: var(--bg-side);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+    padding: 24px;
+    max-width: 320px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+    pointer-events: auto;
+}
+
+.modal-box p {
+    margin-bottom: 24px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.modal-btn-yes {
+    background: var(--bg-active-blue) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.modal-btn-no {
+    /* наследует .btn-oval */
+}
+/* ===== ВСПЛЫВАЮЩАЯ ПОДСКАЗКА (TOOLTIP) ===== */
+.cell-tooltip {
+    position: absolute;
+    background: #1a1c1f;
+    border-radius: 6px;
+    padding: 8px 12px;
+    min-width: 120px;
+    max-width: 280px;
+    width: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transform: scale3d(0.3, 0.3, 1);
+    transform-origin: 50% 0%;
+    transition: opacity 0.12s ease, transform 0.18s ease;
+}
+
+.cell-tooltip.visible {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+}
+
+/* Название руки */
+.tooltip-hand {
+    font-size: 16px;
+    color: #e5eaf0;
+    padding-bottom: 2px;
+	 text-align: left;
+}
+
+/* Разделитель */
+.tooltip-divider {
+    border: none;
+    border-top: 1px solid #3d3f46;
+    margin: 4px 0;
+}
+
+/* Строка с цветом */
+.tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #e5eaf0;
+    padding: 2px 0;
+    line-height: 1.4;
+	white-space: nowrap;
+}
+
+/* Квадратик цвета */
+.tooltip-color-box {
+    width: 12px;
+    height: 12px;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+
+/* Название цвета */
+.tooltip-color-name {
+    flex: 1;
+}
+
+/* Процент */
+.tooltip-percent {
+    margin-left: auto;
+    padding-left: 12px;
+}
+/* ===== РЕДАКТИРОВАНИЕ ИМЕНИ ПРЯМО В ДЕРЕВЕ ===== */
+.rename-input {
+    background: #2d2f34;
+    border: none;
+    border-radius: 4px;
+    color: #e6edf5;
+    font-size: 16px;
+    font-weight: 500;
+    font-family: inherit;
+    padding: 2px 6px;
+    outline: none;
+    width: auto;
+    min-width: 60px;
+    max-width: 180px;
+    margin: 0;
+    display: inline-block;
+    caret-color: #e6edf5;
+}
+
+.rename-input:focus {
+    background: #3a3d45;
+    box-shadow: 0 0 0 1px #D4AF37;
+}
+
+/* Выделение текста в input (цвет фона) */
+.rename-input::selection {
+    background: #D4AF37;
+    color: #1a1c1f;
+}
+
+/* Для Firefox */
+.rename-input::-moz-selection {
+    background: #D4AF37;
+    color: #1a1c1f;
+}
+.tree-arrow {
+    cursor: pointer;
+    margin-right: 8px;
+    font-size: 10px;
+    color: #909090;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+/* ===== ПЛАВАЮЩЕЕ ОКНО (как в Windows) ===== */
+.floating-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #2c2f36;
+    border: 1px solid #4a4e5a;
+    border-radius: 10px;
+    padding: 0;
+    min-width: 280px;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: none;
+    cursor: default;
+}
+
+.floating-modal.active {
+    display: block;
+}
+
+/* Заголовок (для перетаскивания) */
+.floating-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: #3a3d45;
+    border-radius: 10px 10px 0 0;
+    cursor: grab;
+    user-select: none;
+}
+
+.floating-modal .modal-header:active {
+    cursor: grabbing;
+}
+
+.floating-modal .modal-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e6edf5;
+}
+
+/* Крестик закрытия */
+.floating-modal .modal-close {
+    background: none;
+    border: none;
+    color: #8e9aaf;
+    font-size: 16px;
+    font-weight: 400;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+}
+
+.floating-modal .modal-close:hover {
+    background: #e55656;
+    color: #ffffff;
+}
+
+/* Тело окна */
+.floating-modal .modal-body {
+    padding: 16px 20px 20px;
+}
+
+.floating-modal .modal-message {
+    font-size: 14px;
+    color: #a9afb5;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.floating-modal .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.floating-modal .modal-actions .btn-ok {
+    background: #2f80ed;
+    border: none;
+    color: white;
+    padding: 6px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    transition: background 0.2s ease;
+}
+
+.floating-modal .modal-actions .btn-ok:hover {
+    background: #4dabf7;
+}
+/* ===== ПОДТВЕРЖДЕНИЕ ПЕРЕМЕЩЕНИЯ (POPUP) ===== */
+.move-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    pointer-events: none;
+}
+
+.move-popup {
+    background: #2d2f34;
+    border-radius: 10px;
+    padding: 40px;
+    min-width: 380px;
+    max-width: 380px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+    text-align: center;
+}
+
+.move-popup-question {
+    font-size: 16px;
+    color: #e6edf5;
+    margin-bottom: 18px;
+    line-height: 1.5;
+}
+
+.move-popup-question strong {
+    color: #D4AF37;
+}
+
+.move-popup-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.move-popup-actions .btn {
+    padding: 10px 40px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-family: inherit;
+}
+
+.move-popup-actions .btn-cancel {
+    background: #2c2f36;
+    color: #a9afb5;
+	border: 2px solid #8a848a;
+}
+
+.move-popup-actions .btn-cancel:hover {
+    background: #3d3f46;
+}
+
+.move-popup-actions .btn-confirm {
+    background: #D4AF37;
+    color: #1a1c1f;
+}
+
+.move-popup-actions .btn-confirm:hover {
+    background: #e6c84a;
+}
+/* ===== ПРИЗРАК (DRAG GHOST) ===== */
+.drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+    transform: translateY(-4px);
+    background: #8a848a;
+    color: #e5eaf0;
+	font-style: italic;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    clip-path: inset(0 40px);
+	opacity: 0.9;
+}
+	
+.drag-ghost svg {
+    fill: #e6edf5;
+}
+.drag-ghost .icon {
+    font-size: 18px;
+}
+.drag-ghost .name {
+    font-weight: 500;
+}
+
+/* ===== ПОДСКАЗКА ===== */
+.drag-hint {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9998;
+    font-size: 13px;
+    color: #a9afb5;
+    background: transparent;
+    border: none;
+    padding: 0 4px;
+    margin: 0;
+    line-height: 1.2;
+    white-space: nowrap;
+    transform: translate(-50%, 0);
+    margin-top: 2px;
+}
+.drag-hint strong {
+    font-weight: 600;
+    color: #a9afb5;
+}
+/* ===== ОТКЛЮЧАЕМ HOVER ПРИ ПЕРЕТАСКИВАНИИ ===== */
+body.dragging .tree-item:hover {
+    background: transparent !important;
+    color: #a9afb5 !important;
+}
+body.dragging .tree-actions-popup {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+body.dragging .tree-item.active {
+    background: #3a3c43 !important;
+    color: #e5eaf0 !important;
+}
+
+body.dragging .tree-item.active .tree-actions-popup {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+/* ===== ОКНО ПОДТВЕРЖДЕНИЯ СОХРАНЕНИЯ ===== */
+.save-confirm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    pointer-events: none;
+}
+
+.save-confirm-modal {
+	position: fixed;
+    background: #2d2f34;
+	border: 1px solid #3d3f46;
+    border-radius: 12px;
+    padding: 24px 28px;
+    min-width: 320px;
+    max-width: 420px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+    text-align: center;
+}
+
+.save-confirm-header {
+    font-size: 16px;
+    font-weight: 600;
+    color: #D4AF37;
+    cursor: grab;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #2c2f36;
+    margin-bottom: 12px;
+    text-align: left;
+}
+
+.save-confirm-body {
+    font-size: 15px;
+    color: #e6edf5;
+    margin-bottom: 18px;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.save-confirm-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.save-confirm-actions .btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-family: inherit;
+}
+
+.save-confirm-actions .btn-cancel {
+    background: #2c2f36;
+    color: #a9afb5;
+	border: 2px solid #64625A;
+	width: 80px;
+}
+
+.save-confirm-actions .btn-cancel:hover {
+    background: #3d3f46;
+}
+
+.save-confirm-actions .btn-confirm {
+    background: #D4AF37;
+    color: #1a1c1f;
+	width: 80px;
+}
+
+.save-confirm-actions .btn-confirm:hover {
+    background: #e6c84a;
+}
 /* Адаптив для новой обёртки */
 @media (max-width: 1100px) {
     .table-profiles-wrapper {

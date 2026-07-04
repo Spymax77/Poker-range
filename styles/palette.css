@@ -23,20 +23,43 @@
     text-transform: uppercase;
 }
 
+/* ============================================================
+   ОБЩИЙ СТИЛЬ ДЛЯ ОБЕИХ КНОПОК
+   ============================================================ */
+.add-color-block,
+.add-profile-block {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+    padding: 8px 10px;
+    color: #D4AF37;
+    background: transparent;
+    user-select: none;
+    font-family: inherit;
+}
+
+.add-color-block:hover,
+.add-profile-block:hover {
+    background: #2d2f34;
+}
+
+/* ============================================================
+   КРУЖОК С ПЛЮСОМ (общий для обеих кнопок)
+   ============================================================ */
 .round-add-btn {
-    border: 2px solid #D4AF37;
     width: 20px;
     height: 20px;
+    border: 2px solid #D4AF37;
+    border-radius: 50%;
     background: transparent;
-    color: #D4AF37;
-    font-size: 14px;
-    padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    border-radius: 50%;
-    transition: all 0.2s ease;
+    flex-shrink: 0;
+    transition: border-color 0.3s ease;
     line-height: 1;
     text-indent: 0;
     text-align: center;
@@ -45,9 +68,69 @@
 .round-add-btn::before {
     content: '+';
     font-size: 14px;
+    font-weight: 300;
     color: #D4AF37;
+    transition: color 0.3s ease;
+    line-height: 1;
+    margin-top: -1px;
 }
 
+/* ============================================================
+   ТЕКСТ КНОПОК
+   ============================================================ */
+.add-color-text,
+.add-profile-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #D4AF37;
+    transition: color 0.3s ease;
+    position: relative;
+    display: inline-block;
+}
+
+/* ============================================================
+   ПОДЧЁРКИВАНИЕ (скрыто по умолчанию)
+   ============================================================ */
+.add-color-text::after,
+.add-profile-text::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: #ffd700;
+    border-radius: 2px;
+    transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ============================================================
+   ПРИ НАВЕДЕНИИ
+   ============================================================ */
+.add-color-block:hover .add-color-text::after,
+.add-profile-block:hover .add-profile-text::after {
+    width: 100%;
+}
+
+.add-color-block:hover .round-add-btn,
+.add-profile-block:hover .round-add-btn {
+    border-color: #ffd700;
+}
+
+.add-color-block:hover .round-add-btn::before,
+.add-profile-block:hover .round-add-btn::before {
+    color: #ffd700;
+}
+
+.add-color-block:hover .add-color-text,
+.add-profile-block:hover .add-profile-text {
+    color: #ffd700;
+}
+
+.add-color-block:hover,
+.add-profile-block:hover {
+    background: #2d2f34;
+}
 .palette-list {
     display: flex;
     flex-direction: column;
@@ -67,7 +150,6 @@
     width: 30px;
     height: 30px;
     border-radius: 5px;
-    border: 1px solid #4a4f5c;
     cursor: pointer;
     flex-shrink: 0;
     transition: 0.1s;
@@ -173,10 +255,9 @@
 }
 
 .gradient-preview {
-    width: 35px;
-    height: 35px;
+    width: 38px;
+    height: 38px;
     border-radius: 5px;
-    border: 1px solid #3a3e48;
     background: #2c2f36;
     flex-shrink: 0;
     cursor: help;
@@ -200,29 +281,33 @@
     right: 0;
     height: 2px;
     background: #4a4a50;
-    transform: translateY(-50%);
-    border-radius: 2px;
     pointer-events: none;
+}
+
+.slider-percent {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: #a9afb5;
+    background: #1e2024;
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
 }
 
 .slider-thumb {
     position: absolute;
     top: 50%;
-    width: 30px;
-    height: 30px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: bold;
-    text-shadow: 0 0 2px black;
     cursor: pointer;
     border: none;
-    background: currentColor;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.5), inset 0 -1px 1px rgba(0,0,0,0.2);
-    transition: 0.05s linear;
+    background: #4a4a50;
+   
 }
 
 .delete-profile-btn {
@@ -243,39 +328,6 @@
 .delete-profile-btn:hover {
     background: rgba(142, 154, 175, 0.15);
     color: #ff8a7a;
-}
-
-.add-color-block {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    padding: 8px 10px;
-    color: #D4AF37;
-}
-
-.add-color-block:hover {
-    background: #2d2f34;
-}
-
-.add-profile-block {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    padding: 8px 10px;
-    color: #D4AF37;
-}
-
-.add-profile-block:hover {
-    background: #2d2f34;
-
-.add-profile-block:hover .round-add-btn {
-    border-color: #e6edf5;
 }
 
 @media (max-width: 900px) {

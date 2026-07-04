@@ -162,10 +162,7 @@ html, body {
     cursor: default !important;
 }
 
-#workGrid .hand-cell:not([style]):hover {
-    background: linear-gradient(145deg, #3d3d3d, #323232) !important;
-    color: #606060 !important;
-}
+
 
 /* Работа — как конструктор */
 #workTableWrapper {
@@ -233,11 +230,13 @@ footer {
 .left-area {
     flex: 0 0 auto;
     width: auto;
+	position: relative
 }
 
 .right-area {
     flex: 1;
     min-width: 480px;
+	padding-top: 14px;
 }
 
 .cards-stats-layout {
