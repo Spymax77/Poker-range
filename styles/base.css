@@ -11,12 +11,15 @@ html, body {
     margin: 0;
     color: var(--text-primary);
     font-size: 14px;
-    height: 100%;
+    height: auto;
      -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
 }
 
+	
+	
+	
 .app-card {
     height: 100%;
     display: flex;
@@ -36,35 +39,6 @@ html, body {
     border-radius: 4px;
 }
 
-.tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 5px;
-    background: rgba(0,0,0,0.25);
-    padding: 10px;
-    background: #1a1c20;
-}
-
-.tab-btn {
-    background: transparent;
-    border: none;
-    font-size: 16px;
-    font-weight: 500;
-    padding: 8px 24px;
-    border-radius: 8px;
-    color: #8a848a;
-    cursor: pointer;
-    transition: 0.2s;
-    font-family: inherit;
-}
-
-.tab-btn:hover {
-    background: rgba(255,255,255,0.05);
-}
-
-.tab-btn.active {
-    background: #2d2f34;
-}
 
 .page {
     display: none;
@@ -77,13 +51,12 @@ html, body {
 }
 
 .three-columns {
-    flex: 1;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 30px;
-    margin-bottom: 0;
+    flex: 1 1 0%;
+    min-height: 0;         /* ← БЛОК НЕ РАСТЁТ ВЫШЕ ЭКРАНА */
     align-items: stretch;
-    min-height: 100%;
 }
 
 
@@ -91,59 +64,55 @@ html, body {
     width: 350px;
     min-width: 350px;
     max-width: 700px;
-    min-height: 100%;
+    height: 100%;
     flex: 0 0 auto;  
     overflow-x: visible;
+	border-right: 1px solid #454545;
     
 }
 
-.table-panel {
-    flex: 0 0 auto;
-    width: auto;
-    background: transparent;
-    padding: 0 20px;
-    text-align: left;
-    align-self: stretch;
-}
+
 
 .profiles-panel {
-    flex: 0 0 auto;
+    flex: 1;
     width: auto;
-    min-width: 280px;
     max-height: none;
-    padding: 0 20px;
+    padding: 30px 10px;
     border-radius: var(--radius-lg);
-    overflow-y: auto;
 }
 
 .work-single-panel {
     flex: 1;
     border-radius: var(--radius-lg);
-    padding: 20px;
-    text-align: center;
+    padding: 5px 20px;
+    
 }
 
 /* Общие стили для таблиц */
+/* ===== МАТРИЦА — СТАБИЛЬНАЯ ВЕРСИЯ ===== */
 .hands-grid {
     display: grid;
-    grid-template-columns: repeat(13, 1fr);
+    grid-template-columns: repeat(13, 36px);
     gap: 2px;
     width: auto;
     margin: 0;
 }
 
 .hand-cell {
-    aspect-ratio: 1/1;
-    font-size: clamp(14px, 3vw, 14px);
-    padding: 4px;
+	position: relative;
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+    padding: 2px;
     background: #313338;
-    color: #64625A;
-    border-radius: 5px;
+    color: #6c6c6c;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: 0.05s linear;
     cursor: pointer;
+    flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .hand-cell.has-parent-profile {
@@ -213,30 +182,30 @@ footer {
     border-top: 1px solid var(--border-light);
 }
 
-@media (max-width: 900px) {
-    body { padding: 12px; }
-    .three-columns { gap: 12px; }
-    .tree-panel, .profiles-panel { padding: 12px; }
-}
+
 
 /* ========== НОВЫЕ СТИЛИ ДЛЯ РЕЖИМА РАБОТЫ ========== */
 .work-layout {
-    display: flex;
-    gap: 24px;
-    align-items: flex-start;
-    flex-wrap: wrap;
+    display: block;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .left-area {
-    flex: 0 0 auto;
+    display: inline-block;
+    vertical-align: top;
     width: auto;
-	position: relative
+    position: relative;
+    margin-right: 24px;    /* ← заменяет gap */
 }
 
 .right-area {
-    flex: 1;
-    min-width: 480px;
-	padding-top: 14px;
+    display: inline-block;
+    vertical-align: top;
+    max-width: 100%;
+    padding-top: 14px;
+    width: auto;
+    box-sizing: border-box;
 }
 
 .cards-stats-layout {
@@ -356,16 +325,16 @@ footer {
 }
 .folder-btn {
     display: inline-block;
-    padding: 6px 16px;
+    padding: 5px;
     background: #3d3d3d;
-    border-radius: 8px;
-    color: var(--text-primary);
+    border-radius: 5px;
     cursor: pointer;
     font-size: 14px;
     font-family: inherit;
     transition: all 0.2s ease;
-    border: 2px solid transparent;
     outline: none;
+	min-width: 60px;
+	 position: relative;
 }
 
 .folder-btn:hover {
@@ -373,8 +342,7 @@ footer {
 }
 
 .folder-btn.active {
-    background: transparent;
-    border: 2px solid #494949;
+    background: transparent !important;
 }
 
 .folder-btn.active:hover {
@@ -392,6 +360,7 @@ footer {
     font-size: 14px;
     font-family: inherit;
     transition: all 0.2s ease;
+	position: relative;
 }
 
 .range-link:hover {
@@ -415,11 +384,13 @@ footer {
     margin-bottom: 8px;
     text-align: left;
 }
+.work-level {
+	padding: 10px;
+}
+	
+	
+	
 .analysis-table th { color: var(--text-secondary); font-weight: 600; background: rgba(0,0,0,0.2); }
 .zero-percent { opacity: 0.5; color: var(--text-muted); }
 .badge { background: var(--bg-active-blue); border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: bold; display: inline-block; }
 
-@media (max-width: 1100px) {
-    .cards-stats-layout { flex-direction: column; }
-    .right-area { min-width: auto; }
-}

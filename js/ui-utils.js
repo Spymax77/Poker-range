@@ -24,6 +24,8 @@
   let activeIndex = 0;
   let currentFormat = 'hex';
   let lastPresetHex = '#9b5378';
+  let editColorId = null;
+  let editCallback = null;
 
   const defaultColors = [
     '#9b5378', '#79a65a', '#e55656', '#db9713',
@@ -59,7 +61,17 @@
     return { r, g, b };
   }
 
-  function hexToHsl(hex) {
+function hexToHsl(hex) {
+    // Если передан RGB — конвертируем в HEX
+    if (typeof hex === 'string' && hex.startsWith('rgb')) {
+        const match = hex.match(/\d+/g);
+        if (match && match.length >= 3) {
+            const r = parseInt(match[0]);
+            const g = parseInt(match[1]);
+            const b = parseInt(match[2]);
+            hex = '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+        }
+    }
     let r = parseInt(hex.slice(1, 3), 16);
     let g = parseInt(hex.slice(3, 5), 16);
     let b = parseInt(hex.slice(5, 7), 16);
@@ -68,16 +80,16 @@
     let h, s, l = (max + min) / 2;
     if (max === min) { h = s = 0; }
     else {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      switch (max) {
-        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-        case g: h = ((b - r) / d + 2) / 6; break;
-        case b: h = ((r - g) / d + 4) / 6; break;
-      }
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+        }
     }
     return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-  }
+}
 
   function getFormatValue(format) {
     const hex = hslToHex(h, s, l);
@@ -233,121 +245,145 @@
 
   resetBtn.addEventListener('click', resetToLastPreset);
 
-function openPicker(colorId, callback) {
-  editColorId = colorId || null;
-  editCallback = callback || null;
+function openPicker(colorId, callback, anchorRect) {
+	console.log('🔥 openPicker вызван, callback:', callback);
+    editColorId = colorId || null;
+    editCallback = callback || null;
 
-  // Если редактируем цвет — загружаем его
-  if (editColorId !== null) {
-    const color = getColors().find(c => c.id === editColorId);
-    if (color) {
-      const hsl = hexToHsl(color.color);
-      h = hsl.h; s = hsl.s; l = hsl.l;
-      // Находим ближайший пресет
-      let minDist = Infinity;
-      let nearestIdx = 0;
-      currentColors.forEach((c, i) => {
-        const dist = Math.abs(hexToHsl(c.hex).h - h);
-        if (dist < minDist) { minDist = dist; nearestIdx = i; }
-      });
-      activeIndex = nearestIdx;
-      lastPresetHex = color.color;
-      buildPresets();
-      updateUI(true);
+if (editColorId !== null) {
+    // Проверяем, является ли editColorId цветом (HEX или RGB)
+    const isColor = typeof editColorId === 'string' && (editColorId.startsWith('#') || editColorId.startsWith('rgb'));
+    
+    if (isColor) {
+        // Если это цвет — используем его напрямую
+        try {
+            const hsl = hexToHsl(editColorId);
+            h = hsl.h;
+            s = hsl.s;
+            l = hsl.l;
+			 if (isNaN(h) || isNaN(s) || isNaN(l)) {
+            h = 0;
+            s = 0;
+            l = 50;
+        }
+            lastPresetHex = editColorId;
+            buildPresets();
+            updateUI(true);
+        } catch(e) {
+            // Если цвет не распарсился — оставляем как есть
+        }
+    } else {
+        // Если это ID — ищем цвет в getColors()
+        const color = getColors().find(c => c.id === editColorId);
+        if (color) {
+            const hsl = hexToHsl(color.color);
+            h = hsl.h;
+            s = hsl.s;
+            l = hsl.l;
+            let minDist = Infinity;
+            let nearestIdx = 0;
+            currentColors.forEach((c, i) => {
+                const dist = Math.abs(hexToHsl(c.hex).h - h);
+                if (dist < minDist) { minDist = dist; nearestIdx = i; }
+            });
+            activeIndex = nearestIdx;
+            lastPresetHex = color.color;
+            buildPresets();
+            updateUI(true);
+        }
     }
-  } else {
-    const init = currentColors[0];
-    const hsl = hexToHsl(init.hex);
-    lastPresetHex = init.hex;
-    h = hsl.h; s = hsl.s; l = hsl.l;
-    activeIndex = 0;
-    buildPresets();
-    updateUI(true);
-  }
-
-  const btn = document.getElementById('addPaletteColorBtn');
-  const rect = btn ? btn.getBoundingClientRect() : null;
-
-  overlay.classList.add('active');
-  picker.classList.add('open');
-  picker.style.display = 'block';
-
-  if (rect) {
-    let left = rect.right + 10;
-    let top = rect.top - 20;
-    const pickerWidth = 218;
-    if (left + pickerWidth > window.innerWidth - 10) {
-      left = rect.left - pickerWidth - 10;
+}
+	else {
+        const init = currentColors[0];
+        const hsl = hexToHsl(init.hex);
+        lastPresetHex = init.hex;
+        h = hsl.h; s = hsl.s; l = hsl.l;
+        activeIndex = 0;
+        buildPresets();
+        updateUI(true);
     }
-    picker.style.left = left + 'px';
-    picker.style.top = top + 'px';
-    picker.style.transform = 'none';
-  } else {
-    picker.style.top = '50%';
-    picker.style.left = '50%';
-    picker.style.transform = 'translate(-50%, -50%)';
-  }
+
+    const btn = document.getElementById('addPaletteColorBtn');
+    const rect = btn ? btn.getBoundingClientRect() : null;
+
+    picker.classList.add('open');
+    picker.style.display = 'block';
+	// Закрытие по клику вне пикера
+document.addEventListener('click', function closeOnOutside(e) {
+    if (!picker.contains(e.target)) {
+        closePicker();
+        document.removeEventListener('click', closeOnOutside);
+    }
+});
+
+    if (anchorRect) {
+        let left = anchorRect.right + 10;
+        let top = anchorRect.top - 20;
+        const pickerWidth = 218;
+        if (left + pickerWidth > window.innerWidth - 10) {
+            left = anchorRect.left - pickerWidth - 10;
+        }
+        if (top + 320 > window.innerHeight) {
+            top = window.innerHeight - 320 - 10;
+        }
+        picker.style.left = left + 'px';
+        picker.style.top = top + 'px';
+        picker.style.transform = 'none';
+    } else if (rect) {
+        let left = rect.right + 10;
+        let top = rect.top - 20;
+        const pickerWidth = 218;
+        if (left + pickerWidth > window.innerWidth - 10) {
+            left = rect.left - pickerWidth - 10;
+        }
+        picker.style.left = left + 'px';
+        picker.style.top = top + 'px';
+        picker.style.transform = 'none';
+    } else {
+        picker.style.top = '50%';
+        picker.style.left = '50%';
+        picker.style.transform = 'translate(-50%, -50%)';
+    }
 }
 
   function closePicker() {
-    overlay.classList.remove('active');
     picker.classList.remove('open');
     picker.style.display = 'none';
   }
 
-  okBtn.addEventListener('click', function() {
-  const hex = hslToHex(h, s, l);
-  
-  if (editColorId !== null && typeof editCallback === 'function') {
-    // === РЕЖИМ РЕДАКТИРОВАНИЯ ===
-    editCallback(hex);
-	markUnsaved();
-  } else {
-    // === РЕЖИМ СОЗДАНИЯ ===
-  // === ПРОВЕРКА currentNodeId ===
-if (!currentNodeId) {
-    console.error('currentNodeId не определён');
+okBtn.addEventListener('click', function() {
+    const hex = hslToHex(h, s, l);
+    console.log('🔥 ОК нажат, hex:', hex);
+    console.log('🔥 editCallback:', editCallback);
+    console.log('🔥 editColorId:', editColorId);
+
+    if (editColorId !== null && typeof editCallback === 'function') {
+        console.log('🔥 ВЫЗЫВАЮ editCallback');
+        editCallback(hex);
+        markUnsaved();
+    } else {
+        console.log('🔥 editCallback НЕ вызван (режим создания)');
+        if (!currentNodeId) {
+            console.error('currentNodeId не определён');
+            closePicker();
+            return;
+        }
+        createSimpleColor(currentNodeId, null, hex);
+        renderPalette(true);
+        refreshAllProfiles();
+        refreshAllGrids();
+        updateProfileButtonVisibility();
+        markUnsaved();
+    }
+
+    editColorId = null;
+    editCallback = null;
     closePicker();
-    return;
-}
-
-// === РЕЖИМ СОЗДАНИЯ ===
-const nodeId = getCurrentNodeId();
-if (!colorsPerNode[nodeId]) {
-    colorsPerNode[nodeId] = [];
-}
-
-const newId = nextColorId++;
-colorsPerNode[nodeId].push({
-    id: newId,
-    name: `Цвет ${colorsPerNode[nodeId].length}`,
-    color: hex
-});
-
-// ===== ЕСЛИ ЭТО ПЕРВЫЙ ЦВЕТ — ДЕЛАЕМ ЕГО АКТИВНЫМ =====
-if (colorsPerNode[nodeId].length === 1) {
-    setActiveColor(newId);
-}
-
-renderPalette(true);
-refreshAllProfiles();
-refreshAllGrids();
-updateProfileButtonVisibility();
-markUnsaved();  // ← отмечаем, что есть изменения
-  }
-  
-  // Сброс
-  editColorId = null;
-  editCallback = null;
-  
-  closePicker();
 });
 
   closeBtn.addEventListener('click', closePicker);
   cancelBtn.addEventListener('click', closePicker);
-  overlay.addEventListener('click', function(e) {
-    if (e.target === overlay) closePicker();
-  });
+
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && overlay.classList.contains('active')) closePicker();
   });
@@ -391,9 +427,9 @@ markUnsaved();  // ← отмечаем, что есть изменения
   updateUI(true);
   closePicker();
 
-window.openColorPicker = function(colorId, callback) {
+window.openColorPicker = function(colorId, callback, anchorRect) {
     setTimeout(function() {
-        openPicker(colorId, callback);
+        openPicker(colorId, callback, anchorRect);
     }, 100);
 };
 })();

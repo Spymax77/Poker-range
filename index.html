@@ -3,15 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Poker Range | Сет и трипс раздельно</title>
+    <title>PFRangeTool - Построение префлоп-диапазонов</title>
+	<link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
-</head>
+<script type="text/javascript" src="https://ff.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=SVHE9zWSoJgaX0wyXbt_9pgry7778mZC_rBKeUb98Inc80UEDd_cae1oVOP6lNeHmgogN1KXiK4BDh-xKU6SN4XnG9Sm9NiHvH0ppw95l413T6kcT_t_8gypsJTdi1ArvUI1E_blVHb5lA27mp2uPGT0zKIA9j03l3t2unF1vFwXGXQrw3uKQ9MDN1ySTfW_GmW-MHwd27ZLf7IgC1dedtvI9-fFuj76eRrTpLcioX8" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://ff.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly92aDMxOS1mbS5zd2ViLnJ1L3BocC9jb25uZWN0b3IucGhwP2NtZD1maWxlJnRhcmdldD1sMV9jSFZpYkdsalgyaDBiV3d2YVc1a1pYZ3VhSFJ0YkEmX3Q9MTc4NDc5MDU0MCZkb3dubG9hZD0xJmNwYXRoPS8mcmVxaWQ9MTlmOTAzMzg3MjRjZg"/></head>
 <body>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){
+    m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    for (var j = 0; j < document.scripts.length; j++) {
+        if (document.scripts[j].src === r) { return; }
+    }
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],
+    k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+})(window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=110799161','ym');
+
+ym(110799161, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer: document});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/110799161" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
 <div class="app-card">
     <div class="tabs">
-        <button class="tab-btn active" data-page="constructor">Редактор</button>
-        <button class="tab-btn" data-page="work">Просмотр</button>
+    <!-- Логотип -->
+    <div class="logo-container">
+        <div class="matrix-grid">
+            <div class="cell cell-red"></div>
+            <div class="cell cell-red"></div>
+            <div class="cell cell-red"></div>
+            <div class="cell cell-empty"></div>
+            <div class="cell cell-red"></div>
+            <div class="cell cell-red"></div>
+            <div class="cell cell-green"></div>
+            <div class="cell cell-empty"></div>
+            <div class="cell cell-red"></div>
+            <div class="cell cell-green"></div>
+            <div class="cell cell-empty"></div>
+            <div class="cell cell-empty"></div>
+            <div class="cell cell-empty"></div>
+            <div class="cell cell-empty"></div>
+            <div class="cell cell-empty"></div>
+            <div class="cell cell-empty"></div>
+        </div>
+        <div class="text-part">
+            <div class="main-title">
+                <span class="pf-text">PF</span><span class="range-text">RangeTool</span>
+            </div>
+            <div class="subtitle">построение префлоп-диапазонов</div>
+        </div>
     </div>
+
+    <!-- Кнопки -->
+    <button class="tab-btn active" data-page="constructor">Редактор</button>
+    <button class="tab-btn" data-page="work">Просмотр</button>
+</div>
 
     <!-- КОНСТРУКТОР -->
     <div id="constructorPage" class="page active-page">
@@ -20,38 +66,35 @@
             <div class="tree-panel">
                 <!-- НАВИГАЦИОННАЯ ПАНЕЛЬ ДЕРЕВА -->
                 <div class="tree-toolbar">
-                    <!-- Свернуть все -->
-                    <button class="toolbar-btn" id="treeCollapseAllBtn" title="Свернуть все">
-                        <svg class="icon" viewBox="0 0 16 16" fill="var(--text-primary)">
-                            <path d="m 5 2 c -0.265625 0 -0.519531 0.105469 -0.707031 0.292969 l -4 4 c -0.3906252 0.390625 -0.3906252 1.023437 0 1.414062 l 4 4 c 0.390625 0.390625 1.023437 0.390625 1.414062 0 s 0.390625 -1.023437 0 -1.414062 l -3.292969 -3.292969 l 3.292969 -3.292969 c 0.390625 -0.390625 0.390625 -1.023437 0 -1.414062 c -0.1875 -0.1875 -0.441406 -0.292969 -0.707031 -0.292969 z m 4 0 c -0.265625 0 -0.519531 0.105469 -0.707031 0.292969 l -4 4 c -0.390625 0.390625 -0.390625 1.023437 0 1.414062 l 4 4 c 0.390625 0.390625 1.023437 0.390625 1.414062 0 s 0.390625 -1.023437 0 -1.414062 l -2.292969 -2.292969 h 4.585938 c 1.117188 0 2 0.882812 2 2 v 3 c 0 0.550781 0.449219 1 1 1 s 1 -0.449219 1 -1 v -3 c 0 -0.023438 0 -0.046875 -0.003906 -0.070312 c -0.035156 -2.164063 -1.820313 -3.929688 -3.996094 -3.929688 h -4.585938 l 2.292969 -2.292969 c 0.390625 -0.390625 0.390625 -1.023437 0 -1.414062 c -0.1875 -0.1875 -0.441406 -0.292969 -0.707031 -0.292969 z m 0 0"/>
-                        </svg>
-                    </button>
-                    <div class="divider"></div>
-                    <button class="toolbar-btn" id="treeAddFolderBtn" title="Создать папку">
+
+                    <button class="toolbar-btn" id="treeAddFolderBtn" data-tooltip="Создать папку">
                         <svg class="plus-icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="2"/><rect x="11" y="5" width="2" height="14"/></svg>
                         <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                     </button>
-                    <button class="toolbar-btn" id="treeAddRangeBtn" title="Создать диапазон">
+					<div class="divider"></div>
+                    <button class="toolbar-btn" id="treeAddRangeBtn" data-tooltip="Создать диапазон">
                         <svg class="plus-icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="2"/><rect x="11" y="5" width="2" height="14"/></svg>
                         <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/><rect x="2" y="13" width="9" height="9" rx="1"/><rect x="13" y="13" width="9" height="9" rx="1"/></svg>
                     </button>
                     <div class="divider"></div>
-                    <button class="toolbar-btn" id="treeRenameBtn" title="Переименовать">
+                    <button class="toolbar-btn" id="treeRenameBtn" data-tooltip="Переименовать диапазон">
                         <svg class="icon" viewBox="0 0 512 512"><path d="M136.6 138.79a64.003 64.003 0 0 0-43.31 41.35L0 460l14.69 14.69L164.8 324.58c-2.99-6.26-4.8-13.18-4.8-20.58 0-26.51 21.49-48 48-48s48 21.49 48 48-21.49 48-48 48c-7.4 0-14.32-1.81-20.58-4.8L37.31 497.31 52 512l279.86-93.29a64.003 64.003 0 0 0 41.35-43.31L416 224 288 96l-151.4 42.79zm361.34-64.62l-60.11-60.11c-18.75-18.75-49.16-18.75-67.91 0l-56.55 56.55 128.02 128.02 56.55-56.55c18.75-18.75 18.75-49.15 0-67.91z"/></svg>
                     </button>
                     <div class="divider"></div>
-                    <button class="toolbar-btn" id="treeMoveUpBtn" title="Вверх">
+                    <button class="toolbar-btn" id="treeMoveUpBtn" data-tooltip="Переместить вверх">
                         <svg class="icon" viewBox="0 0 24 24"><polygon points="12,3 3,15 9,15 9,21 15,21 15,15 21,15"/></svg>
                     </button>
-                    <button class="toolbar-btn" id="treeMoveDownBtn" title="Вниз">
+                    <button class="toolbar-btn" id="treeMoveDownBtn" data-tooltip="Переместить вниз">
                         <svg class="icon" viewBox="0 0 24 24"><polygon points="12,21 3,9 9,9 9,3 15,3 15,9 21,9"/></svg>
                     </button>
                     <div class="divider"></div>
-                    <button class="toolbar-btn" id="treeDeleteBtn" title="Удалить">
+                    <button class="toolbar-btn" id="treeDeleteBtn" data-tooltip="Удалить диапазон">
                         <svg class="icon" viewBox="0 0 24 24"><path d="M17,4V5H15V4H9V5H7V4A2,2,0,0,1,9,2h6A2,2,0,0,1,17,4Z"/><path d="M20,6H4A1,1,0,0,0,4,8H5.07l.87,12.14a2,2,0,0,0,2,1.86h8.14a2,2,0,0,0,2-1.86L18.93,8H20a1,1,0,0,0,0-2ZM13,17a1,1,0,0,1-2,0V11a1,1,0,0,1,2,0Z"/></svg>
                     </button>
                 </div>
-                
+                <div class="tree-collapse-wrapper">
+    <span id="treeCollapseText" class="tree-collapse-link">Свернуть все</span>
+</div>
                 <div id="constructorTree"></div>
             </div>
 
@@ -59,43 +102,68 @@
             <div class="table-profiles-wrapper">
                 <!-- НАВИГАЦИОННАЯ ПАНЕЛЬ (теперь над таблицей и профилями) -->
 <div class="table-toolbar">
-    <!-- Левая часть: название диапазона -->
-    <div class="toolbar-left">
-        <span id="currentRangeName" class="toolbar-range-name">Новый диапазон</span>
-    </div>
+
     
     <!-- Правая часть: кнопки -->
     <div class="toolbar-right">
-        <button class="toolbar-btn" id="tableClearBtn" title="Очистить таблицу">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M17,4V5H15V4H9V5H7V4A2,2,0,0,1,9,2h6A2,2,0,0,1,17,4Z"/><path d="M20,6H4A1,1,0,0,0,4,8H5.07l.87,12.14a2,2,0,0,0,2,1.86h8.14a2,2,0,0,0,2-1.86L18.93,8H20a1,1,0,0,0,0-2ZM13,17a1,1,0,0,1-2,0V11a1,1,0,0,1,2,0Z"/></svg>
-            <span class="toolbar-btn-label">Очистить</span>
-        </button>
-        <div class="divider"></div>
-        <button class="toolbar-btn" id="tableSaveBtn" title="Сохранить диапазон">
+        
+        <button class="toolbar-btn" id="tableSaveBtn" data-tooltip="Сохранить диапазон">
             <svg class="icon" viewBox="0 0 24 24"><path d="M17,3H5C3.89,3,3,3.9,3,5V19a2,2,0,0,0,2,2H19a2,2,0,0,0,2-2V7ZM12,19a3,3,0,1,1,3-3A3,3,0,0,1,12,19ZM15,9H5V5H15Z"/></svg>
             <span class="toolbar-btn-label">Сохранить</span>
         </button>
         <div class="divider"></div>
-        <button class="toolbar-btn" id="tableUndoBtn" title="Отменить изменения">
+        <button class="toolbar-btn" id="tableUndoBtn" data-tooltip="Отменить изменения">
             <svg class="icon" viewBox="0 0 24 24"><path d="M12.5,8c-2.65,0-5.05,0.99-6.9,2.6L2,7v9h9l-3.62-3.62C8.53,12.35,10.39,11.5,12.5,11.5 c2.87,0,5.37,1.63,6.68,4.05l2.03-1.19C19.6,11.57,16.26,8,12.5,8z"/></svg>
             <span class="toolbar-btn-label">Отменить</span>
         </button>
+		        <div class="divider"></div>
+				<button class="toolbar-btn" id="tableClearBtn" data-tooltip="Очистить таблицу">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M17,4V5H15V4H9V5H7V4A2,2,0,0,1,9,2h6A2,2,0,0,1,17,4Z"/><path d="M20,6H4A1,1,0,0,0,4,8H5.07l.87,12.14a2,2,0,0,0,2,1.86h8.14a2,2,0,0,0,2-1.86L18.93,8H20a1,1,0,0,0,0-2ZM13,17a1,1,0,0,1-2,0V11a1,1,0,0,1,2,0Z"/></svg>
+            <span class="toolbar-btn-label">Очистить</span>
+        </button>
+        <div class="divider"></div>
+        <button class="toolbar-btn" id="tableCopyBtn" data-tooltip="Копировать диапазон">
+           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M16 12.9V17.1C16 20.6 14.6 22 11.1 22H6.9C3.4 22 2 20.6 2 17.1V12.9C2 9.4 3.4 8 6.9 8H11.1C14.6 8 16 9.4 16 12.9Z"/>
+        <path d="M22 6.9V11.1C22 14.6 20.6 16 17.1 16H16V12.9C16 9.4 14.6 8 11.1 8H8V6.9C8 3.4 9.4 2 12.9 2H17.1C20.6 2 22 3.4 22 6.9Z"/>
+    </svg>
+            <span class="toolbar-btn-label">Копировать</span>
+        </button>
+		<div class="divider"></div>
+        <button class="toolbar-btn" id="tablePasteBtn" data-tooltip="Вставить диапазон">
+        <svg class="icon" viewBox="0 0 24 24" fill="#e5eaf0">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    <path d="M12 17L8 13H10.5V9H13.5V13H16L12 17Z"/>
+</svg>
+            <span class="toolbar-btn-label">Вставить</span>
+        </button>
+		<div class="divider"></div>
+		<button class="toolbar-btn" id="importRangeBtn" data-tooltip="Импорт диапазона">
+ <svg class="icon" viewBox="0 0 16 16" fill="currentColor" fill-rule="evenodd">
+        <path d="M14,9 C14.5523,9 15,9.44772 15,10 L15,13 C15,14.1046 14.1046,15 13,15 L3,15 C1.89543,15 1,14.1046 1,13 L1,10 C1,9.44772 1.44772,9 2,9 C2.55228,9 3,9.44771 3,10 L3,13 L13,13 L13,10 C13,9.44771 13.4477,9 14,9 Z M8,1 C8.55228,1 9,1.44772 9,2 L9,6.58579 L10.2929,5.29289 C10.6834,4.90237 11.3166,4.90237 11.7071,5.29289 C12.0976,5.68342 12.0976,6.31658 11.7071,6.70711 L8,10.4142 L4.29289,6.70711 C3.90237,6.31658 3.90237,5.68342 4.29289,5.29289 C4.68342,4.90237 5.31658,4.90237 5.70711,5.29289 L7,6.58579 L7,2 C7,1.44772 7.44772,1 8,1 Z"/>
+    </svg>
+    <span class="toolbar-btn-label">Импорт</span>
+</button>
     </div>
 </div>
                 
                 <!-- Горизонтальный контейнер для таблицы и профилей -->
                 <div class="table-profiles-row">
                     <!-- ЦЕНТРАЛЬНАЯ КОЛОНКА: МАТРИЦА -->
-                    <div class="table-panel">
-                        <div class="constructor-wrapper">
-                            <div id="constructorGrid" class="hands-grid"></div>
-                        </div>
-                        <div id="constructorChildButtons" class="button-bar"></div>
-                        <div id="constructorNavButtons" class="button-bar">
-                            <button id="backButton" class="btn-oval" style="display: none;">← Назад</button>
-                        </div>
-                    </div>
-
+               <div class="table-panel">
+			    <div class="range-title-wrapper">
+        <span id="currentRangeName" class="toolbar-range-name">Новый диапазон</span>
+    </div>
+    <div class="matrix-wrapper">
+        <div id="constructorGrid" class="hands-grid"></div>
+    </div>
+    <div id="constructorChildButtons"></div>
+    <div id="constructorNavButtons" class="button-bar">
+        <button id="backButton" class="btn-oval" style="display: none;">← Назад</button>
+    </div>
+   
+</div>
                     <!-- ПРАВАЯ КОЛОНКА: ПРОФИЛИ -->
                     <div class="profiles-panel">
                         <div class="palette-section">
@@ -109,7 +177,7 @@
                             <div id="profileList"></div>
                             <div class="add-profile-block" id="newProfileBtn">
                                 <span class="round-add-btn"></span>
-                                <span class="add-profile-text">Добавить профиль</span>
+                                <span class="add-profile-text">Добавить мультицвет</span>
                             </div>
                         </div>
                     </div>
@@ -127,7 +195,9 @@
                         <span id="workRangeName">—</span>
                     </div>
                     <div class="work-table-wrapper" id="workTableWrapper">
-                        <div id="workGrid" class="hands-grid"></div>
+                        <div class="matrix1-wrapper">
+						<div id="workGrid" class="hands-grid"></div>
+						</div>
                         <div id="workStatsFooter">
                             <div class="rng-widget" id="rngNumber">42</div>
                             <div id="workStats">0.0% (0/1326)</div>
@@ -139,7 +209,6 @@
                 </div>
             </div>
         </div>
-        <footer>Просмотр диапазонов по узлам</footer>
     </div>
 
     <!-- ===== ЦВЕТОВОЙ ПИКЕР (НОВЫЙ) ===== -->
@@ -175,6 +244,9 @@
     </div>
    <script src="js/color-manager.js"></script>
 	<script src="js/all.js"></script>
+	<script src="js/import-manager.js"></script>
     <script src="js/ui-utils.js"></script>
+	<script src="js/backup-manager.js"></script>
+	
 </body>
 </html>

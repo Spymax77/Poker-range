@@ -1,3 +1,157 @@
+/* ===== ЛОГОТИП В ШАПКЕ ===== */
+
+.tabs {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    padding: 3px;
+	margin-bottom: 5px;
+    flex-wrap: wrap;
+}
+.toolbar-btn {
+    color: #e5eaf0;
+}
+.toolbar-btn:hover {
+    color: #D4AF37;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: default;
+    flex-shrink: 0;
+}
+
+.matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 10px);
+    grid-template-rows: repeat(4, 10px);
+    gap: 2px;
+    background-color: transparent;
+}
+
+.cell {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    box-sizing: border-box;
+}
+.cell-empty { background-color: #55575C; }
+.cell-red { background-color: #9b5378; }
+.cell-green { background-color: #79a65a; }
+
+.text-part {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.2;
+}
+
+.main-title {
+    display: flex;
+    align-items: baseline;
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+}
+.pf-text {
+    color: #D4AF37;
+    font-weight: 600;
+}
+.range-text {
+    color: #B0B8C0;
+}
+
+.subtitle {
+    font-family: 'Arial Narrow', 'Helvetica Narrow', sans-serif;
+    font-size: 14px;
+    font-weight: 300;
+    color: #8A94A6;
+    letter-spacing: 0.5px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 8px 24px;
+    border-radius: 8px;
+    color: #a9afb5;
+    cursor: pointer;
+    transition: 0.2s;
+    font-family: inherit;
+}
+.tab-btn:hover {
+    background: rgba(255,255,255,0.05);
+}
+.tab-btn.active {
+    background: #2d2f34;
+    color: #e5eaf0;
+}
+
+/* Адаптив */
+@media (max-width: 768px) {
+    .tabs {
+        gap: 16px;
+        padding: 10px 16px;
+        flex-wrap: wrap;
+    }
+    .logo-container {
+        gap: 8px;
+    }
+    .matrix-grid {
+        grid-template-columns: repeat(4, 9px);
+        grid-template-rows: repeat(4, 9px);
+        gap: 2px;
+    }
+    .cell {
+        width: 9px;
+        height: 9px;
+    }
+    .main-title {
+        font-size: 22px;
+    }
+    .subtitle {
+        font-size: 12px;
+    }
+    .tab-btn {
+        font-size: 14px;
+        padding: 6px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .tabs {
+        gap: 10px;
+        padding: 8px 12px;
+    }
+    .logo-container {
+        gap: 6px;
+    }
+    .matrix-grid {
+        grid-template-columns: repeat(4, 8px);
+        grid-template-rows: repeat(4, 8px);
+        gap: 1.5px;
+    }
+    .cell {
+        width: 8px;
+        height: 8px;
+        border-radius: 1px;
+    }
+    .main-title {
+        font-size: 18px;
+    }
+    .subtitle {
+        font-size: 10px;
+    }
+    .tab-btn {
+        font-size: 12px;
+        padding: 4px 10px;
+    }
+}
 .tree-panel h3,
 .profiles-panel h3 {
     margin: 0 0 18px 0;
@@ -13,8 +167,8 @@
 }
 
 .tree-item {
-    padding: 8px 0;
-    margin: 0;                  /* никаких отрицательных отступов */
+	position: relative;
+    padding-left: 15px;                 /* никаких отрицательных отступов */
     display: flex;
     align-items: center;
     gap: 8px;
@@ -22,7 +176,7 @@
     transition: 0.1s;
     background: transparent;
     font-size: 16px;
-    color: #a9afb5;
+    color: #dedede;
 }
 
 .tree-item:hover {
@@ -35,8 +189,6 @@
 .tree-item.active {
     background: #3a3c43;
     border-radius: 0;
-    margin: 0; 
-    color: #e5eaf0; 
     	
 }
 .tree-item.active:hover {
@@ -71,7 +223,7 @@
 
 
 .tree-item svg {
-    fill: #a9afb5;
+    fill: #dedede;
 	display: block;
     width: 20px;
     height: 20px;
@@ -79,17 +231,15 @@
 }
 
 .tree-item.active svg {
-    fill: #e5eaf0;
+
 }
 
 
 #constructorTree {
-    margin-top: 12px;
-    padding: 12px 0;
-    background: #1a1c1f;
-    border-radius: 8px;
-    border: 1px solid #2c2e32;
-    min-height: 100%;
+	min-height: calc(100vh - 143px);
+	max-height: 100%;
+	
+	
 }
 
 
@@ -123,19 +273,19 @@
 }
 
 /* Первый уровень вложенности */
-.tree-children .tree-item > span:first-child {
+/*.tree-children .tree-item > span:first-child {
     margin-left: calc(18px + 20px);
-}
+}/*
 
 /* Второй уровень */
-.tree-children .tree-children .tree-item > span:first-child {
+/*.tree-children .tree-children .tree-item > span:first-child {
     margin-left: calc(18px + 40px);
-}
+}/*
 
 /* Третий уровень */
-.tree-children .tree-children .tree-children .tree-item > span:first-child {
+/*.tree-children .tree-children .tree-children .tree-item > span:first-child {
     margin-left: calc(18px + 60px);
-}
+}/*
 .add-node-btn,
 .add-profile-btn {
     margin-top: 10px;
@@ -228,39 +378,54 @@
     font-weight: 700;
     line-height: 1;
 }
-.tree-menu-btn:hover {
-    background: var(--bg-active-blue);
-}
+
 
 .popup-menu {
     position: absolute;
-    top: 100%;
+    top: -15%;
     left: 100%;            /* ← сдвиг вправо */
     right: auto;
-    background: var(--bg-page);
-    border: 1px solid #4a4e5a;
-    border-radius: 8px;
-    padding: 4px 0;
-    min-width: 140px;
+    background: #2c2e32;
+    min-width: 250px;
     z-index: 9999;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+
 }
 
 .popup-menu button {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: 100%;
     text-align: left;
     background: transparent;
     border: none;
-    padding: 4px 10px;     /* ← уменьшенные отступы */
+    padding: 10px;
     color: var(--text-primary);
     font-size: 1.1rem;
     cursor: pointer;
     font-family: inherit;
 }
 
+.popup-menu button .menu-icon {
+    display: inline-block;
+    width: 20px;           /* ← фиксированная ширина для иконок */
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.popup-menu button .menu-text {
+    flex: 1;
+    text-align: left;
+}
 .popup-menu button:hover {
-    background: #3d3d3d;   /* ← новый цвет ховера */
+    background: #3a3c43;
+	color: #e5eaf0;
+}
+
+.tree-actions-popup.menu-open {
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
 /* ========== НАВИГАЦИОННЫЕ ПАНЕЛИ ========== */
 .tree-toolbar,
@@ -269,13 +434,11 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 2px;
-    padding: 6px 8px;
-    background: #2c2e32;
-    border-radius: 6px;
-    border: 1px solid #3c3e45;
+    gap: 4px;
     min-height: 45px;
-    margin-bottom: 20px;
+	padding-left: 20px;
+	margin: 0 10px;
+	border-block: 1px solid #454545;
 }
 
 
@@ -349,7 +512,16 @@
     padding: 0 8px;
     white-space: nowrap;
 }
+/* ===== ХОВЕР ДЛЯ ТРЁХ ТОЧЕК ===== */
+.tree-menu-btn:hover {
+    color: #e5eaf0;
+	background: transparent;
+}
 
+/* ===== АКТИВНЫЙ ПУНКТ МЕНЮ ===== */
+.tree-item.active .tree-menu-btn svg {
+    fill: #e5eaf0;
+}
 /* ===== ЦВЕТОВОЙ ПИКЕР (НОВЫЙ) ===== */
 .picker-overlay {
     display: none;
@@ -389,7 +561,7 @@
 .picker-window.open {
     display: block;
     transform: translate(-50%, -50%) scale(0.98);
-    opacity: 0.95;
+	z-index: 99999;
 }
 
 .picker-header {
@@ -580,7 +752,7 @@
     padding: 3px 14px;
     border: none;
     border-radius: 12px;
-    font-size: 10px;
+    font-size: 13px;
     cursor: pointer;
     transition: background 0.2s;
     font-family: inherit;
@@ -620,36 +792,27 @@
     flex: 0 1 auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
     min-width: 0;
     padding: 0 15px;
 }
 
 .table-profiles-row {
     display: flex;
-    gap: 30px;
     flex: 1;
     min-width: 0;
-    margin-top: 10px;
+	 flex-wrap: nowrap;
+	 overflow: visible;
+	 gap: 30px;
 }
 
 /* Центральная панель (таблица) - сохраняем ширину */
 .table-profiles-row .table-panel {
     flex: 0 1 auto;
-    max-width: 530px;
-    min-width: 450px;
     padding: 0;
     background: transparent;
     align-self: stretch;
 }
 
-/* Правая панель (профили) */
-.table-profiles-row .profiles-panel {
-    flex: 1;
-    min-width: 280px;
-    padding: 0;
-    max-width: 500px;
-}
 
 /* Тулбар теперь на всю ширину только над таблицей и профилями */
 .table-profiles-wrapper .table-toolbar {
@@ -660,21 +823,18 @@
     align-items: center;
     gap: 12px;
     padding: 6px 12px;
-    background: #2d2f34;
-    border-radius: 6px;
-    border: 1px solid #3d3f46;
     min-height: 45px;
+	border-block: 1px solid #454545;
+	margin: 0;
 }
 
-/* Левая часть тулбара */
-.toolbar-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.range-title-wrapper {
+    padding: 8px 0 4px 0;
+    text-align: left;
 }
 
 .toolbar-range-name {
-    font-size: 18px;
+    font-size: 14px;
     color: #D4AF37;
     white-space: nowrap;
 }
@@ -684,9 +844,17 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    margin-left: 40px;
 }
+.table-panel {
+    flex: 0 0 auto;
+    width: auto;
+    background: transparent;
+    padding: 0 20px;
+    text-align: left;
+    align-self: stretch;
+	overflow: visible;
 
+}
 /* Кнопки с подписями в тулбаре таблицы */
 .table-profiles-wrapper .toolbar-btn {
     display: flex;
@@ -694,7 +862,7 @@
     gap: 4px;
     background: transparent;
     border: none;
-    padding: 4px 18px;
+    padding: 4px 4px;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -713,13 +881,30 @@
 
 .toolbar-btn-label {
     font-size: 16px;
-    color: #8a848a;
+    color: #b0aab0;
 }
 
 
 /* Убираем старый тулбар из таблицы (если вдруг остался) */
 .table-panel .table-toolbar {
     display: none;
+}
+.tree-collapse-wrapper {
+    padding: 8px 0 4px 12px;
+    text-align: left;
+}
+
+.tree-collapse-link {
+    font-size: 14px;
+    color: #8a848a;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color 0.15s;
+    font-family: inherit;
+}
+
+.tree-collapse-link:hover {
+    color: #e5eaf0;
 }
 /* ===== МОДАЛЬНЫЕ ОКНА ===== */
 .modal-overlay {
@@ -883,6 +1068,7 @@
     display: inline-flex;
     align-items: center;
     line-height: 1;
+	flex-shrink: 0;
 }
 /* ===== ПЛАВАЮЩЕЕ ОКНО (как в Windows) ===== */
 .floating-modal {
@@ -1140,7 +1326,7 @@ body.dragging .tree-item.active .tree-actions-popup {
 	position: fixed;
     background: #2d2f34;
 	border: 1px solid #3d3f46;
-    border-radius: 12px;
+    border-radius: 4px;
     padding: 24px 28px;
     min-width: 320px;
     max-width: 420px;
@@ -1150,9 +1336,7 @@ body.dragging .tree-item.active .tree-actions-popup {
 }
 
 .save-confirm-header {
-    font-size: 16px;
-    font-weight: 600;
-    color: #D4AF37;
+    font-size: 20px;
     cursor: grab;
     padding-bottom: 8px;
     border-bottom: 1px solid #2c2f36;
@@ -1182,14 +1366,14 @@ body.dragging .tree-item.active .tree-actions-popup {
     font-weight: 500;
     cursor: pointer;
     transition: background 0.2s ease;
-    font-family: inherit;
 }
 
 .save-confirm-actions .btn-cancel {
     background: #2c2f36;
     color: #a9afb5;
-	border: 2px solid #64625A;
 	width: 80px;
+	display: inline-flex;
+    justify-content: center;
 }
 
 .save-confirm-actions .btn-cancel:hover {
@@ -1200,80 +1384,490 @@ body.dragging .tree-item.active .tree-actions-popup {
     background: #D4AF37;
     color: #1a1c1f;
 	width: 80px;
+	 display: inline-flex;     
+    align-items: center;      
+    justify-content: center;   
+    text-align: center;  
 }
 
 .save-confirm-actions .btn-confirm:hover {
     background: #e6c84a;
 }
-/* Адаптив для новой обёртки */
-@media (max-width: 1100px) {
-    .table-profiles-wrapper {
-        flex: 1 1 100%;
-    }
-    .table-profiles-row {
-        flex-wrap: wrap;
-    }
-    .table-profiles-row .table-panel {
-        flex: 1 1 100%;
-        max-width: 100%;
-        min-width: unset;
-    }
-    .table-profiles-row .profiles-panel {
-        flex: 1 1 100%;
-        max-width: 100%;
-        min-width: unset;
-    }
+/* ===== КОММЕНТАРИИ ===== */
+.comments-wrapper {
+    position: relative;
+    margin-top: 8px;
+    width: 100%;
+    max-width: 530px;  /* чтобы совпадало с шириной матрицы */
+   
 }
 
-/* Адаптив для панелей */
-@media (max-width: 768px) {
-    .tree-toolbar,
-    .table-toolbar,
-    .profiles-toolbar-placeholder {
-        padding: 4px;
-        min-height: 36px;
-        gap: 1px;
-    }
-    
-    .toolbar-btn {
-        padding: 3px 4px;
-        min-width: 24px;
-        min-height: 24px;
-    }
-    
-    .toolbar-btn .icon {
-        width: 16px;
-        height: 16px;
-    }
-    
-    .toolbar-btn .plus-icon {
-        width: 12px;
-        height: 12px;
-    }
-    
-    .divider {
-        height: 20px;
-        margin: 0 2px;
-    }
-    
-    .table-stats {
-        font-size: 11px;
-        padding: 0 4px;
-    }
+.comments-toggle-btn {
+    position: absolute;
+    left: 0;
+    background: transparent;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.2s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+/* Кнопка редактирования стилей — слева от комментариев */
+#styleEditToggle {
+    position: absolute;
+    bottom: -32px;
+    left: 0px;
+    z-index: 5;
+    background: transparent;
+    border: none;
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.15s;
 }
 
-/* Адаптив для мобильных (скрываем подписи кнопок) */
-@media (max-width: 600px) {
-    .table-profiles-wrapper .table-toolbar {
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-    
-    .table-profiles-wrapper .toolbar-btn .toolbar-btn-label {
+#styleEditToggle:hover {
+    background: #3a3d45;
+}
+
+#styleEditToggle svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    stroke: #8a848a;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 0.15s;
+}
+
+#styleEditToggle:hover svg {
+    stroke: #e5eaf0;
+}
+
+#styleEditToggle.active svg {
+    stroke: #D4AF37;
+}
+/* ===== ЗОЛОТАЯ КАПЛЯ (редактирование) ===== */
+.edit-dot {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    cursor: pointer;
+    z-index: 10;
+    display: none;               /* по умолчанию скрыта */
+    transition: transform 0.15s;
+    line-height: 0;              /* чтобы не было лишнего пространства */
+}
+.edit-dot svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: #D4AF37;               /* золотая капля */
+}
+.edit-dot:hover {
+    transform: scale(1.15);
+}
+
+/* Показываем каплю в режиме редактирования */
+.style-edit-mode .edit-dot {
+    display: block;
+}
+.stats-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+    width: 100%;
+    max-width: 530px;
+}
+.comments-toggle-btn:hover {
+    background: #3a3d45;
+}
+
+.comments-toggle-btn:active {
+    transform: scale(0.92);
+}
+
+.comments-toggle-btn svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    fill: #8a848a;
+    transition: fill 0.2s ease;
+}
+
+.comments-toggle-btn:hover svg {
+    fill: #d0d0d8;
+}
+
+.comments-toggle-btn.active svg {
+    fill: #D4AF37;
+}
+
+.comments-area {
+    width: 100%;
+    max-width: 530px;
+    border-radius: 6px;
+    border: 1px solid #3d3f46;
+    background: #2d2f34;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    margin-top: 4px;
+}
+
+.comments-area textarea {
+    width: 100%;
+    height: 100px;
+    min-height: 100px;
+    max-height: 300px;
+    background: transparent;
+    border: none;
+    color: #e5eaf0;
+    font-size: 13px;
+    font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+    padding: 10px 12px;
+    resize: vertical;
+    outline: none;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+.comments-area textarea::placeholder {
+    color: #6c7a91;
+}
+
+.comments-area textarea:focus {
+    background: #2c2f36;
+}
+/* ===== КАСТОМНЫЙ ТУЛТИП ===== */
+
+.toolbar-btn {
+    position: relative;
+}
+
+.toolbar-btn[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) scale3d(0.3, 0.3, 1);
+    transform-origin: 50% 0%;
+    white-space: nowrap;
+    background: #2d2f34;
+    color: #e5eaf0;
+    font-size: 12px;
+    font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+    font-weight: 400;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #4a4e5a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s ease, transform 0.18s ease;
+}
+
+/* Конечное состояние (при :hover) */
+.toolbar-btn[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) scale3d(1, 1, 1);
+}
+
+/* Стрелочка */
+.toolbar-btn[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% - 3px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #4a4e5a;
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.toolbar-btn[data-tooltip]:hover::before {
+    opacity: 1;
+	 z-index: 1001;
+}
+/* Fade-эффект при смене диапазона */
+.matrix-fade {
+    animation: fadeEffect 0.45s ease;
+}
+/* ===== ТУЛТИПЫ ДЛЯ ИКОНОК ПОД МАТРИЦЕЙ ===== */
+#styleEditToggle[data-tooltip]::after,
+#workCommentsToggleBtn[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 8px);          /* ← снизу от иконки */
+    left: 0;                        /* ← левый край тултипа на левом крае иконки */
+    white-space: nowrap;
+    background: #2d2f34;
+    color: #e5eaf0;
+    font-size: 12px;
+    font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+    font-weight: 400;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #4a4e5a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s ease, transform 0.18s ease;
+    transform: scale3d(0.3, 0.3, 1);
+    transform-origin: 0 0;
+}
+
+#styleEditToggle[data-tooltip]:hover::after,
+#workCommentsToggleBtn[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+}
+/* ===== ПЛАШКА РЕДАКТИРОВАНИЯ СТИЛЕЙ (ЭТАП 1) ===== */
+.style-popup {
+    position: fixed;
+    background: #2d2f34;
+    border: 1px solid #3d3f46;
+    border-radius: 10px;
+    padding: 16px 20px 18px;
+    min-width: 220px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    z-index: 9999;
+    cursor: grab;
+    user-select: none;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+}
+.style-popup:active {
+    cursor: grabbing;
+}
+.style-popup.visible {
+    display: flex;
+}
+
+.style-popup-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #D4AF37;
+    border-bottom: 1px solid #3d3f46;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    text-align: left;
+}
+
+.style-popup-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #a9afb5;
+}
+.style-popup-row .style-color-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    border: 2px solid #3d3f46;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: 0.15s;
+}
+.style-popup-row .style-color-box:hover {
+    transform: scale(1.05);
+    border-color: #D4AF37;
+}
+.style-popup-row .style-label {
+    flex: 1;
+}
+
+
+
+.style-popup-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 6px;
+    border-top: 1px solid #3d3f46;
+    padding-top: 10px;
+}
+.style-popup-actions button {
+    padding: 4px 18px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: 0.15s;
+}
+.style-popup-actions .btn-cancel {
+    background: #2c2f36;
+    color: #a9afb5;
+    border: 1px solid #3d3f46;
+}
+.style-popup-actions .btn-cancel:hover {
+    background: #3d3f46;
+}
+.style-popup-actions .btn-save {
+    background: #D4AF37;
+    color: #1a1c20;
+}
+.style-popup-actions .btn-save:hover {
+    background: #e6c84a;
+}
+.hand-cell.subrange-disabled {
+    background: transparent !important;
+    cursor: default;
+    pointer-events: none;
+
+}
+.cell-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: var(--bg-page);
+    pointer-events: none;
+    z-index: 1;
+}
+/* ===== ПОЛЕ ВВОДА В ОКНЕ ИМПОРТА ===== */
+.import-textarea {
+    width: 100%;
+    background: transparent;
+    border: 2px solid #3d3f46;
+    border-radius: 6px;
+    color: #e5eaf0;
+    font-size: 18px;
+    font-family: monospace;
+    padding: 10px;
+    resize: vertical;
+    box-sizing: border-box;
+    outline: none;
+}
+
+/* ===== ДИАЛОГ ВЫБОРА КОМПОНЕНТА ===== */
+.component-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    border: 2px solid transparent;
+}
+
+.component-option:hover {
+    background: #3a3d45;
+}
+
+.component-option .color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.component-option .color-swatch.sum-all {
+    background: #3a3c43;
+    border: 1px solid #4a4e5a;
+}
+
+.component-option .color-name {
+    color: #e5eaf0;
+    font-size: 14px;
+}
+
+.component-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 0;
+    padding: 4px 0;
+}
+#importOverwriteCheck {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    background: #a9afb5;
+    border-radius: 2px;
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    accent-color: #D4AF37;
+}
+
+#importOverwriteCheck:checked {
+    background: #D4AF37;
+    border-color: #D4AF37;
+    position: relative;
+}
+
+#importOverwriteCheck:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #1a1c1f;
+    font-size: 14px;
+    font-weight: bold;
+}
+/* ===== СТРЕЛОЧКУ НЕ ДЕЛАЕМ ===== */
+
+@keyframes fadeEffect {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+/* Fade-эффект для палитры */
+.palette-fade {
+    animation: fadeEffect 0.45s ease;
+}
+
+/* Fade-эффект для профилей */
+.profiles-fade {
+    animation: fadeEffect 0.45s ease;
+}
+
+@keyframes fadeEffect {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+/* Fade-эффект для кнопок */
+.buttons-fade {
+    animation: fadeEffect 0.45s ease;
+}
+
+@keyframes fadeEffect {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+/* Для неактивной кнопки "Вставить" — тултип не показываем */
+.toolbar-btn.paste-disabled[data-tooltip]:hover::after,
+.toolbar-btn.paste-disabled[data-tooltip]:hover::before {
+    display: none;
+}
+@media (max-width: 1250px) {
+    .toolbar-btn-label {
         display: none;
     }
-    
-    .toolbar-range-name {
-        font-size: 12px;
+}
+@media (max-width: 540px) {
+    .work-single-panel {
+        padding-left: 7px;
+        padding-right: 7px;
     }
 }

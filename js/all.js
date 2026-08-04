@@ -9,6 +9,9 @@ let expandedNodes = new Set();
 let renameInput = null;
 let renameNodeId = null;
 let renameOldName = '';
+let commentsPerNode = {};
+let stylePopup = null;
+let activeButton = null;
 
 // ===== ГЛАВНЫЙ ОБЪЕКТ ДАННЫХ =====
 let appData = {
@@ -19,13 +22,11 @@ let appData = {
     expandedNodes: [],
     workLevels: [{ parentNodeId: null, levelIndex: 0 }],
     workDisplayNodeId: null,
-    colorsPerNode: {},
-    profilesPerNode: {},
-    activeColorPerNode: {},
-    activeProfilePerNode: {},
-    nextColorId: 1,
-    nextProfileId: 1,
-    activeTab: 'constructor'  // ← ДОБАВИТЬ ЭТУ СТРОКУ
+    colorsPerNode: {},      // ← ОСТАЁТСЯ (теперь здесь всё)
+    activePerNode: {},      // ← НОВОЕ (один активный на диапазон)
+    nextColorId: 1,         // ← ОСТАЁТСЯ (только один счётчик)
+    activeTab: 'constructor',
+    commentsPerNode: {}
 };
 // ===== DRAG & DROP: ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
 let dragData = null;
@@ -35,6 +36,8 @@ let startX = 0;
 let startY = 0;
 let expandTimeout = null;
 let highlightedNode = null;
+let clipboardRangeData = null
+
 
 
 const rowsData = [
@@ -59,11 +62,29 @@ function generateUniqueName(baseName, existingNames) {
     if (!existingNames.includes(baseName)) {
         return baseName;
     }
-    let counter = 1;
-    while (existingNames.includes(`${baseName} ${counter}`)) {
+    let counter = 2;
+    while (existingNames.includes(`${baseName} (${counter})`)) {
         counter++;
     }
-    return `${baseName} ${counter}`;
+    return `${baseName} (${counter})`;
+}
+// ===== СОХРАНЕНИЕ СТИЛЕЙ КНОПОК =====
+function saveButtonStyle(nodeId, bg, border, text) {
+    if (!nodeId) return;
+    const data = {};
+    if (bg) data.bg = bg;
+    if (border) data.border = border;
+    if (text) data.text = text;
+    localStorage.setItem('btn_style_' + nodeId, JSON.stringify(data));
+}
+
+function loadButtonStyle(nodeId) {
+    if (!nodeId) return null;
+    const raw = localStorage.getItem('btn_style_' + nodeId);
+    if (raw) {
+        try { return JSON.parse(raw); } catch(e) {}
+    }
+    return null;
 }
 function ensureTable(nodeId) {
     let tid = getTableId(nodeId);
@@ -87,17 +108,37 @@ function countTotalCombos(nodeId) {
     let tid = getTableId(nodeId);
     if (!cellStorage[tid]) return 0;
     let total = 0;
+    const colors = colorsPerNode[tid] || [];
+    
     for (let i = 0; i < 13; i++) {
         for (let j = 0; j < 13; j++) {
-            if (cellStorage[tid][i][j] !== null) {
-                let hand = rowsData[i][j];
-                if (hand.includes('s')) total += 4;
-                else if (hand.includes('o')) total += 12;
-                else if (hand[0] === hand[1]) total += 6;
+            const pid = cellStorage[tid][i][j];
+            if (pid === null) continue;
+            
+            let hand = rowsData[i][j];
+            let combos = 0;
+            if (hand.includes('s')) combos = 4;
+            else if (hand.includes('o')) combos = 12;
+            else if (hand[0] === hand[1]) combos = 6;
+            
+            // Проверяем, мультицвет ли это
+            const color = colors.find(c => c.id === pid);
+            if (color && color.type === 'multi') {
+                // Суммируем доли всех компонентов мультицвета
+                let totalShare = 0;
+                for (const comp of color.components) {
+                    totalShare += comp.share || 0;
+                }
+                // Если сумма долей > 0, умножаем комбинации на долю / 100
+                if (totalShare > 0) {
+                    combos = combos * (totalShare / 100);
+                }
             }
+            
+            total += combos;
         }
     }
-    return total;
+    return Math.round(total * 10) / 10;
 }
 
 // ===== PERSIST ALL =====
@@ -110,11 +151,9 @@ function persistAll() {
     appData.workLevels = workLevels;
     appData.workDisplayNodeId = workDisplayNodeId;
     appData.colorsPerNode = colorsPerNode;
-    appData.profilesPerNode = profilesPerNode;
-    appData.activeColorPerNode = activeColorPerNode;
-    appData.activeProfilePerNode = activeProfilePerNode;
+    appData.activePerNode = activePerNode;
     appData.nextColorId = nextColorId;
-    appData.nextProfileId = nextProfileId;
+    appData.commentsPerNode = commentsPerNode;
     
     // Сохраняем активную вкладку
     const activeBtn = document.querySelector('.tab-btn.active');
@@ -123,7 +162,6 @@ function persistAll() {
     localStorage.setItem("poker_range_tree_v6", JSON.stringify(appData));
 }
 
-// ===== LOAD FROM STORAGE =====
 function loadFromStorage() {
     let raw = localStorage.getItem("poker_range_tree_v6");
     if (raw) {
@@ -137,19 +175,16 @@ function loadFromStorage() {
             workLevels = d.workLevels || [];
             workDisplayNodeId = d.workDisplayNodeId || null;
             colorsPerNode = d.colorsPerNode || {};
-            profilesPerNode = d.profilesPerNode || {};
-            activeColorPerNode = d.activeColorPerNode || {};
-            activeProfilePerNode = d.activeProfilePerNode || {};
+            activePerNode = d.activePerNode || {};
             nextColorId = d.nextColorId || 1;
-            nextProfileId = d.nextProfileId || 1;
-            
+            commentsPerNode = d.commentsPerNode || {};
             // Загружаем активную вкладку
             const activeTab = d.activeTab || 'constructor';
 
             if (nodes.length === 0) {
                 resetToCleanData();
             }
-            return activeTab;  // ← возвращаем активную вкладку
+            return activeTab;
         } catch(e) {
             console.error('Ошибка загрузки:', e);
         }
@@ -168,38 +203,79 @@ function resetToCleanData() {
     workLevels = [{ parentNodeId: null, levelIndex: 0 }];
     workDisplayNodeId = null;
     colorsPerNode = {};
-    profilesPerNode = {};
-    activeColorPerNode = {};
-    activeProfilePerNode = {};
+    activePerNode = {};
     nextColorId = 1;
-    nextProfileId = 1;
+    commentsPerNode = {};
 
-    let rootId = nextNodeId++;
-    nodes.push({
+    const rootId = nextNodeId++;
+    const rootNode = {
         id: rootId,
-        name: "Мои диапазоны",
+        name: 'My Ranges',
         parentId: null,
         childrenIds: [],
         type: 'folder'
-    });
-    ensureTable(rootId);
+    };
+    nodes.push(rootNode);
+    expandedNodes.add(rootId);
+    const positions = ['EP', 'MP', 'CO', 'BU', 'SB', 'BB'];
+    let epRangeId = null;
+    let epFolderId = null;
 
-    let rangeId = nextNodeId++;
-    nodes.push({
-        id: rangeId,
-        name: "Новый диапазон",
-        parentId: rootId,
-        childrenIds: [],
-        type: 'range'
-    });
-    nodes.find(n => n.id === rootId).childrenIds.push(rangeId);
-    ensureTable(rangeId);
+    for (const pos of positions) {
+        let folderId = nextNodeId++;
+        nodes.push({
+            id: folderId,
+            name: pos,
+            parentId: rootId,        // ← нет родителя!
+            childrenIds: [],
+            type: 'folder'
+        });
+		 rootNode.childrenIds.push(folderId);
+        ensureTable(folderId);
 
-    currentNodeId = rangeId;
-    workDisplayNodeId = rangeId;
+        if (pos === 'EP') {
+            epFolderId = folderId;
+        }
+
+        // Создаём диапазон Open raise внутри папки
+        let rangeId = nextNodeId++;
+        nodes.push({
+            id: rangeId,
+            name: "Open raise",
+            parentId: folderId,
+            childrenIds: [],
+            type: 'range'
+        });
+        nodes.find(n => n.id === folderId).childrenIds.push(rangeId);
+        ensureTable(rangeId);
+
+        if (pos === 'EP') {
+            epRangeId = rangeId;
+            expandedNodes.add(folderId);  // раскрываем EP
+        }
+
+        // Создаём 2 цвета для диапазона
+        const tableId = getTableId(rangeId);
+        colorsPerNode[tableId] = [];
+
+       const colorId = nextColorId++;
+colorsPerNode[tableId].push({
+    id: colorId,
+    name: "action",
+    color: "#9C5479",
+    type: 'simple'
+});
+
+activePerNode[tableId] = colorId;
+    }
+
+    if (epRangeId) {
+        currentNodeId = epRangeId;
+        workDisplayNodeId = epRangeId;
+    }
+
     persistAll();
 }
-
 // ===== ДЕРЕВО (с компактным меню) =====
 function addChildNode(parentId) {
     let parent = nodes.find(n => n.id === parentId);
@@ -295,139 +371,238 @@ function moveNodeDown(nodeId) {
 function deleteNode(nodeId) {
     let node = nodes.find(n => n.id === nodeId);
     if (!node) return;
-    // Проверяем, есть ли в дереве другие диапазоны (кроме удаляемого)
-const allRanges = nodes.filter(n => n.type === 'range' || n.type === 'subrange');
-if (allRanges.length <= 1 && (node.type === 'range' || node.type === 'subrange')) {
-    showFloatingModal("Нельзя удалить единственный диапазон");
-    return;
-}
 
-    function delSub(id) {
-        let n = nodes.find(nn => nn.id === id);
-        if (!n) return;
-        for (let cid of n.childrenIds) {
-            delSub(cid);
+    let hasFilledRanges = false; // ← ОБЪЯВЛЯЕМ ЗДЕСЬ (в начале функции)
+
+    // ===== НОВЫЕ ПРОВЕРКИ ДЛЯ ПАПОК =====
+    if (node.type === 'folder') {
+        // Вспомогательная функция: сбор всех диапазонов внутри папки (рекурсивно)
+        function getAllRangesInFolder(folderId) {
+            const folder = nodes.find(n => n.id === folderId);
+            if (!folder) return [];
+            let result = [];
+            for (const childId of folder.childrenIds) {
+                const child = nodes.find(n => n.id === childId);
+                if (!child) continue;
+                if (child.type === 'range' || child.type === 'subrange') {
+                    result.push(child);
+                } else if (child.type === 'folder') {
+                    result = result.concat(getAllRangesInFolder(child.id));
+                }
+            }
+            return result;
         }
-        nodes = nodes.filter(nn => nn.id !== id);
-        delete cellStorage[getTableId(id)];
-        let p = nodes.find(p => p.id === n.parentId);
-        if (p) {
-            p.childrenIds = p.childrenIds.filter(cid => cid !== id);
+
+        // Вспомогательная функция: проверка, есть ли профили в матрице
+        function hasProfilesInMatrix(rangeId) {
+            const tid = getTableId(rangeId);
+            const matrix = cellStorage[tid];
+            if (!matrix) return false;
+            for (let i = 0; i < 13; i++) {
+                for (let j = 0; j < 13; j++) {
+                    if (matrix[i][j] !== null) return true;
+                }
+            }
+            return false;
         }
-    }
 
-    delSub(nodeId);
+        const allRangesInTree = nodes.filter(n => n.type === 'range' || n.type === 'subrange');
+        const rangesInFolder = getAllRangesInFolder(node.id);
 
-if (currentNodeId === nodeId) {
-    let foundRange = null;
-
-    // 1. Ищем в той же папке
-    const sameFolderRanges = nodes.filter(n => 
-        (n.type === 'range' || n.type === 'subrange') && 
-        n.parentId === node.parentId && 
-        n.id !== nodeId
-    );
-    if (sameFolderRanges.length > 0) {
-        foundRange = sameFolderRanges[0];
-    }
-
-    // 2. Если не нашли в папке — ищем сверху вниз, начиная с корня
-    if (!foundRange) {
-        // Сначала ищем в корне (parentId === null)
-        const rootRanges = nodes.filter(n => 
-            (n.type === 'range' || n.type === 'subrange') && 
-            n.parentId === null && 
-            n.id !== nodeId
-        );
-        if (rootRanges.length > 0) {
-            foundRange = rootRanges[0];
+        // ПРАВИЛО 1: единственный диапазон во всём дереве
+        if (rangesInFolder.length > 0 && rangesInFolder.length === allRangesInTree.length) {
+            showFloatingModal("Эту папку удалить нельзя, так как в ней содержится единственный диапазон");
+            return;
         }
-    }
 
-    // 3. Если и в корне нет — обходим все папки сверху вниз
-    if (!foundRange) {
-        // Получаем все папки, отсортированные по порядку
-        const folders = nodes.filter(n => n.type === 'folder');
-        // Сортируем папки по порядку (сначала корневые)
-        folders.sort((a, b) => {
-            if (a.parentId === null && b.parentId !== null) return -1;
-            if (a.parentId !== null && b.parentId === null) return 1;
-            return 0;
-        });
-
-        for (const folder of folders) {
-            const rangeInFolder = nodes.find(n => 
-                (n.type === 'range' || n.type === 'subrange') && 
-                n.parentId === folder.id && 
-                n.id !== nodeId
-            );
-            if (rangeInFolder) {
-                foundRange = rangeInFolder;
+        // ПРАВИЛО 2: есть заполненные диапазоны
+        for (const range of rangesInFolder) {
+            if (hasProfilesInMatrix(range.id)) {
+                hasFilledRanges = true;
                 break;
             }
         }
-    }
 
-    // Если нашли — делаем активным
-    if (foundRange) {
-        selectNode(foundRange.id);
-    } else {
-        currentNodeId = null;
-    }
-}
-
-workLevels = workLevels.filter(lvl => lvl.parentNodeId !== nodeId);
-if (workDisplayNodeId === nodeId) {
-    // Используем ту же логику, что и для редактора
-    let foundRange = null;
-
-    // 1. Ищем в той же папке
-    const sameFolderRanges = nodes.filter(n => 
-        (n.type === 'range' || n.type === 'subrange') && 
-        n.parentId === node.parentId
-    );
-    if (sameFolderRanges.length > 0) {
-        foundRange = sameFolderRanges[0];
-    }
-
-    // 2. Если не нашли в папке — ищем в корне
-    if (!foundRange) {
-        const rootRanges = nodes.filter(n => 
-            (n.type === 'range' || n.type === 'subrange') && 
-            n.parentId === null
-        );
-        if (rootRanges.length > 0) {
-            foundRange = rootRanges[0];
+        if (hasFilledRanges) {
+            showSaveConfirmModal(
+                "В данной папке есть заполненные диапазоны. Все равно удалить?",
+                function() {
+                    // ДА — продолжаем удаление
+                    proceedDelete(nodeId);
+                },
+                function() {
+                    // НЕТ — ничего не делаем
+                }
+            );
+            return;
         }
     }
 
-    // 3. Если и в корне нет — обходим все папки сверху вниз
-    if (!foundRange) {
-        const folders = nodes.filter(n => n.type === 'folder');
-        for (const folder of folders) {
-            const rangeInFolder = nodes.find(n => 
-                (n.type === 'range' || n.type === 'subrange') && 
-                n.parentId === folder.id
-            );
-            if (rangeInFolder) {
-                foundRange = rangeInFolder;
-                break;
+    // ===== СТАРАЯ ПРОВЕРКА ДЛЯ ДИАПАЗОНОВ =====
+    const allRanges = nodes.filter(n => n.type === 'range' || n.type === 'subrange');
+    if (allRanges.length <= 1 && (node.type === 'range' || node.type === 'subrange')) {
+        showFloatingModal("Нельзя удалить единственный диапазон");
+        return;
+    }
+	    // ===== ПРАВИЛО 3: проверка на заполненность диапазона =====
+    if (node.type === 'range' || node.type === 'subrange') {
+        const tid = getTableId(node.id);
+        const matrix = cellStorage[tid];
+        let isFilled = false;
+
+        if (matrix) {
+            for (let i = 0; i < 13; i++) {
+                for (let j = 0; j < 13; j++) {
+                    if (matrix[i][j] !== null) {
+                        isFilled = true;
+                        break;
+                    }
+                }
+                if (isFilled) break;
             }
         }
+
+        if (isFilled) {
+            showSaveConfirmModal(
+                "Данный диапазон не пустой. Все равно удалить?",
+                function() {
+                    // ДА — продолжаем удаление
+                    proceedDelete(nodeId);
+                },
+                function() {
+                    // НЕТ — ничего не делаем
+                }
+            );
+            return;
+        }
     }
 
-    workDisplayNodeId = foundRange ? foundRange.id : null;
-    saveActiveNode();
-}
+    // ===== ОСНОВНАЯ ЛОГИКА УДАЛЕНИЯ =====
+    function proceedDelete(id) {
+        const nodeToDelete = nodes.find(n => n.id === id);
+        if (!nodeToDelete) return;
 
-if (!workLevels.length) {
-    workLevels = [{ parentNodeId: null, levelIndex: 0 }];
-}
-persistAll();
-refreshAll();
-}
+        function delSub(currentId) {
+            let n = nodes.find(nn => nn.id === currentId);
+            if (!n) return;
+            for (let cid of n.childrenIds) {
+                delSub(cid);
+            }
+         nodes = nodes.filter(nn => nn.id !== currentId);
+
+const tableId = getTableId(currentId);
+delete cellStorage[tableId];
 
 
+
+let p = nodes.find(p => p.id === n.parentId);
+            if (p) {
+                p.childrenIds = p.childrenIds.filter(cid => cid !== currentId);
+            }
+        }
+
+        delSub(id);
+
+        // Поиск нового активного диапазона в редакторе
+        if (currentNodeId === id) {
+            let foundRange = null;
+
+            const sameFolderRanges = nodes.filter(n =>
+                (n.type === 'range' || n.type === 'subrange') &&
+                n.parentId === nodeToDelete.parentId &&
+                n.id !== id
+            );
+            if (sameFolderRanges.length > 0) {
+                foundRange = sameFolderRanges[0];
+            }
+
+            if (!foundRange) {
+                const rootRanges = nodes.filter(n =>
+                    (n.type === 'range' || n.type === 'subrange') &&
+                    n.parentId === null &&
+                    n.id !== id
+                );
+                if (rootRanges.length > 0) {
+                    foundRange = rootRanges[0];
+                }
+            }
+
+            if (!foundRange) {
+                const folders = nodes.filter(n => n.type === 'folder');
+                for (const folder of folders) {
+                    const rangeInFolder = nodes.find(n =>
+                        (n.type === 'range' || n.type === 'subrange') &&
+                        n.parentId === folder.id &&
+                        n.id !== id
+                    );
+                    if (rangeInFolder) {
+                        foundRange = rangeInFolder;
+                        break;
+                    }
+                }
+            }
+
+            if (foundRange) {
+                selectNode(foundRange.id);
+            } else {
+                currentNodeId = null;
+            }
+        }
+
+        // Поиск нового активного диапазона в просмотре
+        workLevels = workLevels.filter(lvl => lvl.parentNodeId !== id);
+        if (workDisplayNodeId === id) {
+            let foundRange = null;
+
+            const sameFolderRanges = nodes.filter(n =>
+                (n.type === 'range' || n.type === 'subrange') &&
+                n.parentId === nodeToDelete.parentId
+            );
+            if (sameFolderRanges.length > 0) {
+                foundRange = sameFolderRanges[0];
+            }
+
+            if (!foundRange) {
+                const rootRanges = nodes.filter(n =>
+                    (n.type === 'range' || n.type === 'subrange') &&
+                    n.parentId === null
+                );
+                if (rootRanges.length > 0) {
+                    foundRange = rootRanges[0];
+                }
+            }
+
+            if (!foundRange) {
+                const folders = nodes.filter(n => n.type === 'folder');
+                for (const folder of folders) {
+                    const rangeInFolder = nodes.find(n =>
+                        (n.type === 'range' || n.type === 'subrange') &&
+                        n.parentId === folder.id
+                    );
+                    if (rangeInFolder) {
+                        foundRange = rangeInFolder;
+                        break;
+                    }
+                }
+            }
+
+            workDisplayNodeId = foundRange ? foundRange.id : null;
+            persistAll();
+        }
+
+        if (!workLevels.length) {
+            workLevels = [{ parentNodeId: null, levelIndex: 0 }];
+        }
+
+        persistAll();
+        refreshAll();
+    }
+
+    // Запускаем удаление (если папка не заблокирована)
+    if (node.type !== 'folder' || !hasFilledRanges) {
+        proceedDelete(nodeId);
+    }
+}
 function startInlineRename(nodeId) {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
@@ -554,18 +729,60 @@ function createChildNode(parentId, type) {
     const children = parent.childrenIds.map(id => nodes.find(n => n.id === id)).filter(n => n);
     const existingNames = children.map(n => n.name);
     
-    // Базовое имя в зависимости от типа
     let baseName;
     if (type === 'folder') {
-        baseName = 'Папка';
+        baseName = 'Новая папка';
     } else if (type === 'range') {
-        baseName = 'Диапазон';
+        baseName = 'Новый диапазон';
     } else if (type === 'subrange') {
         baseName = 'Поддиапазон';
     }
     
     const newName = generateUniqueName(baseName, existingNames);
 
+    // ============================================================
+    // ДЛЯ ПОДДИАПАЗОНА — ПОКАЗЫВАЕМ ДИАЛОГ, ПОТОМ СОЗДАЁМ
+    // ============================================================
+    if (type === 'subrange') {
+        showComponentSelectionDialog(parentId, function(selectedIndex) {
+            if (selectedIndex !== -1) {
+                // ✅ ПОЛЬЗОВАТЕЛЬ ВЫБРАЛ → СОЗДАЁМ УЗЕЛ
+                const newId = nextNodeId++;
+                const newNode = {
+                    id: newId,
+                    name: newName,
+                    parentId: parentId,
+                    childrenIds: [],
+                    type: 'subrange',
+                    selectedComponentIndex: selectedIndex
+                };
+                nodes.push(newNode);
+                parent.childrenIds.push(newId);
+                ensureTable(newId);
+                
+                const tableId = getTableId(newId);
+                colorsPerNode[tableId] = [];
+                const colorId = nextColorId++;
+                colorsPerNode[tableId].push({
+                    id: colorId,
+                    name: "action",
+                    color: "#9C5479",
+                    type: 'simple'
+                });
+                activePerNode[tableId] = colorId;
+                
+                persistAll();
+                refreshAll();
+                selectNode(newId);
+            }
+            // ❌ Если отмена → НИЧЕГО НЕ ДЕЛАЕМ
+        });
+        return; // Выходим, чтобы не создавать узел ДО диалога
+    }
+
+    // ============================================================
+    // ДЛЯ ПАПОК И ДИАПАЗОНОВ — СОЗДАЁМ СРАЗУ
+    // ============================================================
     let newId = nextNodeId++;
     let newNode = {
         id: newId,
@@ -577,6 +794,19 @@ function createChildNode(parentId, type) {
     nodes.push(newNode);
     parent.childrenIds.push(newId);
     ensureTable(newId);
+    
+    if (type === 'range') {
+        const tableId = getTableId(newId);
+        colorsPerNode[tableId] = [];
+        const colorId = nextColorId++;
+        colorsPerNode[tableId].push({
+            id: colorId,
+            name: "action",
+            color: "#9C5479",
+            type: 'simple'
+        });
+        activePerNode[tableId] = colorId;
+    }
 
     persistAll();
     refreshAll();
@@ -588,16 +818,52 @@ function selectNode(nodeId) {
         return;
     }
     currentNodeId = nodeId;
-	 saveActiveNode();
+   persistAll();
 
     if (node && node.parentId !== null) {
         expandedNodes.add(node.parentId);
     }
 
     updateCurrentDisplay();
-	refreshAll();
+    refreshAll();
     if (document.getElementById("workPage").classList.contains("active-page")) {
         updateWorkDisplay();
+    }
+
+    // ===== АНИМАЦИИ =====
+    const grid = document.getElementById('constructorGrid');
+    if (grid) {
+        grid.classList.remove('matrix-fade');
+        void grid.offsetWidth;
+        grid.classList.add('matrix-fade');
+    }
+
+    const palette = document.getElementById('paletteList');
+    if (palette) {
+        palette.classList.remove('palette-fade');
+        void palette.offsetWidth;
+        palette.classList.add('palette-fade');
+    }
+
+    const profiles = document.getElementById('profileList');
+    if (profiles) {
+        profiles.classList.remove('profiles-fade');
+        void profiles.offsetWidth;
+        profiles.classList.add('profiles-fade');
+    }
+
+    const addColorBtn = document.getElementById('addPaletteColorBtn');
+    if (addColorBtn) {
+        addColorBtn.classList.remove('buttons-fade');
+        void addColorBtn.offsetWidth;
+        addColorBtn.classList.add('buttons-fade');
+    }
+
+    const addProfileBtn = document.getElementById('newProfileBtn');
+    if (addProfileBtn) {
+        addProfileBtn.classList.remove('buttons-fade');
+        void addProfileBtn.offsetWidth;
+        addProfileBtn.classList.add('buttons-fade');
     }
 }
 
@@ -612,7 +878,41 @@ function renderTree(containerId, activeNodeId, editable, onSelectNode) {
         renderTreeNode(container, node, activeNodeId, editable, onSelectNode);
     }
 }
-
+// ===== ВЫЧИСЛЕНИЕ УРОВНЯ ВЛОЖЕННОСТИ =====
+function getNodeLevel(nodeId) {
+    let level = 0;
+    let current = nodes.find(n => n.id === nodeId);
+    while (current && current.parentId !== null) {
+        level++;
+        current = nodes.find(n => n.id === current.parentId);
+    }
+    return level;
+}
+// ============================================================
+// ПОЛУЧАЕМ ЦВЕТ ВЫБРАННОГО КОМПОНЕНТА ДЛЯ ПОДДИАПАЗОНА
+// ============================================================
+function getSubrangeColor(node) {
+    if (node.type !== 'subrange' || node.selectedComponentIndex === null) {
+        return null;
+    }
+    
+    const parent = nodes.find(n => n.id === node.parentId);
+    if (!parent) return null;
+    
+    const tableId = getTableId(parent.id);
+    const colors = colorsPerNode[tableId] || [];
+    
+    for (const c of colors) {
+        if (c.type === 'multi' && c.components && c.components[node.selectedComponentIndex]) {
+            const comp = c.components[node.selectedComponentIndex];
+            const simpleColor = colors.find(sc => sc.id === comp.colorId);
+            if (simpleColor) {
+                return simpleColor.color;
+            }
+        }
+    }
+    return null;
+}
 function renderTreeNode(parentContainer, node, activeNodeId, editable, onSelectNode) {
     const nodeDiv = document.createElement("div");
     nodeDiv.className = "tree-node";
@@ -651,6 +951,11 @@ arrow.style.display = "inline-block";
 arrow.style.width = "18px";
 arrow.style.marginRight = "1px";
 arrow.style.textAlign = "center";
+// ===== ДИНАМИЧЕСКИЙ ОТСТУП ДЛЯ СТРЕЛКИ =====
+const level = getNodeLevel(node.id);
+const STEP = 20;
+const marginLeft = level * STEP;
+arrow.style.marginLeft = marginLeft + 'px';
 
 if (hasChildren) {
     arrow.textContent = isOpen ? "▼" : "▶";
@@ -661,7 +966,7 @@ if (hasChildren) {
         e.stopPropagation();
         expandedNodes.has(node.id) ? expandedNodes.delete(node.id) : expandedNodes.add(node.id);
         refreshTreeOnly();
-		saveActiveNode(); 
+		persistAll(); 
     };
 } else {
     arrow.textContent = "";
@@ -686,110 +991,178 @@ if (hasChildren) {
         iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
     } else if (node.type === 'range') {
         iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>`;
-    } else if (node.type === 'subrange') {
-        iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24">
-            <rect x="3" y="3" width="8" height="8" rx="1"/>
-            <rect x="13.5" y="3.5" width="7" height="7" rx="1" fill="none" stroke="var(--text-primary)" stroke-width="1"/>
-            <rect x="3.5" y="13.5" width="7" height="7" rx="1" fill="none" stroke="var(--text-primary)" stroke-width="1"/>
-            <rect x="13" y="13" width="8" height="8" rx="1"/>
-        </svg>`;
+    } 
+	else if (node.type === 'subrange') {
+    let color = null;
+    if (node.selectedComponentIndex !== null) {
+        const parent = nodes.find(n => n.id === node.parentId);
+        if (parent) {
+            const tableId = getTableId(parent.id);
+            const colors = colorsPerNode[tableId] || [];
+            for (const c of colors) {
+                if (c.type === 'multi' && c.components && c.components[node.selectedComponentIndex]) {
+                    const comp = c.components[node.selectedComponentIndex];
+                    const simpleColor = colors.find(sc => sc.id === comp.colorId);
+                    if (simpleColor) {
+                        color = simpleColor.color;
+                        break;
+                    }
+                }
+            }
+        }
     }
+    
+    iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="8" height="8" rx="1"/>
+        <rect x="13.5" y="3.5" width="7" height="7" rx="1" ${color ? `fill="${color}" stroke="${color}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
+        <rect x="3.5" y="13.5" width="7" height="7" rx="1" ${color ? `fill="${color}" stroke="${color}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
+        <rect x="13" y="13" width="8" height="8" rx="1"/>
+    </svg>`;
+}
     iconSpan.innerHTML = iconSvg;
     nameSpan.prepend(iconSpan);
 
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "tree-actions-popup";
     if (editable) {
-        const menuBtn = document.createElement("button");
-        menuBtn.textContent = "⋮";
-        menuBtn.className = "tree-menu-btn";
-        menuBtn.style.fontSize = "20px";
+     const menuBtn = document.createElement("button");
+menuBtn.className = "toolbar-btn tree-menu-btn";
+menuBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 5C14 6.10457 13.1046 7 12 7C10.8954 7 10 6.10457 10 5C10 3.89543 10.8954 3 12 3C13.1046 3 14 3.89543 14 5Z" fill="currentColor"/>
+        <path d="M14 12C14 13.1046 13.1046 14 12 14C10.8954 14 10 13.1046 10 12C10 10.8954 10.8954 10 12 10C13.1046 10 14 10.8954 14 12Z" fill="currentColor"/>
+        <path d="M12 21C13.1046 21 14 20.1046 14 19C14 17.8954 13.1046 17 12 17C10.8954 17 10 17.8954 10 19C10 20.1046 10.8954 21 12 21Z" fill="currentColor"/>
+    </svg>
+`;   
 
         const popupMenu = document.createElement("div");
         popupMenu.className = "popup-menu";
         popupMenu.style.display = "none";
 
-        if (node.type === 'folder') {
-            const addFolderBtn = document.createElement("button");
-            addFolderBtn.textContent = "+ Добавить папку";
-            addFolderBtn.onclick = (e) => {
-                e.stopPropagation();
-                createChildNode(node.id, 'folder');
-                closeMenu();
-            };
-            popupMenu.appendChild(addFolderBtn);
+      if (node.type === 'folder') {
+    const addFolderBtn = document.createElement("button");
+    addFolderBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">Добавить папку</span>`;
+    addFolderBtn.onclick = (e) => {
+        e.stopPropagation();
+        createChildNode(node.id, 'folder');
+        closeMenu();
+    };
+    popupMenu.appendChild(addFolderBtn);
 
-            const addRangeBtn = document.createElement("button");
-            addRangeBtn.textContent = "+ Добавить диапазон";
-            addRangeBtn.onclick = (e) => {
-                e.stopPropagation();
-                createChildNode(node.id, 'range');
-                closeMenu();
-            };
-            popupMenu.appendChild(addRangeBtn);
-        } else if (node.type === 'range') {
-            const addFolderBtn = document.createElement("button");
-            addFolderBtn.textContent = "+ Добавить папку";
-            addFolderBtn.onclick = (e) => {
-                e.stopPropagation();
-                createChildNode(node.id, 'folder');
-                closeMenu();
-            };
-            popupMenu.appendChild(addFolderBtn);
+    const addRangeBtn = document.createElement("button");
+    addRangeBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">Добавить диапазон</span>`;
+    addRangeBtn.onclick = (e) => {
+        e.stopPropagation();
+        createChildNode(node.id, 'range');
+        closeMenu();
+    };
+    popupMenu.appendChild(addRangeBtn);
+} else if (node.type === 'range' || node.type === 'subrange') {
+    const addSubrangeBtn = document.createElement("button");
+    addSubrangeBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">Добавить поддиапазон</span>`;
+    addSubrangeBtn.onclick = (e) => {
+        e.stopPropagation();
+        createChildNode(node.id, 'subrange');
+        closeMenu();
+    };
+    popupMenu.appendChild(addSubrangeBtn);
 
-            const addSubrangeBtn = document.createElement("button");
-            addSubrangeBtn.textContent = "+ Добавить поддиапазон";
-            addSubrangeBtn.onclick = (e) => {
-                e.stopPropagation();
-                createChildNode(node.id, 'subrange');
-                closeMenu();
-            };
-            popupMenu.appendChild(addSubrangeBtn);
-        }
+    const duplicateBtn = document.createElement("button");
+    duplicateBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">Дублировать диапазон</span>`;
+    duplicateBtn.onclick = (e) => {
+        e.stopPropagation();
+        duplicateRange(node.id);
+        closeMenu();
+    };
+    popupMenu.appendChild(duplicateBtn);
+	    // ===== ДОБАВЛЯЕМ НОВЫЕ ПУНКТЫ =====
+    
+// Копировать диапазон
+const copyBtn = document.createElement("button");
+copyBtn.innerHTML = `
+    <span class="menu-icon"></span>
+    <span class="menu-text">Копировать диапазон</span>
+`;
+copyBtn.onclick = (e) => {
+    e.stopPropagation();
+    copyRange(node.id);
+    closeMenu();
+};
+popupMenu.appendChild(copyBtn);
 
-        const renameBtn = document.createElement("button");
-        renameBtn.textContent = "Переименовать";
-        renameBtn.onclick = (e) => {
-            e.stopPropagation();
-            startInlineRename(node.id);
-            closeMenu();
-        };
-        popupMenu.appendChild(renameBtn);
+// Вставить диапазон
+const pasteBtn = document.createElement("button");
+const hasData = hasClipboardData();
+pasteBtn.innerHTML = `
+    <span class="menu-icon"></span>
+    <span class="menu-text">Вставить диапазон</span>
+`;
+pasteBtn.onclick = (e) => {
+    e.stopPropagation();
+    pasteRange(node.id);
+    closeMenu();
+};
 
-        const upBtn = document.createElement("button");
-        upBtn.textContent = "↑ Вверх";
-        upBtn.onclick = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            moveNodeUp(node.id);
-            closeMenu();
-        };
-        popupMenu.appendChild(upBtn);
+// Если нет данных в буфере — делаем кнопку неактивной
+if (!hasData) {
+    pasteBtn.style.opacity = '0.4';
+    pasteBtn.style.cursor = 'default';
+    pasteBtn.style.pointerEvents = 'none';
+    pasteBtn.title = 'Сначала скопируйте диапазон';
+} else {
+    pasteBtn.style.opacity = '1';
+    pasteBtn.style.cursor = 'pointer';
+    pasteBtn.style.pointerEvents = 'auto';
+    pasteBtn.title = '';
+}
+popupMenu.appendChild(pasteBtn);
+}
 
-        const downBtn = document.createElement("button");
-        downBtn.textContent = "↓ Вниз";
-        downBtn.onclick = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            moveNodeDown(node.id);
-            closeMenu();
-        };
-        popupMenu.appendChild(downBtn);
+// ===== ОБЩИЕ ПУНКТЫ =====
+const renameBtn = document.createElement("button");
+renameBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">Переименовать</span>`;
+renameBtn.onclick = (e) => {
+    e.stopPropagation();
+    startInlineRename(node.id);
+    closeMenu();
+};
+popupMenu.appendChild(renameBtn);
 
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "Удалить";
-        delBtn.onclick = (e) => {
-            e.stopPropagation();
-            deleteNode(node.id);
-            closeMenu();
-        };
-        popupMenu.appendChild(delBtn);
+const upBtn = document.createElement("button");
+upBtn.innerHTML = `<span class="menu-icon">↑</span><span class="menu-text">Вверх</span>`;
+upBtn.onclick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    moveNodeUp(node.id);
+    closeMenu();
+};
+popupMenu.appendChild(upBtn);
+
+const downBtn = document.createElement("button");
+downBtn.innerHTML = `<span class="menu-icon">↓</span><span class="menu-text">Вниз</span>`;
+downBtn.onclick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    moveNodeDown(node.id);
+    closeMenu();
+};
+popupMenu.appendChild(downBtn);
+
+const delBtn = document.createElement("button");
+delBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">Удалить</span>`;
+delBtn.onclick = (e) => {
+    e.stopPropagation();
+    deleteNode(node.id);
+    closeMenu();
+};
+popupMenu.appendChild(delBtn);
 
         actionsDiv.appendChild(menuBtn);
         actionsDiv.appendChild(popupMenu);
 
         function closeMenu() {
             popupMenu.style.display = "none";
+			actionsDiv.classList.remove('menu-open');
             document.removeEventListener('click', outsideClick);
         }
 
@@ -798,14 +1171,24 @@ if (hasChildren) {
         }
 
         menuBtn.onclick = (e) => {
-            e.stopPropagation();
-            const isOpenMenu = popupMenu.style.display === "block";
-            closeMenu();
-            if (!isOpenMenu) {
-                popupMenu.style.display = "block";
-                document.addEventListener('click', outsideClick);
-            }
-        };
+    e.stopPropagation();
+
+// ===== ЗАКРЫВАЕМ ВСЕ ОСТАЛЬНЫЕ МЕНЮ =====
+document.querySelectorAll('.popup-menu').forEach(m => {
+    if (m !== popupMenu) {
+        const parent = m.closest('.tree-actions-popup');
+        if (parent) parent.classList.remove('menu-open');
+    }
+});
+
+    const isOpenMenu = popupMenu.style.display === "block";
+    closeMenu();
+    if (!isOpenMenu) {
+        popupMenu.style.display = "block";
+        actionsDiv.classList.add('menu-open');
+        document.addEventListener('click', outsideClick);
+    }
+};
     }
 
     itemDiv.append(arrow, nameSpan, actionsDiv);
@@ -895,24 +1278,79 @@ function renderWorkNavigation() {
 
                 if (!parentIsSelectedRange) {
                     const btn = document.createElement("button");
-                    btn.className = "folder-btn";
+                    btn.className = "folder-btn folder-btn-" + child.id;
                     btn.innerText = child.name;
+					btn.style.border = '2px solid #3d3d3d';
+                    btn.style.color = '#a9afb5';
+					// === ЗАГРУЖАЕМ СОХРАНЁННЫЙ СТИЛЬ ===
+const saved = loadButtonStyle(child.id);
+if (saved) {
+    if (saved.bg) {
+        btn.style.background = saved.bg;
+        btn.style.borderColor = saved.border || saved.bg;
+    }
+    if (saved.text) {
+        btn.style.color = saved.text;
+    }
+}
+					
                     btn.onclick = (function(c, idx) {
-                        return function() {
-                            workLevels = workLevels.slice(0, idx + 1);
-                            workLevels.push({ parentNodeId: c.id, levelIndex: idx + 1 });
-                            persistAll();
-                            updateWorkDisplay();
-                        };
-                    })(child, li);
+    return function() {
+        workLevels = workLevels.slice(0, idx + 1);
+        workLevels.push({ parentNodeId: c.id, levelIndex: idx + 1 });
+        
+        // Находим первый диапазон внутри папки
+        let firstRange = findFirstRange(c.id);
+        if (firstRange !== null) {
+            workDisplayNodeId = firstRange;
+        }
+        
+        persistAll();
+        updateWorkDisplay();
+    };
+})(child, li);
+// === ЗОЛОТАЯ КАПЛЯ ДЛЯ ПАПКИ ===
+const dot = document.createElement('span');
+dot.className = 'edit-dot';
+dot.innerHTML = `
+    <svg viewBox="-5 -1.5 24 24">
+        <path d="M7 .565c4.667 6.09 7 10.423 7 13a7 7 0 1 1-14 0c0-2.577 2.333-6.91 7-13z" />
+    </svg>
+`;
+dot.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const container = document.getElementById('workLevelsContainer');
+    if (!container || !container.classList.contains('style-edit-mode')) return;
+    showStylePopup(btn);
+});
+btn.appendChild(dot);
 
-                    const lastLevel = workLevels[workLevels.length - 1];
-                    const isActiveFolder = lastLevel && lastLevel.parentNodeId === child.id;
-                    if (isActiveFolder) {
-                        btn.classList.add("active");
-                    } else {
-                        btn.classList.remove("active");
-                    }
+
+                  const lastLevel = workLevels[workLevels.length - 1];
+const isActiveFolder = lastLevel && lastLevel.parentNodeId === child.id;
+
+// Проверяем, находится ли активный диапазон внутри этой папки
+let isRangeInsideFolder = false;
+if (workDisplayNodeId) {
+    const activeRange = nodes.find(n => n.id === workDisplayNodeId);
+    if (activeRange) {
+        let parent = activeRange.parentId;
+        while (parent !== null) {
+            if (parent === child.id) {
+                isRangeInsideFolder = true;
+                break;
+            }
+            const parentNode = nodes.find(n => n.id === parent);
+            parent = parentNode ? parentNode.parentId : null;
+        }
+    }
+}
+
+if (isActiveFolder || isRangeInsideFolder) {
+    btn.classList.add("active");
+} else {
+    btn.classList.remove("active");
+}
                     levelDiv.appendChild(btn);
                 }
             } else if (child.type === 'range' || child.type === 'subrange') {
@@ -921,10 +1359,14 @@ function renderWorkNavigation() {
                 let parentIsSelectedRange = parentIsRange && workLevels.some(l => l.parentNodeId === child.parentId);
                 let isRoot = child.parentId === null;
 
-                if (isRoot || !parentIsSelectedRange) {
+                    if (isRoot || !parentIsSelectedRange || child.type === 'subrange') {
                     const link = document.createElement("span");
-                    link.className = "range-link";
+                    link.className = "range-link range-link-" + child.id;
                     link.innerText = child.name;
+					const saved = loadButtonStyle(child.id);
+if (saved && saved.text) {
+    link.style.color = saved.text;
+}
                     if (workDisplayNodeId === child.id) {
                         link.classList.add("active");
                     } else {
@@ -949,12 +1391,26 @@ function renderWorkNavigation() {
                                 workLevels.push({ parentNodeId: p.id, levelIndex: workLevels.length });
                             }
                             workLevels.push({ parentNodeId: c.id, levelIndex: workLevels.length });
-							saveActiveNode();
                             persistAll();
                             updateWorkDisplay();
                             updateWorkGrid();
                         };
                     })(child);
+// === ЗОЛОТАЯ КАПЛЯ ДЛЯ ДИАПАЗОНА ===
+const dotLink = document.createElement('span');
+dotLink.className = 'edit-dot';
+dotLink.innerHTML = `
+    <svg viewBox="-5 -1.5 24 24">
+        <path d="M7 .565c4.667 6.09 7 10.423 7 13a7 7 0 1 1-14 0c0-2.577 2.333-6.91 7-13z" />
+    </svg>
+`;
+dotLink.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const container = document.getElementById('workLevelsContainer');
+    if (!container || !container.classList.contains('style-edit-mode')) return;
+    showStylePopup(link);
+});
+link.appendChild(dotLink);
                     levelDiv.appendChild(link);
                 }
             }
@@ -1001,7 +1457,7 @@ function renderWorkNavigation() {
                             for (let kid of kids) {
                                 if (kid.type === 'folder') {
                                     const subBtn = document.createElement("button");
-                                    subBtn.className = "folder-btn";
+                                    subBtn.className = "folder-btn folder-btn-" + child.id;
                                     subBtn.innerText = kid.name;
                                     subBtn.onclick = (function(k, idx) {
                                         return function() {
@@ -1018,7 +1474,7 @@ function renderWorkNavigation() {
                                     subLevelDiv.appendChild(subBtn);
                                 } else if (kid.type === 'subrange') {
                                     const subLink = document.createElement("span");
-                                    subLink.className = "range-link";
+                                    subLink.className = "range-link range-link-" + child.id;
                                     subLink.innerText = kid.name;
                                     if (workDisplayNodeId === kid.id) {
                                         subLink.classList.add("active");
@@ -1057,37 +1513,234 @@ function renderWorkNavigation() {
             gridDiv.innerHTML = "<div style='padding:20px; color: var(--text-muted);'>Выберите диапазон</div>";
         }
     }
+
 }
 
 function updateWorkGrid() {
     if (!workDisplayNodeId) return;
-    
-    // Сохраняем старый currentNodeId
-    const oldCurrentNodeId = currentNodeId;
-    
-    // Временно подменяем для отрисовки
-    currentNodeId = workDisplayNodeId;
-    
+        
     let total = countTotalCombos(workDisplayNodeId);
     let percent = (total / 1326 * 100).toFixed(1);
     document.getElementById("workStats").innerHTML = `${percent}% (${total}/1326)`;
     renderGrid("workGrid", workDisplayNodeId, null);
-    
-    // Возвращаем старый currentNodeId
-    currentNodeId = oldCurrentNodeId;
+    renderComments(workDisplayNodeId);
 }
 
 function updateWorkDisplay() {
+	    // ===== ПРОВЕРКА ВАЛИДНОСТИ workDisplayNodeId =====
+    const isValid = workDisplayNodeId && nodes.some(n => n.id === workDisplayNodeId);
+    if (!isValid) {
+        const firstRange = nodes.find(n => n.type === 'range' || n.type === 'subrange');
+        if (firstRange) {
+            workDisplayNodeId = firstRange.id;
+        } else {
+            workDisplayNodeId = null;
+        }
+    }
     renderWorkNavigation();
+	// ===== ПОКАЗЫВАЕМ ВЛОЖЕННЫЕ ЭЛЕМЕНТЫ АКТИВНОГО ДИАПАЗОНА =====
+if (workDisplayNodeId) {
+    const activeNode = nodes.find(n => n.id === workDisplayNodeId);
+    if (activeNode && activeNode.childrenIds && activeNode.childrenIds.length > 0) {
+        const existingLevel = workLevels.find(l => l.parentNodeId === workDisplayNodeId);
+        if (!existingLevel) {
+            workLevels.push({ parentNodeId: workDisplayNodeId, levelIndex: workLevels.length });
+            renderWorkNavigation();
+        }
+    }
+}
     if (workDisplayNodeId) {
         updateWorkGrid();
+		const workGrid = document.getElementById('workGrid');
+        if (workGrid) {
+            workGrid.classList.remove('matrix-fade');
+            void workGrid.offsetWidth;
+            workGrid.classList.add('matrix-fade');
+        }
         let rangeNode = nodes.find(n => n.id === workDisplayNodeId);
         let titleEl = document.getElementById("workRangeName");
         if (titleEl && rangeNode) {
             titleEl.textContent = rangeNode.name;
         }
     }
+    
+    // ========================================
+    // ДОБАВИТЬ ЭТОТ БЛОК (иконка + поле в просмотре)
+    // ========================================
+    
+    // 1. ИКОНКА (привязана к таблице)
+    const workTableWrapper = document.querySelector('.matrix1-wrapper');
+    if (workTableWrapper) {
+		        // ===== НОВАЯ ИКОНКА: РЕДАКТИРОВАТЬ СТИЛИ =====
+        let styleBtn = document.getElementById('styleEditToggle');
+        if (!styleBtn) {
+            styleBtn = document.createElement('button');
+            styleBtn.id = 'styleEditToggle';
+            styleBtn.className = 'icon-btn';
+            styleBtn.dataset.tooltip = 'Редактировать стили кнопок';
+            styleBtn.style.position = 'absolute';
+            styleBtn.style.bottom = '-32px';
+            styleBtn.style.left = '0px';
+            styleBtn.style.background = 'transparent';
+            styleBtn.style.border = 'none';
+            styleBtn.style.padding = '4px 8px';
+            styleBtn.style.cursor = 'pointer';
+            styleBtn.style.borderRadius = '4px';
+            styleBtn.style.zIndex = '10';
+            styleBtn.style.display = 'flex';
+            styleBtn.style.alignItems = 'center';
+            styleBtn.style.justifyContent = 'center';
+            styleBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" stroke="#8a848a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.2,15l6.7-6.7c1-1,1.2-2.5,0.5-3.7c-1-1.5-3.2-1.7-4.4-0.4L17.2,11l0,0c-1.1-1.1-2.9-1.1-4,0l-0.7,0.7l8.1,8.1l0.7-0.7C22.4,17.9,22.4,16.1,21.2,15L21.2,15z"/>
+                    <path d="M13,12c-3,3-6.9,4.6-10,5h0l11.5,11.5L20,20"/>
+                </svg>
+            `;
+            workTableWrapper.appendChild(styleBtn);
+
+            // Заглушка на клик
+       styleBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    
+    // Находим контейнер с кнопками
+    const container = document.getElementById('workLevelsContainer');
+    if (container) {
+        container.classList.toggle('style-edit-mode');
+    }
+    
+    this.classList.toggle('active');
+});
+        }
+        let iconBtn = document.getElementById('workCommentsToggleBtn');
+        if (!iconBtn) {
+            workTableWrapper.style.position = 'relative';
+            
+            iconBtn = document.createElement('button');
+            iconBtn.id = 'workCommentsToggleBtn';
+            iconBtn.className = 'comments-toggle-btn';
+             iconBtn.dataset.tooltip = 'Комментарии';
+            iconBtn.style.position = 'absolute';
+            iconBtn.style.bottom = '-32px';
+            iconBtn.style.left = '36px';
+            iconBtn.style.background = 'transparent';
+            iconBtn.style.border = 'none';
+            iconBtn.style.padding = '4px 8px';
+            iconBtn.style.cursor = 'pointer';
+            iconBtn.style.borderRadius = '4px';
+            iconBtn.style.zIndex = '10';
+            iconBtn.style.display = 'flex';
+            iconBtn.style.alignItems = 'center';
+            iconBtn.style.justifyContent = 'center';
+            iconBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="#8a848a" xmlns="http://www.w3.org/2000/svg">
+                    <path  d="M25.7,9.3l-7-7A.9078.9078,0,0,0,18,2H8A2.0059,2.0059,0,0,0,6,4V28a2.0059,2.0059,0,0,0,2,2H24a2.0059,2.0059,0,0,0,2-2V10A.9078.9078,0,0,0,25.7,9.3ZM18,4.4,23.6,10H18ZM24,28H8V4h8v6a2.0059,2.0059,0,0,0,2,2h6Z"/>
+                    <rect data-name="&lt;Transparent Rectangle&gt;" class="cls-1" fill="none"/>
+                </svg>
+            `;
+            
+            workTableWrapper.appendChild(iconBtn);
+            // Обработчик клика
+            iconBtn.addEventListener('click', function() {
+                const area = document.getElementById('workCommentsArea');
+                if (area) {
+                    const isOpen = area.style.display !== 'none';
+                    area.style.display = isOpen ? 'none' : 'block';
+                    iconBtn.classList.toggle('active');
+                    if (!isOpen) {
+                        const textarea = document.getElementById('workCommentsTextarea');
+                        if (textarea) setTimeout(() => textarea.focus(), 100);
+                    }
+                }
+            });
+        }
+    }
+    
+    // 2. ПОЛЕ ДЛЯ КОММЕНТАРИЕВ
+    let workCommentsWrapper = document.getElementById('workCommentsWrapper');
+    if (!workCommentsWrapper && workDisplayNodeId) {
+        workCommentsWrapper = document.createElement('div');
+        workCommentsWrapper.id = 'workCommentsWrapper';
+        workCommentsWrapper.className = 'comments-wrapper';
+        workCommentsWrapper.style.width = '100%';
+        workCommentsWrapper.style.maxWidth = '530px';
+        workCommentsWrapper.style.marginTop = '8px';
+        
+        const area = document.createElement('div');
+        area.className = 'comments-area';
+        area.id = 'workCommentsArea';
+        area.style.display = 'none';
+        area.style.width = '100%';
+        area.style.borderRadius = '6px';
+        area.style.border = '1px solid #3d3f46';
+        area.style.background = '#2d2f34';
+        area.style.overflow = 'hidden';
+        
+        const textarea = document.createElement('textarea');
+        textarea.id = 'workCommentsTextarea';
+        textarea.placeholder = 'Комментарий к диапазону...';
+        textarea.maxLength = 2000;
+        textarea.style.width = '100%';
+        textarea.style.height = '100px';
+        textarea.style.minHeight = '100px';
+        textarea.style.maxHeight = '300px';
+        textarea.style.background = 'transparent';
+        textarea.style.border = 'none';
+        textarea.style.color = '#e5eaf0';
+        textarea.style.fontSize = '13px';
+        textarea.style.fontFamily = "'Roboto', 'Helvetica Neue', sans-serif";
+        textarea.style.padding = '10px 12px';
+        textarea.style.resize = 'vertical';
+        textarea.style.outline = 'none';
+        textarea.style.lineHeight = '1.5';
+        textarea.style.boxSizing = 'border-box';
+        
+        area.appendChild(textarea);
+        workCommentsWrapper.appendChild(area);
+        
+        // Добавляем после таблицы
+        const leftArea = document.querySelector('.left-area');
+        if (leftArea) {
+            leftArea.appendChild(workCommentsWrapper);
+        }
+        
+        // Автосохранение
+        let saveTimeout = null;
+        textarea.addEventListener('input', function() {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                if (workDisplayNodeId) {
+                    setComments(workDisplayNodeId, this.value);
+                }
+            }, 500);
+        });
+        
+        textarea.addEventListener('blur', function() {
+            if (workDisplayNodeId) {
+                setComments(workDisplayNodeId, this.value);
+                persistAll();
+                clearUnsaved();
+            }
+        });
+    }
+    
+    // 3. ЗАГРУЗИТЬ КОММЕНТАРИЙ
+    renderWorkComments(workDisplayNodeId);
+	 const commentsWrapper = document.getElementById('commentsWrapper');
+    if (commentsWrapper) {
+        commentsWrapper.style.display = 'block';
+        renderWorkComments(workDisplayNodeId);
+    }
 }
+
+
+// ===== ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ КОММЕНТАРИЕВ В ПРОСМОТРЕ =====
+function renderWorkComments(nodeId) {
+    const textarea = document.getElementById('workCommentsTextarea');
+    if (!textarea) return;
+    const comments = getComments(nodeId);
+    textarea.value = comments;
+}
+
 
 function getParentRange(nodeId) {
     let node = nodes.find(n => n.id === nodeId);
@@ -1112,62 +1765,131 @@ function renderGrid(containerId, nodeId, clickHandler) {
     const matrix = cellStorage[getTableId(nodeId)];
     gridDiv.innerHTML = "";
 
-    for (let i = 0; i < 13; i++) {
-        for (let j = 0; j < 13; j++) {
-            const hand = rowsData[i][j];
-            const pid = matrix[i][j];
-            const prof = getProfiles().find(p => p.id === pid);
-            const cell = document.createElement("div");
-            cell.className = "hand-cell";
-            cell.setAttribute("data-row", i);
-            cell.setAttribute("data-col", j);
-            cell.justChanged = false;
-            let cellKey = `${i}_${j}`;
-            cell.blockUntil = blockUntilMap.get(cellKey) || 0;
+     const profiles = getColorsForNode(nodeId);
+	     // ===== ПОЛУЧАЕМ ВЫБРАННЫЙ КОМПОНЕНТ ДЛЯ ПОДДИАПАЗОНА =====
+    const currentNode = nodes.find(n => n.id === nodeId);
+    let selectedComponentIndex = null;
+    if (currentNode && currentNode.type === 'subrange') {
+        selectedComponentIndex = currentNode.selectedComponentIndex !== undefined 
+            ? currentNode.selectedComponentIndex 
+            : null;
+    }
+	
+for (let i = 0; i < 13; i++) {
+    for (let j = 0; j < 13; j++) {
+        const hand = rowsData[i][j];
+        const pid = matrix[i][j];
+        const prof = profiles.find(p => p.id === pid);
 
-            // Проверяем, является ли текущий узел поддиапазоном
-            let isSubrange = false;
-            let parentRange = null;
-            const currentNode = nodes.find(n => n.id === nodeId);
-            if (currentNode) {
-                isSubrange = currentNode.type === 'subrange';
-                if (isSubrange) {
-                    parentRange = getParentRange(nodeId);
+      // 1. Проверяем, является ли текущий узел поддиапазоном
+let isSubrange = false;
+if (currentNode) {
+    isSubrange = currentNode.type === 'subrange';
+}
+
+// 2. Бинарная доступность (как было)
+let isAvailable = true;
+if (isSubrange) {
+    const parentId = currentNode.parentId;
+    if (parentId !== null) {
+        const parentTableId = getTableId(parentId);
+        const parentMatrix = cellStorage[parentTableId];
+        isAvailable = parentMatrix ? parentMatrix[i][j] !== null : false;
+    } else {
+        isAvailable = false;
+    }
+}
+
+// 3. Процент закраски в родительской ячейке (для псевдоэлемента)
+let availabilityPercent = 100; // по умолчанию
+if (isSubrange && isAvailable) {
+    const parentId = currentNode.parentId;
+    if (parentId !== null) {
+        const parentTableId = getTableId(parentId);
+        const parentMatrix = cellStorage[parentTableId];
+        if (parentMatrix) {
+            const parentPid = parentMatrix[i][j];
+            if (parentPid !== null) {
+                const parentColors = colorsPerNode[parentTableId] || [];
+                const color = parentColors.find(c => c.id === parentPid);
+               if (color && color.type === 'multi') {
+    // ============================================================
+    // ВСТАВКА: ПРОВЕРКА НА ВЫБРАННЫЙ КОМПОНЕНТ
+    // ============================================================
+    if (selectedComponentIndex !== null && color.components && color.components[selectedComponentIndex]) {
+        const comp = color.components[selectedComponentIndex];
+        availabilityPercent = Math.min(100, comp.share || 0);
+    } else {
+        let totalShare = 0;
+        for (const comp of color.components) {
+            totalShare += comp.share || 0;
+        }
+        availabilityPercent = Math.min(100, totalShare);
+    }
+    // ============================================================
+}
+				else {
+                    availabilityPercent = 100; // простой цвет
                 }
             }
+        }
+    }
+}
 
-            let hasParentProfile = false;
-            if (isSubrange && pid === null && parentRange) {
-                let parentPid = getCellProfile(parentRange.id, i, j);
-                if (parentPid !== null) {
-                    hasParentProfile = true;
-                }
-            }
+// Если ячейка закрашена, но недоступна → очищаем (старая логика)
+if (isSubrange && pid !== null && !isAvailable) {
+    const currentTableId = getTableId(nodeId);
+    if (cellStorage[currentTableId]) {
+        cellStorage[currentTableId][i][j] = null;
+    }
+}
 
-            let isColored = false;
-            let originalGradient = null;
-            let originalBg = null;
-            let originalColor = null;
-            let justCleared = false;
+        // 3. Создаём ячейку
+        const cell = document.createElement("div");
+        cell.className = "hand-cell";
+        cell.setAttribute("data-row", i);
+        cell.setAttribute("data-col", j);
+		// ===== ЧАСТИЧНАЯ ДОСТУПНОСТЬ (ОТДЕЛЬНЫЙ БЛОК) =====
+if (i === 9 && j === 0) {
+   
+}
 
-            if (prof && prof.colorIds && prof.colorIds.length) {
-                let pos = getPositions(prof);
-                originalGradient = getGradientStyleFromProfile(prof) + "; color: #FFFFFF;";
-                cell.setAttribute("style", originalGradient);
-                isColored = true;
-            } else {
-                originalBg = "var(--bg-card)";
-                if (hasParentProfile) {
-                    cell.classList.add('has-parent-profile');
-                }
-            }
+		
 
-           cell.onmouseenter = () => {
+        // 4. Если ячейка недоступна — добавляем класс
+        if (!isAvailable) {
+            cell.classList.add('subrange-disabled');
+        }
+
+        cell.justChanged = false;
+        let cellKey = `${i}_${j}`;
+        cell.blockUntil = blockUntilMap.get(cellKey) || 0;
+
+        let isColored = false;
+        let originalGradient = null;
+        let originalBg = null;
+        let originalColor = null;
+        let justCleared = false;
+
+if (prof) {
+    let gradStyle = getGradientStyleFromColorForNode(nodeId, prof);
+    if (gradStyle) {
+        originalGradient = gradStyle + "; color: #FFFFFF;";
+        cell.setAttribute("style", originalGradient);
+        isColored = true;
+    } else {
+        originalBg = "var(--bg-card)";
+    }
+} else {
+    originalBg = "var(--bg-card)";
+}
+
+cell.onmouseenter = () => {
     if (Date.now() < cell.blockUntil) {
         return;
     }
     if (containerId === "constructorGrid" && !painting && !cell.justChanged) {
-        const activeProfileId = getActiveProfile();
+        const activeProfileId = getActiveForNode(nodeId);
         const currentPid = getCellProfile(nodeId, i, j);
         
         // Если ячейка уже содержит активный профиль → затемнение
@@ -1179,9 +1901,9 @@ function renderGrid(containerId, nodeId, clickHandler) {
             });
         } else if (activeProfileId) {
             // Во всех остальных случаях (пустая ИЛИ с другим профилем) → превью активного профиля
-            const activeProf = getProfiles().find(p => p.id === activeProfileId);
-            if (activeProf && activeProf.colorIds && activeProf.colorIds.length) {
-                let gradStyle = getGradientStyleFromProfile(activeProf);
+            const activeProf = getColorsForNode(nodeId).find(p => p.id === activeProfileId);
+            if (activeProf) {
+                let gradStyle = getGradientStyleFromColorForNode(nodeId, activeProf);
                 requestAnimationFrame(() => {
                     cell.setAttribute("style", gradStyle + "; color: #FFFFFF; filter: brightness(0.7);");
                 });
@@ -1190,26 +1912,42 @@ function renderGrid(containerId, nodeId, clickHandler) {
     }
 };
 
-            cell.onmouseleave = () => {
-                if (!painting) {
-                    requestAnimationFrame(() => {
-                        if (isColored && originalGradient) {
-                            cell.setAttribute("style", originalGradient);
-                        } else {
-                            cell.removeAttribute("style");
-                            if (hasParentProfile) {
-                                cell.classList.add('has-parent-profile');
-                            }
-                        }
-                        cell.justChanged = false;
-                        let cellKey = `${i}_${j}`;
-                        blockUntilMap.set(cellKey, 0);
-                        cell.blockUntil = 0;
-                    });
-                }
-            };
+          cell.onmouseleave = () => {
+    if (!painting) {
+        requestAnimationFrame(() => {
+            if (isColored && originalGradient) {
+                cell.setAttribute("style", originalGradient);
+            } else {
+                cell.removeAttribute("style");
+            }
+            // Восстанавливаем clip-height
+            if (cell.dataset.clipHeight) {
+                cell.style.setProperty('--clip-height', cell.dataset.clipHeight + '%');
+            }
+            cell.justChanged = false;
+            let cellKey = `${i}_${j}`;
+            blockUntilMap.set(cellKey, 0);
+            cell.blockUntil = 0;
+        });
+    }
+};
 
-            cell.innerText = hand;
+            const textSpan = document.createElement('span');
+textSpan.textContent = hand;
+textSpan.style.position = 'relative';
+textSpan.style.zIndex = '2';
+cell.appendChild(textSpan);
+			if (isSubrange && isAvailable && availabilityPercent < 100) {
+    const clipHeight = 100 - availabilityPercent;
+    const overlay = document.createElement('div');
+    overlay.className = 'cell-overlay';
+    overlay.style.cssText = `
+
+        height: ${clipHeight}%;
+        
+    `;
+    cell.appendChild(overlay);
+}
 			           // Добавляем атрибуты для тултипа
 cell.setAttribute('data-hand', hand);
 if (pid !== null) {
@@ -1247,30 +1985,15 @@ function formatCombos(combos) {
 function updateCurrentDisplay() {
     if (!currentNodeId) return;
     let total = countTotalCombos(currentNodeId);
-    const childContainer = document.getElementById("constructorChildButtons");
-    if (childContainer) childContainer.innerHTML = "";
-    let node = nodes.find(n => n.id === currentNodeId);
-    if (node && childContainer) {
-        let childrenNodes = node.childrenIds.map(cid => nodes.find(n => n.id === cid)).filter(n => n);
-        for (let child of childrenNodes) {
-            let btn = document.createElement("button");
-            btn.className = "btn-oval";
-            btn.innerText = child.name;
-            btn.onclick = () => selectNode(child.id);
-            childContainer.appendChild(btn);
+	  // ===== ОБНОВЛЯЕМ НАЗВАНИЕ ДИАПАЗОНА =====
+    const nameEl = document.getElementById("currentRangeName");
+    if (nameEl) {
+        const node = nodes.find(n => n.id === currentNodeId);
+        if (node) {
+            nameEl.textContent = node.name;
         }
     }
-    const backBtn = document.getElementById("backButton");
-    if (node && node.parentId !== null && backBtn) {
-        let parentNode = nodes.find(n => n.id === node.parentId);
-        if (parentNode) {
-            backBtn.style.display = "flex";
-            backBtn.onclick = () => selectNode(parentNode.id);
-            backBtn.innerText = `← ${parentNode.name}`;
-        } else backBtn.style.display = "none";
-    } else if (backBtn) {
-        backBtn.style.display = "none";
-    }
+
     renderGrid("constructorGrid", currentNodeId, null);
 
     let statsContainer = document.getElementById("profileStats");
@@ -1279,80 +2002,235 @@ function updateCurrentDisplay() {
         statsContainer.id = "profileStats";
         statsContainer.style.marginTop = "10px";
         statsContainer.style.fontSize = "13px";
-        statsContainer.style.lineHeight = "1.8";
+        statsContainer.style.lineHeight = "1.4";
         statsContainer.style.display = "flex";
         statsContainer.style.justifyContent = "flex-end";
         const tablePanel = document.querySelector(".table-panel");
         if (tablePanel) tablePanel.appendChild(statsContainer);
     }
 
-    const colorStats = {};
-    let totalCombosWeighted = 0;
-    const matrix = cellStorage[getTableId(currentNodeId)];
-    if (matrix) {
-        for (let i = 0; i < 13; i++) {
-            for (let j = 0; j < 13; j++) {
-                const pid = matrix[i][j];
-                if (pid === null) continue;
-                const prof = getProfiles().find(p => p.id === pid);
-                if (!prof) continue;
+const colorStats = {};
+let totalCombosWeighted = 0;
+const matrix = cellStorage[getTableId(currentNodeId)];
+if (matrix) {
+    const profiles = getColorsForNode(currentNodeId);
+    
+    for (let i = 0; i < 13; i++) {
+        for (let j = 0; j < 13; j++) {
+            const pid = matrix[i][j];
+            if (pid === null) continue;
+            const prof = profiles.find(p => p.id === pid);
+            if (!prof) continue;
 
-                const hand = rowsData[i][j];
-                let handTotalCombos = 0;
-                if (hand.includes('s')) handTotalCombos = 4;
-                else if (hand.includes('o')) handTotalCombos = 12;
-                else if (hand[0] === hand[1]) handTotalCombos = 6;
+            const hand = rowsData[i][j];
+            let handTotalCombos = 0;
+            if (hand.includes('s')) handTotalCombos = 4;
+            else if (hand.includes('o')) handTotalCombos = 12;
+            else if (hand[0] === hand[1]) handTotalCombos = 6;
 
-                const positions = getPositions(prof);
-                let prev = 0;
-                for (let k = 0; k < prof.colorIds.length; k++) {
-                    const share = (positions[k] - prev) / 100;
-                    const combosShare = Math.round((handTotalCombos * share) * 10) / 10;
-                    totalCombosWeighted += combosShare;
+            // Получаем компоненты профиля
+            let components = [];
+            let boundaries = [];
 
-                    const colorsList = getColors();
-                    let colorObj = colorsList.find(c => c.id === prof.colorIds[k]);
-                    let color = colorObj ? colorObj.color : '#3d3d3d';
-                    const colorKey = `color_${prof.colorIds[k]}`;
-                    if (!colorStats[colorKey]) {
-                        colorStats[colorKey] = { combos: 0, color: color };
-                    }
-                    colorStats[colorKey].combos += combosShare;
-                    prev = positions[k];
+            if (prof.type === 'simple' || (!prof.type && prof.color)) {
+                // Простой профиль: один компонент (сам себя)
+                components = [{ colorId: prof.id, share: 100 }];
+                boundaries = [100];
+            } else if (prof.type === 'multi' && prof.components) {
+                // Мультипрофиль: несколько компонентов
+                components = prof.components;
+                boundaries = prof.boundaries || [];
+            }
+
+            // Проходим по каждому компоненту мультипрофиля
+            let prev = 0;
+            for (let k = 0; k < components.length; k++) {
+                const comp = components[k];
+                const share = (boundaries[k] - prev) / 100;
+                const combosShare = Math.round((handTotalCombos * share) * 10) / 10;
+                
+                // Находим одноцветный профиль для этого компонента
+                const simpleProf = profiles.find(p => p.id === comp.colorId);
+                if (!simpleProf) continue;
+
+                // Используем ID одноцветного профиля как ключ
+                const profileKey = `profile_${simpleProf.id}`;
+                if (!colorStats[profileKey]) {
+                    colorStats[profileKey] = { 
+                        combos: 0, 
+                        color: simpleProf.color,
+                        name: simpleProf.name
+                    };
                 }
+                colorStats[profileKey].combos += combosShare;
+                totalCombosWeighted += combosShare;
+                prev = boundaries[k];
             }
         }
     }
-
-    if (statsContainer && totalCombosWeighted > 0) {
-        let html = `<div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">`;
-        let colorRows = [];
-        let totalPercentSum = 0;
-        let totalCombosSum = 0;
-
-        // Сортируем цвета по убыванию комбинаций
-const sortedEntries = Object.entries(colorStats).sort((a, b) => b[1].combos - a[1].combos);
-
-for (const [key, data] of sortedEntries) {
-    const percent = (data.combos / 1326 * 100).toFixed(2);
-    totalPercentSum += parseFloat(percent);
-    totalCombosSum += data.combos;
-    colorRows.push(`<div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
-                        <span style="display: inline-block; width: 20px; height: 10px; background: ${data.color}; border-radius: 3px;"></span>
-                        <span>${percent}% (${formatCombos(data.combos)}/1326)</span>
-                     </div>`);
 }
-
-        html += `<div style="display: flex; align-items: center; gap: 8px; font-size: 13px; justify-content: flex-end;">
-                    <span>${totalPercentSum.toFixed(2)}% (${formatCombos(totalCombosSum)}/1326)</span>
-                 </div>`;
-
-        html += colorRows.join('');
-        html += `</div>`;
-        statsContainer.innerHTML = html;
-    } else if (statsContainer) {
+            if (statsContainer && totalCombosWeighted > 0) {
+    // Сортируем цвета по убыванию комбинаций
+    const sortedEntries = Object.entries(colorStats).sort((a, b) => b[1].combos - a[1].combos);
+    
+    let rows = [];
+    let totalPercentSum = 0;
+    let totalCombosSum = 0;
+    
+    for (const [key, data] of sortedEntries) {
+        const percent = (data.combos / 1326 * 100).toFixed(1);
+        totalPercentSum += parseFloat(percent);
+        totalCombosSum += data.combos;
+        rows.push({
+            color: data.color,
+            percent: percent,
+            combos: data.combos
+        });
+    }
+    
+    //let emptyCombos = 1326 - totalCombosWeighted;
+    //let emptyPercent = (emptyCombos / 1326 * 100).toFixed(1);
+    
+    // ===== ТАБЛИЦА С 3 КОЛОНКАМИ =====
+    let html = `<div style="display: inline-block; min-width: 180px;">
+        <table style="width: auto; border-collapse: collapse; font-size: 13px;">
+            <tbody>`;
+    
+    // Первая строка — сумма закрашенных (БЕЗ квадратика, БЕЗ линий, обычный шрифт)
+    html += `<tr>
+        <td style="padding: 2px 4px 2px 0; text-align: right; width: 20px;"></td>
+        <td style="padding: 2px 8px 2px 0; text-align: right; min-width: 70px; font-weight: 600;">
+            ${totalPercentSum.toFixed(1)}%
+        </td>
+        <td style="padding: 2px 0; text-align: right; min-width: 80px; font-weight: 600;">
+            (${formatCombos(totalCombosSum)}/1326)
+        </td>
+    </tr>`;
+    
+    // Цветные строки
+    for (const row of rows) {
+        html += `<tr>
+            <td style="padding: 2px 4px 2px 0; text-align: right; width: 20px;">
+                <span style="display: inline-block; width: 15px; height: 13px; background: ${row.color}; border-radius: 3px;"></span>
+            </td>
+            <td style="padding: 2px 8px 2px 0; text-align: right; min-width: 70px;">
+                ${row.percent}%
+            </td>
+            <td style="padding: 2px 0; text-align: right; min-width: 80px;">
+                (${formatCombos(row.combos)}/1326)
+            </td>
+        </tr>`;
+    }
+    
+    // Незакрашенные (последние)
+    //html += `<tr>
+        // <td style="padding: 2px 4px 2px 0; text-align: right; width: 20px;">
+             //<span style="display: inline-block; width: 15px; height: 13px; background: #313338; border-radius: 3px; border: 1px solid #3d3f46;"></span>
+         //</td>
+        // <td style="padding: 2px 8px 2px 0; text-align: right; min-width: 70px;">
+             //${emptyPercent}%
+         //</td>
+         //<td style="padding: 2px 0; text-align: right; min-width: 80px;">
+             //(${formatCombos(emptyCombos)}/1326)
+         //</td>
+     //</tr>`;
+    
+    html += `</tbody></table></div>`;
+    statsContainer.innerHTML = html;
+}
+	else if (statsContainer) {
         statsContainer.innerHTML = `<div style="color: var(--text-muted);">Нет установленных диапазонов</div>`;
     }
+    
+// ===== ИКОНКА КОММЕНТАРИЕВ (ФИКСИРОВАННАЯ) =====
+// Вставляем иконку в тот же контейнер, где матрица
+const gridWrapper = document.querySelector('.matrix-wrapper');
+if (gridWrapper) {
+    let iconBtn = document.getElementById('commentsToggleBtn');
+    if (!iconBtn) {
+        iconBtn = document.createElement('button');
+        iconBtn.id = 'commentsToggleBtn';
+        iconBtn.className = 'comments-toggle-btn';
+        iconBtn.title = 'Комментарии';
+        iconBtn.style.position = 'absolute';
+        iconBtn.style.bottom = '-32px';
+        iconBtn.style.left = '0';
+        iconBtn.style.background = 'transparent';
+        iconBtn.style.border = 'none';
+        iconBtn.style.padding = '4px 8px';
+        iconBtn.style.cursor = 'pointer';
+        iconBtn.style.borderRadius = '4px';
+        iconBtn.style.zIndex = '10';
+        iconBtn.style.display = 'flex';
+        iconBtn.style.alignItems = 'center';
+        iconBtn.style.justifyContent = 'center';
+        iconBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="#8a848a" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25.7,9.3l-7-7A.9078.9078,0,0,0,18,2H8A2.0059,2.0059,0,0,0,6,4V28a2.0059,2.0059,0,0,0,2,2H24a2.0059,2.0059,0,0,0,2-2V10A.9078.9078,0,0,0,25.7,9.3ZM18,4.4,23.6,10H18ZM24,28H8V4h8v6a2.0059,2.0059,0,0,0,2,2h6Z"/>
+                <rect data-name="&lt;Transparent Rectangle&gt;" class="cls-1" fill="none"/>
+            </svg>
+        `;
+        
+        // Делаем wrapper относительным для позиционирования иконки
+        gridWrapper.style.position = 'relative';
+        gridWrapper.appendChild(iconBtn);
+        
+        // Вешаем обработчик
+        iconBtn.addEventListener('click', toggleComments);
+    }
+}
+
+// ===== ПОЛЕ ДЛЯ КОММЕНТАРИЕВ (ПОД СТАТИСТИКОЙ) =====
+let commentsWrapper = document.getElementById('commentsWrapper');
+if (!commentsWrapper) {
+    commentsWrapper = document.createElement('div');
+    commentsWrapper.id = 'commentsWrapper';
+    commentsWrapper.className = 'comments-wrapper';
+    commentsWrapper.style.width = '100%';
+    commentsWrapper.style.maxWidth = '530px';
+    commentsWrapper.style.marginTop = '8px';
+    
+    const area = document.createElement('div');
+    area.className = 'comments-area';
+    area.id = 'commentsArea';
+    area.style.display = 'none';
+    area.style.width = '100%';
+    area.style.borderRadius = '6px';
+    area.style.border = '1px solid #3d3f46';
+    area.style.background = '#2d2f34';
+    area.style.overflow = 'hidden';
+    
+    const textarea = document.createElement('textarea');
+    textarea.id = 'commentsTextarea';
+    textarea.placeholder = 'Комментарий к диапазону...';
+    textarea.maxLength = 2000;
+    textarea.style.width = '100%';
+    textarea.style.height = '100px';
+    textarea.style.minHeight = '100px';
+    textarea.style.maxHeight = '300px';
+    textarea.style.background = 'transparent';
+    textarea.style.border = 'none';
+    textarea.style.color = '#e5eaf0';
+    textarea.style.fontSize = '13px';
+    textarea.style.fontFamily = "'Roboto', 'Helvetica Neue', sans-serif";
+    textarea.style.padding = '10px 12px';
+    textarea.style.resize = 'vertical';
+    textarea.style.outline = 'none';
+    textarea.style.lineHeight = '1.5';
+    textarea.style.boxSizing = 'border-box';
+    
+    area.appendChild(textarea);
+    commentsWrapper.appendChild(area);
+    
+    const tablePanel = document.querySelector('.table-panel');
+    if (tablePanel) tablePanel.appendChild(commentsWrapper);
+    
+    // Сохраняем ссылку на textarea для renderComments
+    window.commentsTextarea = textarea;
+}
+
+// Загружаем комментарий
+renderComments(currentNodeId);
 }
 // ===== ВСПЛЫВАЮЩАЯ ПОДСКАЗКА (TOOLTIP) =====
 let tooltipElement = null;
@@ -1376,29 +2254,43 @@ function getTooltipElement() {
 }
 
 function showTooltip(event, hand, profileId) {
-    const nodeId = currentNodeId;
+    const nodeId = workDisplayNodeId;
     if (!nodeId || !profileId) return;
     
-    const profiles = getProfiles();
+    const profiles = getColorsForNode(nodeId);
     const profile = profiles.find(p => p.id === profileId);
     if (!profile) return;
     
-    const colorsList = getColors();
+    const colorsList = getColorsForNode(nodeId);
     if (!colorsList || colorsList.length === 0) return;
     
     let html = `<div class="tooltip-hand">${hand}</div>`;
     html += `<hr class="tooltip-divider">`;
     
-    const positions = getPositions(profile);
-    let prev = 0;
+    // Определяем, простой это профиль или мульти
+    let colorIds = [];
+    let boundaries = [];
     
-    for (let i = 0; i < profile.colorIds.length; i++) {
-        const colorId = profile.colorIds[i];
+    if (profile.type === 'simple' || (!profile.type && profile.color)) {
+        // Простой профиль
+        colorIds = [profile.id];
+        boundaries = [100];
+    } else if (profile.type === 'multi' && profile.components) {
+        // Мультипрофиль — берём компоненты
+        colorIds = profile.components.map(c => c.colorId);
+        boundaries = profile.boundaries || [];
+    } else {
+        return;
+    }
+    
+    let prev = 0;
+    for (let i = 0; i < colorIds.length; i++) {
+        const colorId = colorIds[i];
         const colorObj = colorsList.find(c => c.id === colorId);
         if (!colorObj) continue;
         
-        const percent = positions[i] - prev;
-        prev = positions[i];
+        const percent = boundaries[i] - prev;
+        prev = boundaries[i];
         
         html += `
             <div class="tooltip-row">
@@ -1411,11 +2303,7 @@ function showTooltip(event, hand, profileId) {
     
     const tooltip = getTooltipElement();
     tooltip.innerHTML = html;
-    
-    // ✅ СНАЧАЛА позиционируем (тултип ещё невидим)
     positionTooltip(event, tooltip);
-    
-    // ✅ ПОТОМ добавляем класс для анимации
     tooltip.classList.add('visible');
 }
 
@@ -1655,17 +2543,12 @@ document.addEventListener('mouseup', function(e) {
 
         const targetId = getDropTarget(e.clientX, e.clientY);
 
-        if (targetId && targetId !== dragData.nodeId) {
-            if (canDrop(dragData.nodeId, targetId)) {
-                console.log('✅ Показываем окно подтверждения');
-                showMoveConfirm(dragData.nodeId, targetId);
-            } else {
-                console.log('❌ canDrop вернул false');
-            }
-        } else {
-            console.log('❌ targetId не подходит:', targetId);
-        }
-		document.body.classList.remove('dragging');
+if (targetId && targetId !== dragData.nodeId) {
+    if (canDrop(dragData.nodeId, targetId)) {
+        showMoveConfirm(dragData.nodeId, targetId);
+    }
+}
+document.body.classList.remove('dragging');
     }
 
     dragData = null;
@@ -1876,6 +2759,169 @@ function moveNodeWithChildren(sourceId, targetId) {
     refreshAll();
     selectNode(sourceId);
 }
+function createStylePopup() {
+    if (stylePopup) return;
+
+    stylePopup = document.createElement('div');
+    stylePopup.className = 'style-popup';
+    stylePopup.id = 'stylePopup';
+    stylePopup.innerHTML = `
+    <div class="style-popup-title" id="popupTitle">Редактировать стили</div>
+    <div class="style-popup-row">
+        <div class="style-color-box" id="popupBgColor"></div>
+        <span class="style-label">Цвет фона</span>
+    </div>
+    <div class="style-popup-row">
+        <div class="style-color-box" id="popupTextColor"></div>
+        <span class="style-label">Цвет текста</span>
+    </div>
+    <div class="style-popup-actions">
+        <button class="btn-cancel" id="popupCancel">Отменить</button>
+        <button class="btn-save" id="popupSave">Сохранить</button>
+    </div>
+`;
+
+    document.body.appendChild(stylePopup);
+	// === ПИКЕР ДЛЯ ЦВЕТА ФОНА ===
+document.getElementById('popupBgColor').addEventListener('click', function() {
+    if (!activeButton) return;
+    const rect = this.getBoundingClientRect();
+    const currentColor = document.getElementById('popupBgColor').style.background || '#3d3d3d';
+openColorPicker(currentColor, function(hex) {
+    document.getElementById('popupBgColor').style.background = hex;
+}, rect);
+});
+document.getElementById('popupTextColor').addEventListener('click', function() {
+    if (!activeButton) return;
+    const rect = this.getBoundingClientRect();
+    const currentColor = document.getElementById('popupTextColor').style.background || '#a9afb5';
+openColorPicker(currentColor, function(hex) {
+    document.getElementById('popupTextColor').style.background = hex;
+}, rect);
+});
+	    // === ПЕРЕТАСКИВАНИЕ ===
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    stylePopup.addEventListener('mousedown', function(e) {
+        if (e.target.closest('.style-color-box')) return;
+        if (e.target.closest('.style-popup-actions')) return;
+        isDragging = true;
+        const rect = stylePopup.getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+        stylePopup.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging || !stylePopup) return;
+        let left = e.clientX - dragOffsetX;
+        let top = e.clientY - dragOffsetY;
+        left = Math.max(10, Math.min(window.innerWidth - 260, left));
+        top = Math.max(10, Math.min(window.innerHeight - 200, top));
+        stylePopup.style.left = left + 'px';
+        stylePopup.style.top = top + 'px';
+    });
+
+    document.addEventListener('mouseup', function() {
+        if (isDragging) {
+            isDragging = false;
+            if (stylePopup) stylePopup.style.cursor = 'grab';
+        }
+    });
+	// === КНОПКИ ===
+document.getElementById('popupCancel').addEventListener('click', function() {
+    hideStylePopup();
+});
+
+document.getElementById('popupSave').addEventListener('click', function() {
+    if (!activeButton) return;
+
+    const bgColor = document.getElementById('popupBgColor').style.background;
+    const textColor = document.getElementById('popupTextColor').style.background;
+
+    // Применяем к кнопке
+  if (bgColor && activeButton.classList.contains('folder-btn')) {
+        activeButton.style.backgroundColor = bgColor;
+		activeButton.style.borderColor = bgColor;
+    }
+    if (textColor) {
+        activeButton.style.color = textColor;
+    }
+
+const nodeId = parseInt(activeButton.className.match(/folder-btn-(\d+)/)?.[1]) ||
+               parseInt(activeButton.className.match(/range-link-(\d+)/)?.[1]) ||
+               workDisplayNodeId;
+    if (nodeId) {
+        const bg = document.getElementById('popupBgColor').style.background || '';
+        const border = activeButton.style.borderColor || '';
+        const text = activeButton.style.color || '';
+        saveButtonStyle(nodeId, bg, border, text);
+    }
+    
+    hideStylePopup();
+});
+}
+function showStylePopup(button) {
+    if (!stylePopup) createStylePopup();
+    if (!stylePopup) return;
+
+    activeButton = button;
+
+    const isRange = button.classList.contains('range-link');
+	stylePopup.classList.toggle('no-bg', isRange);
+
+// Показываем или скрываем строку "Цвет фона"
+const bgRow = stylePopup.querySelector('.style-popup-row');
+if (bgRow) {
+    bgRow.style.display = isRange ? 'none' : '';
+}
+    const title = document.getElementById('popupTitle');
+    if (title) {
+        title.textContent = isRange ? 'Редактировать стили диапазона' : 'Редактировать стили папки';
+    }
+    const bgColor = button.style.borderColor;
+    const bgBox = document.getElementById('popupBgColor');
+    if (bgBox && bgColor) {
+        bgBox.style.background = bgColor;
+    }
+	    // Цвет текста
+    const textColor = button.style.color || getComputedStyle(button).color;
+    const textBox = document.getElementById('popupTextColor');
+    if (textBox && textColor) {
+        textBox.style.background = textColor;
+    }
+    const rect = button.getBoundingClientRect();
+    let left = rect.right + 14;
+    let top = rect.top - 10;
+
+    if (left + 200 > window.innerWidth) {
+        left = rect.left - 200 - 14;
+    }
+    if (top + 60 > window.innerHeight) {
+        top = window.innerHeight - 60 - 10;
+    }
+    if (top < 10) top = 10;
+
+    stylePopup.style.left = left + 'px';
+    stylePopup.style.top = top + 'px';
+    stylePopup.classList.add('visible');
+}
+function hideStylePopup() {
+    // Закрываем пикер, если он открыт
+    const overlay = document.getElementById('pickerOverlay');
+    if (overlay && overlay.classList.contains('active')) {
+        const closeBtn = document.getElementById('pickerClose');
+        if (closeBtn) closeBtn.click();
+    }
+
+    if (stylePopup) {
+        stylePopup.classList.remove('visible');
+        activeButton = null;
+    }
+}
+
 // ===== КАСТОМНОЕ ОКНО ДЛЯ ПОДТВЕРЖДЕНИЯ СОХРАНЕНИЯ =====
 function showSaveConfirmModal(message, onSave, onCancel) {
     if (!message) {
@@ -1952,6 +2998,182 @@ function showSaveConfirmModal(message, onSave, onCancel) {
         if (onCancel) onCancel();
     };
 }
+// ФУНКЦИЯ ДЛЯ ОТОБРАЖЕНИЯ ДИАЛОГА ВЫБОРА КОМПОНЕНТА
+function showComponentSelectionDialog(parentNodeId, callback) {
+    
+    const parent = nodes.find(n => n.id === parentNodeId);
+    if (!parent) {
+        if (callback) callback(null);
+        return;
+    }
+
+    const tableId = getTableId(parentNodeId);
+    const colors = colorsPerNode[tableId] || [];
+    
+    // Находим все мультицветы в родителе
+    const multiColors = colors.filter(c => c.type === 'multi');
+    // Берём ТОЛЬКО простые цвета
+const components = colors.filter(c => c.type === 'simple' || (!c.type && c.color));
+
+
+    
+    // Создаём HTML для списка
+    let listHtml = `
+    <div class="component-dialog-body">
+       <div class="component-option" data-index="null">
+    <div class="profile-radio" data-index="null"></div>
+    <div class="color-swatch sum-all"></div>
+    <span class="color-name">Все цвета</span>
+</div>
+`;
+
+for (const comp of components) {
+    const colorName = comp.name || 'Цвет';
+    const colorHex = comp.color || '#9C5479';
+    
+    listHtml += `
+      <div class="component-option" data-index="${components.indexOf(comp)}">
+    <div class="profile-radio" data-index="${components.indexOf(comp)}"></div>
+    <div class="color-swatch" style="background: ${colorHex};"></div>
+    <span class="color-name">${colorName}</span>
+</div> 
+    `;
+}
+
+listHtml += `</div>`;
+
+    // Создаём окно
+    const overlay = document.createElement('div');
+    overlay.className = 'save-confirm-overlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'save-confirm-modal';
+    modal.style.width = '400px';
+    modal.style.maxWidth = '90vw';
+    modal.style.maxHeight = '80vh';
+    modal.style.overflow = 'auto';
+
+    modal.innerHTML = `
+        <div class="save-confirm-header" id="componentDialogHeader" style="cursor: grab; display: flex; justify-content: space-between; align-items: center;">
+            <span>Добавить поддиапазон</span>
+            <button id="componentDialogClose" style="background: none; border: none; color: #8a848a; font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
+        </div>
+        <div class="save-confirm-body">
+            ${listHtml}
+        </div>
+        <div class="save-confirm-actions" style="justify-content: flex-end;">
+            <button class="btn btn-cancel" id="componentDialogCancel">Отмена</button>
+            <button class="btn btn-confirm" id="componentDialogOk">ОК</button>
+        </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // ===== ПЕРЕТАСКИВАНИЕ =====
+    const header = modal.querySelector('#componentDialogHeader');
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    header.addEventListener('mousedown', function(e) {
+        if (e.target.closest('button')) return;
+        isDragging = true;
+        const rect = modal.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        modal.style.transform = 'none';
+        modal.style.left = rect.left + 'px';
+        modal.style.top = rect.top + 'px';
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('mouseup', stopDrag);
+        e.preventDefault();
+    });
+
+    function onDrag(e) {
+        if (!isDragging) return;
+        let left = e.clientX - offsetX;
+        let top = e.clientY - offsetY;
+        left = Math.max(10, Math.min(window.innerWidth - modal.offsetWidth - 10, left));
+        top = Math.max(10, Math.min(window.innerHeight - modal.offsetHeight - 10, top));
+        modal.style.left = left + 'px';
+        modal.style.top = top + 'px';
+    }
+
+    function stopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', onDrag);
+        document.removeEventListener('mouseup', stopDrag);
+    }
+
+    // ===== ОБРАБОТЧИКИ =====
+    function closeDialog(selectedIndex) {
+        overlay.remove();
+        if (callback) callback(selectedIndex);
+    }
+
+    modal.querySelector('#componentDialogClose').addEventListener('click', () => closeDialog(-1));
+    modal.querySelector('#componentDialogCancel').addEventListener('click', () => closeDialog(-1));
+	modal.querySelector('#componentDialogOk').addEventListener('click', function() {
+    // Если ничего не выбрано (undefined) — не закрываем
+    if (selectedIndex === undefined) return;
+    // Иначе передаём выбранное значение (null — Все цвета, число — конкретный цвет)
+    closeDialog(selectedIndex);
+});
+
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            closeDialog(null);
+        }
+    });
+
+    // Выбор компонента
+    // ===== ВЫБОР КОМПОНЕНТА (РАДИО) =====
+const options = modal.querySelectorAll('.component-option');
+const radios = modal.querySelectorAll('.profile-radio');
+let selectedIndex = undefined;
+
+function selectOption(index) {
+    // Снимаем активность со всех радио
+    radios.forEach(r => r.classList.remove('active'));
+    // Находим радио для выбранного индекса
+    const targetRadio = modal.querySelector(`.profile-radio[data-index="${index === null ? 'null' : index}"]`);
+    if (targetRadio) {
+        targetRadio.classList.add('active');
+    }
+    selectedIndex = index;
+}
+
+// Ховер-эффекты (оставляем как было)
+options.forEach(opt => {
+    opt.addEventListener('mouseenter', function() {
+        this.style.background = '#3a3d45';
+    });
+    opt.addEventListener('mouseleave', function() {
+        this.style.background = 'transparent';
+        this.style.borderColor = 'transparent';
+    });
+});
+
+// Клик по строке (не по радио)
+options.forEach(opt => {
+    opt.addEventListener('click', function(e) {
+        if (e.target.classList.contains('profile-radio')) return;
+        const idx = this.dataset.index;
+        const index = idx === 'null' ? null : parseInt(idx);
+        selectOption(index);
+    });
+});
+
+// Клик по радио-кнопке
+radios.forEach(radio => {
+    radio.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const idx = this.dataset.index;
+        const index = idx === 'null' ? null : parseInt(idx);
+        selectOption(index);
+    });
+});
+}
 // ===== СОХРАНЕНИЕ ТОЛЬКО ДАННЫХ ДИАПАЗОНА (МАТРИЦА, ЦВЕТА, ПРОФИЛИ) =====
 function saveRangeData() {
     if (!currentNodeId) return;
@@ -1960,12 +3182,452 @@ function saveRangeData() {
     const data = {
         matrix: cellStorage[nodeId] || null,
         colors: colorsPerNode[nodeId] || [],
-        profiles: profilesPerNode[nodeId] || [],
-        activeColor: activeColorPerNode[nodeId] || null,
-        activeProfile: activeProfilePerNode[nodeId] || null
+        activeColor: activePerNode[nodeId] || null
     };
 
     localStorage.setItem("poker_range_data_" + nodeId, JSON.stringify(data));
+}
+// ===== ДУБЛИРОВАНИЕ ДИАПАЗОНА =====
+function duplicateRange(nodeId) {
+    const original = nodes.find(n => n.id === nodeId);
+    if (!original) return;
+
+    // ===== 1. ПРОВЕРКА НА НЕСОХРАНЁННЫЕ ИЗМЕНЕНИЯ =====
+    if (hasUnsavedChanges) {
+        const node = nodes.find(n => n.id === currentNodeId);
+        const message = node
+            ? `Диапазон <span style="color: #D4AF37; font-weight: 600;">${node.name}</span> был отредактирован. Сохранить изменения?`
+            : 'Сохранить изменения?';
+
+        showSaveConfirmModal(message, function() {
+            // ДА — сохраняем
+            persistAll();
+            clearUnsaved();
+            createCopyAndFinalize(original);
+        }, function() {
+            // НЕТ — откатываем
+            loadFromStorage();
+            refreshAll();
+            updateCurrentDisplay();
+            clearUnsaved();
+            createCopyAndFinalize(original);
+        });
+        return;
+    }
+
+    // ===== 2. ЕСЛИ ИЗМЕНЕНИЙ НЕТ — СОЗДАЁМ КОПИЮ =====
+    createCopyAndFinalize(original);
+}
+
+// ===== СОЗДАНИЕ КОПИИ ДИАПАЗОНА =====
+function createCopyAndFinalize(original) {
+    // ===== 1. Генерируем уникальное имя =====
+    const parent = nodes.find(n => n.id === original.parentId);
+    let siblings = [];
+    if (parent) {
+        siblings = parent.childrenIds.map(id => nodes.find(n => n.id === id)).filter(n => n);
+    } else {
+        siblings = nodes.filter(n => n.parentId === null);
+    }
+
+    const existingNames = siblings.filter(n => n.type === 'range').map(n => n.name);
+    let newName = `${original.name} - дубль`;
+    let counter = 2;
+    while (existingNames.includes(newName)) {
+        newName = `${original.name} - дубль (${counter})`;
+        counter++;
+    }
+
+    // ===== 2. Создаём новый узел =====
+    const newId = nextNodeId++;
+    const newNode = {
+    id: newId,
+    name: newName,
+    parentId: original.parentId,
+    childrenIds: [],
+    type: original.type   // ← сохраняем исходный тип ('range' или 'subrange')
+};
+    nodes.push(newNode);
+
+    if (parent) {
+        parent.childrenIds.push(newId);
+    }
+
+    // ===== 3. Копируем данные =====
+    const sourceId = getTableId(original.id);
+    const targetId = getTableId(newId);
+
+    // 3.1 Копируем матрицу
+    const originalTable = cellStorage[sourceId];
+    ensureTable(newId);
+    const newTable = cellStorage[targetId];
+
+    // 3.2 Копируем все цвета (и простые, и мульти) с созданием colorMap
+    const sourceColors = getColorsForNode(original.id);
+    const targetColors = [];
+    const colorMap = {};
+
+    for (const color of sourceColors) {
+        const newColorId = nextColorId++;
+        const newColor = {
+            id: newColorId,
+            name: color.name,
+            type: color.type
+        };
+
+        if (color.type === 'simple' || (!color.type && color.color)) {
+            newColor.color = color.color;
+        } else if (color.type === 'multi' || color.components) {
+            newColor.components = color.components ? color.components.map(comp => ({
+                colorId: comp.colorId, // пока старый ID, обновим позже
+                share: comp.share
+            })) : [];
+            newColor.boundaries = color.boundaries ? [...color.boundaries] : [];
+        }
+
+        targetColors.push(newColor);
+        colorMap[color.id] = newColorId;
+    }
+
+    // 3.3 Обновляем ссылки в components у мультицветов
+    for (const color of targetColors) {
+        if (color.type === 'multi' && color.components) {
+            color.components = color.components.map(comp => ({
+                colorId: colorMap[comp.colorId] || comp.colorId,
+                share: comp.share
+            }));
+        }
+    }
+
+    colorsPerNode[targetId] = targetColors;
+
+    // 3.4 Копируем активный элемент
+    const activeId = getActiveForNode(original.id);
+    if (activeId && colorMap[activeId]) {
+        activePerNode[targetId] = colorMap[activeId];
+    }
+
+    // 3.5 Копируем матрицу с обновлёнными ID
+    if (originalTable) {
+        for (let i = 0; i < 13; i++) {
+            for (let j = 0; j < 13; j++) {
+                const oldPid = originalTable[i][j];
+                if (oldPid !== null && oldPid !== undefined) {
+                    newTable[i][j] = colorMap[oldPid] || oldPid;
+                } else {
+                    newTable[i][j] = null;
+                }
+            }
+        }
+    }
+
+    // ===== 4. Сохраняем и активируем =====
+    persistAll();
+    refreshAll();
+    selectNode(newId);
+    updateCurrentDisplay();
+
+    const newNodeFinal = nodes.find(n => n.id === newId);
+    if (newNodeFinal) {
+        
+    }
+}
+// ===== КОПИРОВАНИЕ ДИАПАЗОНА В БУФЕР =====
+function copyRange(nodeId) {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) {
+        showFloatingModal('Диапазон не найден');
+        return;
+    }
+
+    if (node.type !== 'range' && node.type !== 'subrange') {
+        showFloatingModal('Можно копировать только диапазоны');
+        return;
+    }
+
+    const tableId = getTableId(nodeId);
+    
+    // Копируем матрицу (глубокое копирование)
+    const matrix = cellStorage[tableId];
+    let copiedMatrix = null;
+    if (matrix) {
+        copiedMatrix = matrix.map(row => [...row]);
+    }
+
+    // Копируем цвета (профили)
+    const colors = colorsPerNode[tableId] || [];
+    const copiedColors = JSON.parse(JSON.stringify(colors));
+
+    // Копируем активный цвет
+    const activeId = activePerNode[tableId] || null;
+
+    // Сохраняем в буфер
+    clipboardRangeData = {
+        matrix: copiedMatrix,
+        colors: copiedColors,
+        activeId: activeId,
+        sourceNodeId: nodeId,
+        sourceName: node.name
+    };
+
+    
+    
+    // Обновляем меню (активируем кнопку "Вставить")
+    updatePasteButtonState();
+	refreshAll();
+}
+
+// ===== ВСТАВКА ДИАПАЗОНА ИЗ БУФЕРА =====
+function pasteRange(nodeId) {
+    if (!clipboardRangeData) {
+        showFloatingModal('Нет скопированного диапазона');
+        return;
+    }
+
+    const targetNode = nodes.find(n => n.id === nodeId);
+    if (!targetNode) {
+        showFloatingModal('Целевой диапазон не найден');
+        return;
+    }
+
+    if (targetNode.type !== 'range' && targetNode.type !== 'subrange') {
+        showFloatingModal('Вставлять можно только в диапазоны');
+        return;
+    }
+
+    const targetTableId = getTableId(nodeId);
+    
+    // Проверяем, пустой ли целевой диапазон
+    const targetMatrix = cellStorage[targetTableId];
+    let isTargetEmpty = true;
+    if (targetMatrix) {
+        for (let i = 0; i < 13; i++) {
+            for (let j = 0; j < 13; j++) {
+                if (targetMatrix[i][j] !== null) {
+                    isTargetEmpty = false;
+                    break;
+                }
+            }
+            if (!isTargetEmpty) break;
+        }
+    }
+
+    // Если диапазон не пустой — показываем подтверждение
+    if (!isTargetEmpty) {
+        showSaveConfirmModal(
+            `Диапазон «${targetNode.name}» не пустой. Вставить новые данные?`,
+            function() {
+                // ДА — выполняем вставку
+                executePaste(nodeId);
+            },
+            function() {
+                // НЕТ — ничего не делаем
+            }
+        );
+        return;
+    }
+
+    // Если пустой — сразу вставляем
+    executePaste(nodeId);
+}
+
+// ===== ВЫПОЛНЕНИЕ ВСТАВКИ =====
+function executePaste(nodeId) {
+    if (!clipboardRangeData) return;
+
+    const targetTableId = getTableId(nodeId);
+    
+    // 1. Копируем цвета с новыми ID и создаем colorMap
+    const sourceColors = clipboardRangeData.colors || [];
+    const newColors = [];
+    const colorMap = {};
+
+    for (const color of sourceColors) {
+        const newId = nextColorId++;
+        const newColor = {
+            id: newId,
+            name: color.name,
+            type: color.type
+        };
+
+        if (color.type === 'simple' || (!color.type && color.color)) {
+            newColor.color = color.color;
+        } else if (color.type === 'multi' || color.components) {
+            newColor.components = color.components ? color.components.map(comp => ({
+                colorId: comp.colorId,
+                share: comp.share
+            })) : [];
+            newColor.boundaries = color.boundaries ? [...color.boundaries] : [];
+        }
+
+        newColors.push(newColor);
+        colorMap[color.id] = newId;  // ← запоминаем соответствие старый ID → новый ID
+    }
+
+    // 2. Обновляем ссылки в компонентах мультицветов
+    for (const color of newColors) {
+        if (color.type === 'multi' && color.components) {
+            color.components = color.components.map(comp => ({
+                colorId: colorMap[comp.colorId] || comp.colorId,
+                share: comp.share
+            }));
+        }
+    }
+
+    // 3. Сохраняем новые цвета
+    colorsPerNode[targetTableId] = newColors;
+
+    // 4. Вставляем матрицу с ОБНОВЛЕННЫМИ ID (через colorMap)
+    ensureTable(nodeId);
+    const targetMatrix = cellStorage[targetTableId];
+    
+    if (clipboardRangeData.matrix) {
+        for (let i = 0; i < 13; i++) {
+            for (let j = 0; j < 13; j++) {
+                const oldId = clipboardRangeData.matrix[i]?.[j];
+                if (oldId !== null && oldId !== undefined) {
+                    // ✅ ЗАМЕНЯЕМ СТАРЫЙ ID НА НОВЫЙ
+                    targetMatrix[i][j] = colorMap[oldId] || null;
+                } else {
+                    targetMatrix[i][j] = null;
+                }
+            }
+        }
+    }
+
+    // 5. Восстанавливаем активный цвет
+    if (clipboardRangeData.activeId && colorMap[clipboardRangeData.activeId]) {
+        activePerNode[targetTableId] = colorMap[clipboardRangeData.activeId];
+    } else {
+        // Если активного нет или он не найден — устанавливаем первый цвет
+        const firstColor = newColors.find(c => c.type === 'simple' || (!c.type && c.color));
+        if (firstColor) {
+            activePerNode[targetTableId] = firstColor.id;
+        }
+    }
+
+    // 6. Сохраняем данные и делаем диапазон активным
+    
+    
+    // 👇 ДЕЛАЕМ ДИАПАЗОН АКТИВНЫМ
+    selectNode(nodeId);
+    
+    // 7. Обновляем интерфейс
+    refreshAll();
+    updateCurrentDisplay();
+    markUnsaved();
+
+    const targetName = nodes.find(n => n.id === nodeId)?.name || 'диапазон';
+     clipboardRangeData = null;
+     updatePasteButtonState();
+}
+
+// ===== ПРОВЕРКА, ЕСТЬ ЛИ ДАННЫЕ В БУФЕРЕ =====
+function hasClipboardData() {
+    return clipboardRangeData !== null;
+}
+// ===== ОБНОВЛЕНИЕ СОСТОЯНИЯ КНОПКИ "ВСТАВИТЬ" =====
+function updatePasteButtonState() {
+    const pasteBtn = document.getElementById('tablePasteBtn');
+    if (!pasteBtn) return;
+    
+    const hasData = hasClipboardData();
+    if (!hasData) {
+        pasteBtn.style.opacity = '0.4';
+        pasteBtn.style.cursor = 'default';
+        pasteBtn.style.pointerEvents = 'none';
+        pasteBtn.title = 'Сначала скопируйте диапазон';
+    } else {
+        pasteBtn.style.opacity = '1';
+        pasteBtn.style.cursor = 'pointer';
+        pasteBtn.style.pointerEvents = 'auto';
+        pasteBtn.title = 'Вставить диапазон';
+    }
+}
+// ===== КОММЕНТАРИИ =====
+
+function getComments(nodeId) {
+    const tableId = getTableId(nodeId);
+    return commentsPerNode[tableId] || '';
+}
+
+function setComments(nodeId, text) {
+    const tableId = getTableId(nodeId);
+    commentsPerNode[tableId] = text;
+    markUnsaved();
+}
+
+function renderComments(nodeId) {
+    const textarea = document.getElementById('commentsTextarea');
+    if (!textarea) return;
+    
+    const comments = getComments(nodeId);
+    textarea.value = comments;
+}
+
+function toggleComments() {
+    const area = document.getElementById('commentsArea');
+    const btn = document.getElementById('commentsToggleBtn');
+    
+    if (!area || !btn) return;
+    
+    const isOpen = area.style.display !== 'none';
+    
+    if (isOpen) {
+        area.style.display = 'none';
+        btn.classList.remove('active');
+    } else {
+        area.style.display = 'block';
+        btn.classList.add('active');
+        // Фокусируемся на поле ввода
+        const textarea = document.getElementById('commentsTextarea');
+        if (textarea) {
+            setTimeout(() => textarea.focus(), 100);
+        }
+    }
+}
+
+function saveComments() {
+    if (!currentNodeId) return;
+    
+    const textarea = document.getElementById('commentsTextarea');
+    if (!textarea) return;
+    
+    setComments(currentNodeId, textarea.value);
+    persistAll();
+    clearUnsaved();
+}
+
+// ===== ИНИЦИАЛИЗАЦИЯ КОММЕНТАРИЕВ =====
+function initComments() {
+    const toggleBtn = document.getElementById('commentsToggleBtn');
+    const textarea = document.getElementById('commentsTextarea');
+    
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleComments);
+    }
+    
+    if (textarea) {
+        // Автосохранение при вводе (с задержкой)
+        let saveTimeout = null;
+        textarea.addEventListener('input', function() {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                if (currentNodeId) {
+                    setComments(currentNodeId, this.value);
+                }
+            }, 500);
+        });
+        
+        // Сохраняем при потере фокуса
+        textarea.addEventListener('blur', function() {
+            if (currentNodeId) {
+                setComments(currentNodeId, this.value);
+                persistAll();
+                clearUnsaved();
+            }
+        });
+    }
 }
 // ---------- ВЫБОР КАРТ ----------
 const rankOrder = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"];
@@ -2097,10 +3759,17 @@ function updateCellStyle(cell, pid) {
         cell.removeAttribute("style");
         return;
     }
-    const prof = getProfiles().find(p => p.id === pid);
-    if (prof && prof.colorIds && prof.colorIds.length) {
-        let pos = getPositions(prof);
-        const gradStyle = getGradientStyleFromProfile(prof);
+    
+    const profiles = getColorsForNode(currentNodeId);
+    const prof = profiles.find(p => p.id === pid);
+    if (!prof) {
+        cell.removeAttribute("style");
+        return;
+    }
+    
+    // ✅ Правильно: используем существующую функцию
+    let gradStyle = getGradientStyleFromColorForNode(currentNodeId, prof);
+    if (gradStyle) {
         cell.setAttribute("style", gradStyle + "; color: #F0F0F0;");
     } else {
         cell.removeAttribute("style");
@@ -2108,7 +3777,7 @@ function updateCellStyle(cell, pid) {
 }
 
 function paintCell(row, col) {
-    const activeProfile = getActiveProfile();
+    const activeProfile = getActiveForNode(currentNodeId);
     if (!currentNodeId || !activeProfile) return;
     const cell = document.querySelector(`#constructorGrid .hand-cell[data-row='${row}'][data-col='${col}']`);
     if (!cell) return;
@@ -2206,6 +3875,23 @@ document.getElementById('tableUndoBtn')?.addEventListener('click', function() {
         // Нет — ничего не делаем
     });
 });
+// ===== КНОПКИ КОПИРОВАТЬ/ВСТАВИТЬ В ТУЛБАРЕ =====
+document.getElementById('tableCopyBtn')?.addEventListener('click', function() {
+    if (!currentNodeId) {
+        showFloatingModal('Нет активного диапазона для копирования');
+        return;
+    }
+    copyRange(currentNodeId);
+    updatePasteButtonState();
+});
+
+document.getElementById('tablePasteBtn')?.addEventListener('click', function() {
+    if (!currentNodeId) {
+        showFloatingModal('Нет активного диапазона для вставки');
+        return;
+    }
+    pasteRange(currentNodeId);
+});
 
 // ===== ПЕРЕКЛЮЧЕНИЕ ДИАПАЗОНА С ПРОВЕРКОЙ =====
 const originalSelectNode = selectNode;
@@ -2241,14 +3927,16 @@ function refreshAll() {
     if (isConstructor) {
         renderTree("constructorTree", currentNodeId, true, selectNode);
         updateCurrentDisplay();
-        renderPalette(true);
-        renderAllProfiles(true);
+        renderPalette(currentNodeId, true);      // ← добавили nodeId
+        renderAllProfiles(currentNodeId, true);  // ← добавили nodeId
         updateProfileButtonVisibility();
+		renderComments(currentNodeId);
     } else {
         updateWorkDisplay();
-        renderPalette(false);
-        renderAllProfiles(false);
+        renderPalette(workDisplayNodeId, false);     // ← добавили nodeId
+        renderAllProfiles(workDisplayNodeId, false); // ← добавили nodeId
     }
+	 updatePasteButtonState();
 }
 
 function refreshAllGrids() {
@@ -2261,40 +3949,77 @@ function refreshAllGrids() {
 }
 // ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
 document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.onclick = () => {
-        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        let page = btn.getAttribute("data-page");
-        document.getElementById("constructorPage").classList.toggle("active-page", page === "constructor");
-        document.getElementById("workPage").classList.toggle("active-page", page === "work");
-        
-        // Если переключаемся на просмотр
-        if (page === "work") {
-    if (!workDisplayNodeId) {
-        const firstRange = nodes.find(n => n.type === 'range' || n.type === 'subrange');
-        if (firstRange) {
-            workDisplayNodeId = firstRange.id;
+    btn.onclick = function() {
+        const page = this.getAttribute("data-page");
+
+        // ===== ПРОВЕРКА ПРИ ПЕРЕКЛЮЧЕНИИ НА ПРОСМОТР =====
+        if (page === "work" && hasUnsavedChanges) {
+            const node = nodes.find(n => n.id === currentNodeId);
+            const message = node
+                ? `Диапазон <span style="color: #D4AF37; font-weight: 600;">${node.name}</span> был отредактирован. Сохранить изменения?`
+                : 'Сохранить изменения?';
+
+            showSaveConfirmModal(message, function() {
+                // Да — сохраняем ТОЛЬКО данные диапазона
+                saveRangeData();
+                clearUnsaved();
+                switchTab(page);
+            }, function() {
+                // Нет — откатываем
+                loadFromStorage();
+                refreshAll();
+                updateCurrentDisplay();
+                clearUnsaved();
+                switchTab(page);
+            });
+            return;
         }
-    }
-    updateWorkDisplay();
-    updateWorkGrid();  // ← ДОБАВИТЬ!
-}
-        
-        refreshAll();
-        persistAll();
+
+        switchTab(page);
     };
 });
 
-// ===== УПРАВЛЕНИЕ ВИДИМОСТЬЮ КНОПКИ "ДОБАВИТЬ ПРОФИЛЬ" =====
-function updateProfileButtonVisibility() {
-    // ... остальной код ...
+// ===== ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ =====
+function switchTab(page) {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelector(`.tab-btn[data-page="${page}"]`).classList.add("active");
+
+    document.getElementById("constructorPage").classList.toggle("active-page", page === "constructor");
+    document.getElementById("workPage").classList.toggle("active-page", page === "work");
+
+    if (page === "work") {
+        if (!workDisplayNodeId) {
+            const firstRange = nodes.find(n => n.type === 'range' || n.type === 'subrange');
+            if (firstRange) {
+                workDisplayNodeId = firstRange.id;
+            }
+        }
+        updateWorkDisplay();
+        updateWorkGrid();
+        
+        const commentsWrapper = document.getElementById('commentsWrapper');
+        if (commentsWrapper) {
+            commentsWrapper.style.display = 'block';
+        }
+        renderWorkComments(workDisplayNodeId);
+    } else {
+        const commentsWrapper = document.getElementById('commentsWrapper');
+        if (commentsWrapper) {
+            commentsWrapper.style.display = 'block';
+        }
+        renderComments(currentNodeId);
+    }
+
+    refreshAll();
+    persistAll();
 }
+
 // ===== УПРАВЛЕНИЕ ВИДИМОСТЬЮ КНОПКИ "ДОБАВИТЬ ПРОФИЛЬ" =====
 function updateProfileButtonVisibility() {
     const profileBtn = document.getElementById("newProfileBtn");
     if (!profileBtn) return;
 
-    const colors = getColors();
+    const colors = getColorsForNode(currentNodeId);
     const hasColors = colors.length > 0;
 
     profileBtn.style.display = hasColors ? '' : 'none';
@@ -2348,10 +4073,10 @@ document.getElementById('treeDeleteBtn')?.addEventListener('click', () => {
     if (currentNodeId) deleteNode(currentNodeId);
 });
 
-document.getElementById('treeCollapseAllBtn')?.addEventListener('click', () => {
+document.getElementById('treeCollapseText')?.addEventListener('click', () => {
     expandedNodes.clear();
     refreshTreeOnly();
-	saveActiveNode();
+	persistAll();
 });
 
 // ===== КНОПКИ ДОБАВЛЕНИЯ ЦВЕТА И ПРОФИЛЯ =====
@@ -2389,29 +4114,7 @@ showSaveConfirmModal(message, () => {
     }
 }, null);
 });
-// ===== СОХРАНЕНИЕ ТОЛЬКО НАВИГАЦИИ =====
-function saveActiveNode() {
-    const data = {
-        currentNodeId: currentNodeId,
-        workDisplayNodeId: workDisplayNodeId,
-        expandedNodes: Array.from(expandedNodes)
-    };
-    localStorage.setItem("poker_range_active_node", JSON.stringify(data));
-}
-// ===== ЗАГРУЗКА ТОЛЬКО НАВИГАЦИИ =====
-function loadActiveNode() {
-    const raw = localStorage.getItem("poker_range_active_node");
-    if (raw) {
-        try {
-            const d = JSON.parse(raw);
-            if (d.currentNodeId !== undefined) currentNodeId = d.currentNodeId;
-            if (d.workDisplayNodeId !== undefined) workDisplayNodeId = d.workDisplayNodeId;
-            if (d.expandedNodes) expandedNodes = new Set(d.expandedNodes);
-        } catch(e) {
-            console.warn('Ошибка загрузки навигации:', e);
-        }
-    }
-}
+
 // ===== ГСЧ (Генератор случайных чисел) =====
 const rngWidget = document.getElementById("rngNumber");
 if (rngWidget) {
@@ -2426,7 +4129,7 @@ if (rngWidget) {
         const activeTab = loadFromStorage() || 'constructor';
         
         // ===== ЗАГРУЖАЕМ НАВИГАЦИЮ =====
-        loadActiveNode();  // ← ДОБАВИТЬ!
+        loadFromStorage();  // ← ДОБАВИТЬ!
         
         // Восстанавливаем активную вкладку
         document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -2447,8 +4150,10 @@ if (rngWidget) {
         }
         
         refreshAll();
+		initComments();
     } else {
         console.warn('⏳ Ожидание загрузки color-manager.js...');
         setTimeout(tryRefresh, 200);
     }
+
 })();
