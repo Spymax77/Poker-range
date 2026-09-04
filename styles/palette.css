@@ -9,20 +9,7 @@
 	min-height: 150px;
 }
 
-.palette-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-}
 
-.palette-title {
-    font-size: 12px;
-    font-weight: 500;
-    color: #9aa7b9;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-}
 
 /* ============================================================
    ОБЩИЙ СТИЛЬ ДЛЯ ОБЕИХ КНОПОК
@@ -201,7 +188,7 @@
     width: 32px;
     height: 32px;
     border-radius: 4px;
-    border: 1px dashed #8a848a;
+    border: 2px dotted #64625A;
     background: transparent;
     color: #8a848a;
     font-size: 18px;
@@ -292,33 +279,9 @@
     color: white;
     border-color: #e55656;
 }
-.side-btn {
-    background: #2c3038;
-    border: none;
-    font-size: 18px;
-    font-weight: bold;
-    color: #a9afb5;
-    cursor: pointer;
-    width: 28px;
-    height: 28px;
-    border-radius: 30px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
 
-.side-btn:hover {
-    background: #3d424e;
-}
 
-.gradient-preview {
-    width: 38px;
-    height: 38px;
-    border-radius: 5px;
-    background: #2c2f36;
-    flex-shrink: 0;
-    cursor: help;
-}
+
 .multi-color-chip {
     width: 32px;
     height: 32px;
@@ -441,5 +404,4 @@
 @media (max-width: 900px) {
     .profile-row { gap: 6px; }
     .slider-thumb { width: 26px; height: 26px; font-size: 9px; }
-    .gradient-preview { width: 38px; height: 38px; }
 }

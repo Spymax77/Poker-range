@@ -246,7 +246,6 @@ function hexToHsl(hex) {
   resetBtn.addEventListener('click', resetToLastPreset);
 
 function openPicker(colorId, callback, anchorRect) {
-	console.log('🔥 openPicker вызван, callback:', callback);
     editColorId = colorId || null;
     editCallback = callback || null;
 
@@ -273,8 +272,8 @@ if (editColorId !== null) {
             // Если цвет не распарсился — оставляем как есть
         }
     } else {
-        // Если это ID — ищем цвет в getColors()
-        const color = getColors().find(c => c.id === editColorId);
+        // Если это ID — ищем цвет в getColorsForNode()
+        const color = getColorsForNode(App.state.currentNodeId).find(c => c.id === editColorId);
         if (color) {
             const hsl = hexToHsl(color.color);
             h = hsl.h;
@@ -353,26 +352,19 @@ document.addEventListener('click', function closeOnOutside(e) {
 
 okBtn.addEventListener('click', function() {
     const hex = hslToHex(h, s, l);
-    console.log('🔥 ОК нажат, hex:', hex);
-    console.log('🔥 editCallback:', editCallback);
-    console.log('🔥 editColorId:', editColorId);
 
     if (editColorId !== null && typeof editCallback === 'function') {
-        console.log('🔥 ВЫЗЫВАЮ editCallback');
         editCallback(hex);
         markUnsaved();
     } else {
-        console.log('🔥 editCallback НЕ вызван (режим создания)');
-        if (!currentNodeId) {
-            console.error('currentNodeId не определён');
+        if (!App.state.currentNodeId) {
+            console.error('App.state.currentNodeId не определён');
             closePicker();
             return;
         }
-        createSimpleColor(currentNodeId, null, hex);
-        renderPalette(true);
-        refreshAllProfiles();
+        createSimpleColor(App.state.currentNodeId, null, hex);
+        renderAllColors(App.state.currentNodeId, true);
         refreshAllGrids();
-        updateProfileButtonVisibility();
         markUnsaved();
     }
 

@@ -11,7 +11,8 @@ html, body {
     margin: 0;
     color: var(--text-primary);
     font-size: 14px;
-    height: auto;
+    height: 100%;
+    overflow: hidden;
      -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -24,6 +25,8 @@ html, body {
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 20px;
 }
 
 ::-webkit-scrollbar {
@@ -48,6 +51,18 @@ html, body {
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-height: 0;
+}
+
+/* Для работы и GTO overflow:hidden, в конструкторе — visible, чтобы не обрезать тултипы */
+#gtoPage.active-page {
+    overflow: hidden;
+}
+#workPage.active-page {
+    overflow-y: auto;
+}
+#constructorPage.active-page {
+    overflow: visible;
 }
 
 .three-columns {
@@ -64,21 +79,51 @@ html, body {
     width: 350px;
     min-width: 350px;
     max-width: 700px;
-    height: 100%;
     flex: 0 0 auto;  
-    overflow-x: visible;
-	border-right: 1px solid #454545;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    position: relative;
     
 }
 
 
 
+.tree-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 1px;
+    height: 100%;
+    cursor: col-resize;
+	background: #454545;
+    z-index: 10;
+    transition: background 0.15s ease;
+}
+
+.tree-resize-handle:hover,
+.tree-resize-handle.active {
+    width: 4px;
+}
+
+
+
 .profiles-panel {
-    flex: 1;
+    flex: 1 1 0;
     width: auto;
-    max-height: none;
+    min-height: 0;
     padding: 30px 10px;
     border-radius: var(--radius-lg);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ===== GTO: ПАНЕЛЬ ПРОФИЛЕЙ СКРЫТА =====
+   В разделе GTO цвета/мультицвета приходят из загруженного JSON
+   и используются только для закраски матрицы — редактировать их
+   через панель профилей нельзя, поэтому сама панель не выводится. */
+#gtoPage .profiles-panel {
+    display: none;
 }
 
 .work-single-panel {
@@ -113,13 +158,10 @@ html, body {
     cursor: pointer;
     flex-shrink: 0;
     box-sizing: border-box;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.hand-cell.has-parent-profile {
-    background: #3d3f46;
-    color: #888899;
-}
-/* Стили для работы */
+
 #workGrid .hand-cell {
     cursor: default;
 }
@@ -131,6 +173,75 @@ html, body {
     cursor: default !important;
 }
 
+/* ===== GTO: МАТРИЦА НЕДОСТУПНА ДЛЯ РЕДАКТИРОВАНИЯ ===== */
+#gtoGrid .hand-cell {
+    cursor: default;
+}
+
+/* Легкое затемнение ячейки при наведении (GTO), текст не затемняем —
+   у него z-index: 2, у затемняющего слоя z-index: 1, поэтому оно
+   перекрывает только фон/градиент ячейки. */
+#gtoGrid .hand-cell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0);
+    z-index: 1;
+    pointer-events: none;
+    transition: background-color 0.15s ease;
+}
+
+#gtoGrid .hand-cell:hover::after {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* ===== GTO: ЯЧЕЙКА, ЗАКРЕПЛЁННАЯ ДЛЯ ПОСТОЯННОЙ ДЕМОНСТРАЦИИ gtoCellPreview =====
+   Ставится по клику (см. toggleGtoCellPin в js/grid.js). Обводка поверх ::after
+   затемнения, чтобы выделение было видно и без наведения мышью. */
+#gtoGrid .hand-cell.gto-cell-pinned,
+#constructorGrid .hand-cell.gto-cell-pinned {
+    box-shadow: 0 0 0 2px #D4AF37, 0 2px 4px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+
+#gtoGrid .hand-cell.gto-cell-pinned::after,
+#constructorGrid .hand-cell.gto-cell-pinned::after {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* Тот же эффект для конструктора в режиме анализа. Отдельным правилом, потому что
+   базовое прозрачное #constructorPage.analysis-mode #constructorGrid .hand-cell::after
+   (ниже) специфичнее (2 id + 2 класса против 1 id + 2 классов) и иначе перебивает
+   затемнение — рамка оставалась, а затемнение снималось при отводе мыши. */
+#constructorPage.analysis-mode #constructorGrid .hand-cell.gto-cell-pinned::after {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* ===== КОНСТРУКТОР: РЕЖИМ АНАЛИЗА — ячейки ведут себя как в GTO (только просмотр) =====
+   В обычном режиме .hand-cell в конструкторе не имеет затемняющего ::after слоя
+   (он используется для превью закраски при рисовании). В режиме анализа рисование
+   отключено (см. handlePaintStart/handlePaintMove в paint.js), поэтому включаем
+   тот же затемняющий слой при наведении, что и у #gtoGrid. */
+#constructorPage.analysis-mode #constructorGrid .hand-cell {
+    cursor: default;
+}
+
+#constructorPage.analysis-mode #constructorGrid .hand-cell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0);
+    z-index: 1;
+    pointer-events: none;
+    transition: background-color 0.15s ease;
+}
+
+#constructorPage.analysis-mode #constructorGrid .hand-cell:hover::after {
+    background: rgba(0, 0, 0, 0.25);
+}
+
 
 
 /* Работа — как конструктор */
@@ -139,22 +250,7 @@ html, body {
     width: auto;
 }
 
-.stats-bar {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    width: 100%;
-    margin-bottom: 18px;
-    flex-wrap: wrap;
-    gap: 12px;
-}
 
-.stats-left {
-    display: flex;
-    gap: 16px;
-    align-items: baseline;
-    flex-wrap: wrap;
-}
 
 .rng-widget {
     background: var(--bg-button);
@@ -202,51 +298,16 @@ footer {
 .right-area {
     display: inline-block;
     vertical-align: top;
-    max-width: 100%;
+    min-width: 500px;
+    max-width: 1000px;
     padding-top: 14px;
     width: auto;
     box-sizing: border-box;
 }
 
-.cards-stats-layout {
-    display: flex;
-    gap: 24px;
-    align-items: flex-start;
-}
 
-.cards-column {
-    flex: 0 0 auto;
-}
 
-.stats-column {
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 320px;
-    max-width: 450px;
-    background: var(--bg-side);
-    padding: 16px;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-light);
-    max-height: 70vh;
-    overflow-y: auto;
-}
 
-.work-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.scale-select {
-    background: var(--bg-button);
-    border: 1px solid var(--border-light);
-    border-radius: 20px;
-    padding: 4px 12px;
-    color: var(--text-primary);
-    font-size: 13px;
-    cursor: pointer;
-}
 
 #workStatsFooter {
     display: flex;
@@ -258,71 +319,9 @@ footer {
     font-size: 13px;
 }
 
-.slot-group { display: flex; gap: 6px; }
-.slot-box { text-align: center; }
-.slot-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
-.slot-card {
-    width: 70px; height: 100px;
-    background: #1e2024;
-    border-radius: 8px;
-    border: 1px solid var(--border-light);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    font-weight: bold;
-    cursor: pointer;
-}
-.slot-card.empty { background: #1a1c22; color: var(--text-muted); font-size: 28px; }
-.slot-card:not(.empty):hover { border-color: var(--bg-active-blue); background: #2c2f3a; }
-.cards-grid {
-    display: grid;
-    grid-template-columns: repeat(4, auto);
-    gap: 2px;
-    margin-top: 20px;
-    width: fit-content;
-}
-.card-item {
-    width: 40px;
-    aspect-ratio: 2/3;
-    background: #1e2024;
-    border-radius: 4px;
-    text-align: center;
-    cursor: pointer;
-    border: 1px solid var(--border-light);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
-}
-.card-item:hover { transform: scale(0.97); border-color: var(--bg-active-blue); background: #2c2f3a; }
 
-.analysis-table {
-    width: auto;
-    min-width: 300px;
-    border-collapse: collapse;
-    margin-top: 12px;
-    font-size: 12px;
-    table-layout: auto;
-}
-.analysis-table th, .analysis-table td {
-    padding: 4px 8px;
-    text-align: left;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-.analysis-table th:first-child, .analysis-table td:first-child {
-    white-space: nowrap;
-    width: 1%;
-}
-.analysis-table th:nth-child(2), .analysis-table td:nth-child(2) {
-    width: 70px;
-    text-align: center;
-}
-.analysis-table th:nth-child(3), .analysis-table td:nth-child(3) {
-    width: 70px;
-    text-align: center;
-}
+
+
 .folder-btn {
     display: inline-block;
     padding: 5px;
@@ -369,12 +368,12 @@ footer {
 }
 
 .range-link.active {
-    color: #FFFFFF;       
-    
+    color: #dedede;       
+    font-weight: 700;
 }
 
 .range-link.active:hover {
-    color: #ffffff;          /* активная при наведении — остаётся белой */
+    color: #dedede;          /* активная при наведении — остаётся белой */
     background: #3d3d3d;
 }
 
@@ -384,13 +383,20 @@ footer {
     margin-bottom: 8px;
     text-align: left;
 }
-.work-level {
-	padding: 10px;
+
+#workRangeTitle .breadcrumb-arrow {
+    display: inline-block;
+    font-size: 12px;
+    margin: 0 6px;
+    color: #D4AF37;
+    vertical-align: middle;
+    line-height: 1;
+    position: relative;
+    top: -1px;
 }
+
 	
 	
 	
-.analysis-table th { color: var(--text-secondary); font-weight: 600; background: rgba(0,0,0,0.2); }
-.zero-percent { opacity: 0.5; color: var(--text-muted); }
-.badge { background: var(--bg-active-blue); border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: bold; display: inline-block; }
+
 

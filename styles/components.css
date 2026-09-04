@@ -152,6 +152,128 @@
         padding: 4px 10px;
     }
 }
+/* ===== ПАНЕЛЬ ФИЛЬТРОВ GTO ===== */
+.gto-filter-bar {
+    display: flex;
+    align-items: stretch;
+    background: #313338;
+    border-radius: 6px;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    min-height: 80px;
+    flex-wrap: nowrap;
+}
+
+.gto-filter-item {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 16px;
+    flex: 0 1 auto;             
+    min-width: 160px;         
+    max-width: 250px;          
+    justify-content: flex-start;
+}
+
+.gto-filter-item .gto-filter-label {
+    font-size: 12px;
+    color: #8a848a;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    display: block;
+    white-space: nowrap;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.gto-filter-item .gto-filter-options {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.gto-filter-divider {
+    width: 1px;
+    background: #4a4e5a;
+    flex-shrink: 0;
+    align-self: stretch;
+    margin: 12px 0;
+}
+
+.gto-filter-options .opt {
+    font-size: 16px;
+    font-weight: 400;
+    color: #dedede;
+    cursor: pointer;
+    transition: color 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+	
+}
+
+.gto-filter-options .opt:hover {
+    color: #e5eaf0;
+}
+
+.gto-filter-options .opt.active {
+    color: #D4AF37;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.gto-filter-options .opt.unavailable {
+    opacity: 0.3;
+}
+
+.gto-filter-options .opt.unavailable:hover {
+    color: #6b6f77;
+}
+
+/* ===== АДАПТИВ ===== */
+@media (max-width: 1024px) {
+    .gto-filter-item .gto-filter-options .opt {
+        font-size: 15px;
+    }
+    .gto-filter-item {
+        min-width: 80px;
+        padding: 8px 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .gto-filter-bar {
+        flex-wrap: wrap;
+        min-height: auto;
+    }
+    .gto-filter-item {
+        flex: 1 1 50%;
+        min-width: 60px;
+        max-width: none;
+        padding: 6px 12px;
+    }
+    .gto-filter-divider {
+        display: none;
+    }
+    .gto-filter-options .opt {
+        font-size: 14px;
+    }
+    .gto-filter-item .gto-filter-label {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .gto-filter-item {
+        flex: 1 1 100%;
+        min-width: 0;
+        padding: 4px 10px;
+    }
+    .gto-filter-options .opt {
+        font-size: 13px;
+    }
+}
 .tree-panel h3,
 .profiles-panel h3 {
     margin: 0 0 18px 0;
@@ -175,7 +297,7 @@
     cursor: pointer;
     transition: 0.1s;
     background: transparent;
-    font-size: 16px;
+    font-size: 15px;
     color: #dedede;
 }
 
@@ -235,11 +357,11 @@
 }
 
 
-#constructorTree {
-	min-height: calc(100vh - 143px);
-	max-height: 100%;
-	
-	
+#constructorTree, #gtoTree {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 
@@ -260,12 +382,20 @@
 }
 
 .tree-children {
-    border-left: 1px solid var(--border-light);
-    display: none;
+    display: grid;
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    border-left: 1px solid transparent;
+    transition: grid-template-rows 0.2s ease, border-left-color 0.2s ease;
+}
+
+.tree-children-inner {
+    min-height: 0;
 }
 
 .tree-children.open {
-    display: block;
+    grid-template-rows: 1fr;
+    border-left-color: var(--border-light);
 }
 /* Корневой уровень */
 .tree-item > span:first-child {
@@ -275,37 +405,38 @@
 /* Первый уровень вложенности */
 /*.tree-children .tree-item > span:first-child {
     margin-left: calc(18px + 20px);
-}/*
+}*/
 
 /* Второй уровень */
 /*.tree-children .tree-children .tree-item > span:first-child {
     margin-left: calc(18px + 40px);
-}/*
+}*/
 
 /* Третий уровень */
 /*.tree-children .tree-children .tree-children .tree-item > span:first-child {
     margin-left: calc(18px + 60px);
-}/*
-.add-node-btn,
-.add-profile-btn {
+}*/
+.add-node-btn {
     margin-top: 10px;
-    width: 100%;
-    background: transparent;
-    border: 1px dashed var(--bg-active-blue);
-    color: var(--text-secondary);
-    padding: 8px;
+    align-self: flex-start;
+    width: fit-content;
+    flex: 0 0 auto;
+    background: #464b56;
+    color: #dedede;
+    padding: 8px 20px;
     border-radius: 40px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 16px;
     transition: 0.2s;
     font-weight: 500;
+	margin: 10px auto 0 auto;
+	min-width: 200px;
+	border: 0;
 }
 
-.add-node-btn:hover,
-.add-profile-btn:hover {
-    background: rgba(47,128,237,0.1);
-    border-color: var(--bg-active-blue);
-    color: var(--text-primary);
+.add-node-btn:hover {
+    background: #555a68;
+
 }
 
 .button-bar {
@@ -348,25 +479,13 @@
     display: none;
 }
 
-.profiles-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    margin-top: 8px;
-}
 
-.info-hint {
-    font-size: 0.7rem;
-    margin-top: 18px;
-    text-align: center;
-    opacity: 0.7;
-}
 /* ========== ВСПЛЫВАЮЩЕЕ МЕНЮ ДЛЯ ДЕРЕВА ========== */
 .tree-actions-popup { position: relative;
     margin-right: 10px;
     opacity: 0;
     transition: opacity 0.1s ease;
+    min-height: 32px;
 }
 .tree-menu-btn {
     background: transparent;
@@ -429,16 +548,15 @@
 }
 /* ========== НАВИГАЦИОННЫЕ ПАНЕЛИ ========== */
 .tree-toolbar,
-.table-toolbar,
-.profiles-toolbar-placeholder {
+.table-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 4px;
     min-height: 45px;
-	padding-left: 20px;
 	margin: 0 10px;
 	border-block: 1px solid #454545;
+	flex-shrink: 0;
 }
 
 
@@ -446,13 +564,7 @@
     justify-content: flex-start;
 }
 
-.profiles-toolbar-placeholder {
-    background: transparent;
-    border: 1px dashed #3d3f46;
-    min-height: 40px;
-    margin-bottom: 10px;
-    opacity: 0.3;
-}
+
 
 /* Кнопки */
 .toolbar-btn {
@@ -491,6 +603,15 @@
     fill: #e5eaf0;
 }
 
+.toolbar-btn.active {
+    background: #3a3d45;
+}
+
+.toolbar-btn.active .icon,
+.toolbar-btn.active .plus-icon {
+    fill: #D4AF37;
+}
+
 .toolbar-btn .plus-icon {
     width: 14px;
     height: 14px;
@@ -504,14 +625,7 @@
     flex-shrink: 0;
 }
 
-.table-stats {
-    font-size: 12px;
-    font-weight: 600;
-    color: #aab0b8;
-    font-family: monospace;
-    padding: 0 8px;
-    white-space: nowrap;
-}
+
 /* ===== ХОВЕР ДЛЯ ТРЁХ ТОЧЕК ===== */
 .tree-menu-btn:hover {
     color: #e5eaf0;
@@ -789,17 +903,20 @@
 
 /* ===== НОВЫЙ БЛОК: ТАБЛИЦА + ПРОФИЛИ ===== */
 .table-profiles-wrapper {
-    flex: 0 1 auto;
+    flex: 1 1 0;
     display: flex;
     flex-direction: column;
     min-width: 0;
+    min-height: 0;
     padding: 0 15px;
+    overflow: visible;
 }
 
 .table-profiles-row {
     display: flex;
-    flex: 1;
+    flex: 1 1 0;
     min-width: 0;
+    min-height: 0;
 	 flex-wrap: nowrap;
 	 overflow: visible;
 	 gap: 30px;
@@ -826,6 +943,7 @@
     min-height: 45px;
 	border-block: 1px solid #454545;
 	margin: 0;
+	overflow: visible;
 }
 
 .range-title-wrapper {
@@ -855,6 +973,33 @@
 	overflow: visible;
 
 }
+/* ===== КНОПКИ РЕЖИМА (РЕДАКТОР / АНАЛИЗ) СЛЕВА ОТ МАТРИЦЫ (КОНСТРУКТОР) =====
+   .matrix-row — просто контекст позиционирования, не flex-ряд: единственный
+   элемент в потоке — .matrix-wrapper, поэтому матрица остаётся ровно там же,
+   где была раньше. Кнопки выведены из потока (position: absolute) и
+   "прицеплены" слева от матрицы, выровнены по её верхнему краю. Размер/стиль —
+   как у иконок-кнопок в tree-toolbar (.toolbar-btn). */
+.matrix-row {
+    position: relative;
+}
+
+.matrix-mode-toolbar {
+    position: absolute;
+    top: 0;
+    right: 100%;
+    margin-right: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    /* Явный z-index создаёт собственный стек-контекст для тулбара (и его
+       тултипов), чтобы он всегда рисовался поверх соседней .constructor-matrix-row
+       (матрицы), независимо от DOM-порядка и временных стек-контекстов,
+       которые может создавать матрица (например, во время CSS-анимации
+       .matrix-fade с opacity < 1). Без этого тултип кнопки при переключении
+       режима на мгновение "проваливался" под ячейку матрицы. */
+    z-index: 5;
+}
+
 /* Кнопки с подписями в тулбаре таблицы */
 .table-profiles-wrapper .toolbar-btn {
     display: flex;
@@ -892,6 +1037,7 @@
 .tree-collapse-wrapper {
     padding: 8px 0 4px 12px;
     text-align: left;
+    flex-shrink: 0;
 }
 
 .tree-collapse-link {
@@ -906,57 +1052,7 @@
 .tree-collapse-link:hover {
     color: #e5eaf0;
 }
-/* ===== МОДАЛЬНЫЕ ОКНА ===== */
-.modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: transparent;
-    z-index: 10000;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-}
 
-.modal-overlay.active {
-    display: flex;
-}
-
-.modal-box {
-    background: var(--bg-side);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-light);
-    padding: 24px;
-    max-width: 320px;
-    text-align: center;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-    pointer-events: auto;
-}
-
-.modal-box p {
-    margin-bottom: 24px;
-    color: var(--text-primary);
-    font-size: 14px;
-}
-
-.modal-actions {
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-}
-
-.modal-btn-yes {
-    background: var(--bg-active-blue) !important;
-    color: white !important;
-    border: none !important;
-}
-
-.modal-btn-no {
-    /* наследует .btn-oval */
-}
 /* ===== ВСПЛЫВАЮЩАЯ ПОДСКАЗКА (TOOLTIP) ===== */
 .cell-tooltip {
     position: absolute;
@@ -978,6 +1074,148 @@
 .cell-tooltip.visible {
     opacity: 1;
     transform: scale3d(1, 1, 1);
+}
+
+/* ===== GTO ACTION BAR (полоса долей действий по комбо, между легендой и превью) =====
+   Высота 15px, ширина 490px (= ширине gtoActionLegend), деление на цветные
+   сегменты через linear-gradient по тем же данным, что в gtoActionLegend. */
+.gto-action-bar {
+    width: 490px;
+    height: 15px;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #313338;
+}
+
+/* ===== GTO CELL PREVIEW (серый квадрат 215x180 слева + колонка блоков действий справа, итоговая ширина 490px = ширине gtoActionLegend) ===== */
+.gto-cell-preview {
+    position: relative;
+    width: 490px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    display: none;
+    align-items: flex-start;
+    gap: 3px;
+	margin-top: 20px;
+}
+
+.gto-cell-preview.active {
+    display: flex;
+}
+
+/* Серый квадратный блок слева — название руки по центру крупным шрифтом.
+   Ширина уменьшена на 30px (245 -> 215), освободившееся место автоматически
+   уходит в колонку длинных блоков действий (flex: 1 1 auto). */
+.gto-cell-preview__square {
+    position: relative;
+    width: 215px;
+    height: 150px;
+    flex-shrink: 0;
+    background: #3b3d42;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+	border-radius: 4px;
+}
+
+.gto-cell-preview__hand {
+    font-size: 90px;
+    color: #a9afb5;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
+}
+
+/* Количество комбо для конкретной руки (с учётом рекурсивной родительской
+   закраски), в правом нижнем углу квадрата */
+.gto-cell-preview__combos {
+    position: absolute;
+    right: 10px;
+    bottom: 8px;
+    font-size: 15px;
+    color: #a9afb5;
+    line-height: 1;
+    white-space: nowrap;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
+}
+
+/* Колонка прямоугольных блоков действий справа от квадрата.
+   Ширина заполняет остаток до 490px (490 - 215 - gap 3px). */
+.gto-cell-preview__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Один "длинный блок" действия: цвет действия (36x36) + отступ 2-3px +
+   блок названия/процента. Фон самого row прозрачный — серый цвет только
+   на вложенных блоках, поэтому между квадратом цвета и следующим блоком
+   виден зазор. */
+.gto-cell-preview__action-row {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    width: 100%;
+    background: transparent;
+    box-sizing: border-box;
+    gap: 3px;
+    overflow: hidden;
+	
+}
+
+/* Цвет действия — такой же, каким закрашена ячейка (рейз/колл/и т.д.) */
+.gto-cell-preview__action-color {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+	border-radius: 4px;
+}
+
+/* Блок с названием действия и процентом — серый, как квадрат слева.
+   Отделён от цветового квадрата зазором (gap на .gto-cell-preview__action-row). */
+.gto-cell-preview__action-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    background: #3b3d42;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 0 8px;
+    overflow: hidden;
+	border-radius: 4px;
+}
+
+/* Название действия */
+.gto-cell-preview__action-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 18px;
+    color: #ffffff;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
+}
+
+/* Процент действия */
+.gto-cell-preview__action-percent {
+    flex-shrink: 0;
+    font-size: 18px;
+    color: #ffffff;
+    text-align: right;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
 }
 
 /* Название руки */
@@ -1481,14 +1719,7 @@ body.dragging .tree-item.active .tree-actions-popup {
 .style-edit-mode .edit-dot {
     display: block;
 }
-.stats-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 6px;
-    width: 100%;
-    max-width: 530px;
-}
+
 .comments-toggle-btn:hover {
     background: #3a3d45;
 }
@@ -1571,7 +1802,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     border-radius: 6px;
     border: 1px solid #4a4e5a;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-    z-index: 1000;
+    z-index: 10000;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.12s ease, transform 0.18s ease;
@@ -1592,7 +1823,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     transform: translateX(-50%);
     border: 6px solid transparent;
     border-top-color: #4a4e5a;
-    z-index: 1000;
+    z-index: 10001;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -1600,15 +1831,26 @@ body.dragging .tree-item.active .tree-actions-popup {
 
 .toolbar-btn[data-tooltip]:hover::before {
     opacity: 1;
-	 z-index: 1001;
+}
+/* ===== ТУЛТИП ПЕРВОЙ КНОПКИ В ДЕРЕВЕ — не уходит за левый край ===== */
+.tree-toolbar .toolbar-btn:first-child[data-tooltip]::after {
+    left: 0;
+    transform: scale3d(0.3, 0.3, 1);
+    transform-origin: 0 0;
+}
+.tree-toolbar .toolbar-btn:first-child[data-tooltip]:hover::after {
+    transform: scale3d(1, 1, 1);
+}
+.tree-toolbar .toolbar-btn:first-child[data-tooltip]:hover::before {
+    left: 14px;
+    transform: translateX(0);
 }
 /* Fade-эффект при смене диапазона */
 .matrix-fade {
     animation: fadeEffect 0.45s ease;
 }
 /* ===== ТУЛТИПЫ ДЛЯ ИКОНОК ПОД МАТРИЦЕЙ ===== */
-#styleEditToggle[data-tooltip]::after,
-#workCommentsToggleBtn[data-tooltip]::after {
+.matrix-btn[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
     top: calc(100% + 8px);          /* ← снизу от иконки */
@@ -1631,8 +1873,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     transform-origin: 0 0;
 }
 
-#styleEditToggle[data-tooltip]:hover::after,
-#workCommentsToggleBtn[data-tooltip]:hover::after {
+.matrix-btn[data-tooltip]:hover::after {
     opacity: 1;
     transform: scale3d(1, 1, 1);
 }
@@ -1732,6 +1973,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     background: transparent !important;
     cursor: default;
     pointer-events: none;
+	border: 1px dashed #454545;
 
 }
 .cell-overlay {
@@ -1742,6 +1984,252 @@ body.dragging .tree-item.active .tree-actions-popup {
     background: var(--bg-page);
     pointer-events: none;
     z-index: 1;
+	border-radius: 4px 4px 0 0;
+}
+/* ===== СКРЫТИЕ ОВЕРЛЕЕВ ПОДДИАПАЗОНОВ (ПРОСМОТР) ===== */
+.matrix1-wrapper.hide-subrange-overlays .cell-overlay {
+    display: none;
+}
+/* ===== СКРЫТИЕ ОВЕРЛЕЕВ ПОДДИАПАЗОНОВ (КОНСТРУКТОР / GTO) ===== */
+.matrix-wrapper.hide-subrange-overlays .cell-overlay {
+    display: none;
+}
+
+/* ===== GTO: РЯД "МАТРИЦА + ЦВЕТНАЯ ЛЕГЕНДА ДЕЙСТВИЙ" =====
+   Легенда стоит справа от матрицы и повторяет разбивку по цветам из
+   статистики под матрицей (действия + Fold), но в виде равных цветных
+   подблоков, а не таблицы с цифрами. */
+.gto-matrix-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.gto-matrix-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.gto-legend-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+/* ===== КОНСТРУКТОР: РЕЖИМ АНАЛИЗА (реплицирует GTO-макет) ===== */
+.constructor-matrix-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.constructor-matrix-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* Скрыта по умолчанию (обычный режим редактирования) — показывается только
+   в режиме анализа через #constructorPage.analysis-mode ниже. */
+.constructor-legend-col {
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+/* Скрываем панель профилей в режиме анализа */
+#constructorPage.analysis-mode .profiles-panel {
+    display: none;
+}
+
+/* Показываем легенду в режиме анализа */
+#constructorPage.analysis-mode .constructor-legend-col {
+    display: flex;
+}
+
+.gto-action-legend {
+    width: 490px;
+    height: 80px;
+    flex: 0 0 auto;
+    display: flex;
+    gap: 3px;
+}
+
+.gto-action-legend-block {
+    flex: 1 1 0;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 4px;
+    position: relative;
+    box-sizing: border-box;
+    padding: 6px 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+}
+
+.gto-action-legend-block__name {
+    font-size: 22px;
+    color: #ffffff;
+    line-height: 1.1;
+    text-align: left;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: normal;
+    min-width: 0;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
+}
+
+.gto-action-legend-block__bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 4px;
+    min-width: 0;
+    min-height: 0;
+}
+
+.gto-action-legend-block__percent {
+    font-size: 22px;
+    color: #ffffff;
+    text-align: left;
+    align-self: end;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: normal;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
+	
+}
+
+.gto-action-legend-block__combos {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-self: end;
+    align-self: end;
+    text-align: center;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: normal;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+}
+
+.gto-action-legend-block__combos-number {
+    font-size: 18px;
+    color: #ffffff;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
+}
+
+.gto-action-legend-block__combos-label {
+    font-size: 15px;
+    color: #ffffff;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
+}
+
+.gto-action-legend-block--fold {
+    border: 1px solid #3d3f46;
+    box-sizing: border-box;
+}
+.gto-action-legend-block--fold .gto-action-legend-block__name,
+.gto-action-legend-block--fold .gto-action-legend-block__percent,
+.gto-action-legend-block--fold .gto-action-legend-block__combos-number,
+.gto-action-legend-block--fold .gto-action-legend-block__combos-label {
+    color: #a9afb5;
+}
+
+/* ===== СТИЛИ КНОПОК-ТОГГЛОВ (ПРОСМОТР) ===== */
+/* Общие стили для всех кнопок под матрицей */
+.matrix-btn {
+    position: absolute;
+    bottom: -32px;
+    background: transparent;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#styleEditToggle { left: 0px; }
+#workCommentsToggleBtn { left: 36px; }
+#workOverlayToggleBtn { left: 72px; }
+#constructorOverlayToggleBtn { left: 36px; }
+#gtoOverlayToggleBtn { left: 0px; }
+.comments-toggle-btn:hover,
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+.comments-toggle-btn:active,
+.icon-btn:active,
+.comments-toggle-btn.active,
+.icon-btn.active {
+    background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ===== КНОПКА ОВЕРЛЕЯ — ховер как в toolbar ===== */
+#workOverlayToggleBtn {
+    color: #8a848a;
+    transition: color 0.15s ease;
+}
+#workOverlayToggleBtn:hover {
+    color: #d0d0d8;
+    background: transparent !important;
+}
+#workOverlayToggleBtn:active {
+    transform: scale(0.92);
+}
+#workOverlayToggleBtn svg {
+    stroke: currentColor;
+    fill: none;
+}
+#constructorOverlayToggleBtn,
+#gtoOverlayToggleBtn {
+    color: #8a848a;
+    transition: color 0.15s ease;
+}
+#constructorOverlayToggleBtn:hover,
+#gtoOverlayToggleBtn:hover {
+    color: #d0d0d8;
+    background: transparent !important;
+}
+#constructorOverlayToggleBtn:active,
+#gtoOverlayToggleBtn:active {
+    transform: scale(0.92);
+}
+#constructorOverlayToggleBtn svg,
+#gtoOverlayToggleBtn svg {
+    stroke: currentColor;
+    fill: none;
+}
+/* ===== КНОПКА КОММЕНТАРИЕВ В КОНСТРУКТОРЕ ===== */
+#commentsToggleBtn {
+    color: #8a848a;
+    transition: color 0.15s ease;
+    left: 0px;
+}
+#commentsToggleBtn:hover {
+    color: #d0d0d8;
+    background: transparent !important;
+}
+#commentsToggleBtn:active {
+    transform: scale(0.92);
+}
+#commentsToggleBtn svg {
+    stroke: currentColor;
 }
 /* ===== ПОЛЕ ВВОДА В ОКНЕ ИМПОРТА ===== */
 .import-textarea {
@@ -1842,22 +2330,25 @@ body.dragging .tree-item.active .tree-actions-popup {
     animation: fadeEffect 0.45s ease;
 }
 
-@keyframes fadeEffect {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-}
-/* Fade-эффект для кнопок */
 .buttons-fade {
+
     animation: fadeEffect 0.45s ease;
 }
 
-@keyframes fadeEffect {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
+/* ===== ПОГАШЕННАЯ КНОПКА ТУЛБАРА ТАБЛИЦЫ =====
+   Используется для кнопки "Вставить" при пустом буфере обмена и для всех
+   кнопок редактирования диапазона в режиме анализа конструктора
+   (см. updateConstructorToolbarState в grid.js). pointer-events: none
+   гасит и клик, и :hover — поэтому кастомный тултип тоже не появляется. */
+.toolbar-btn.toolbar-btn-disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
 }
-/* Для неактивной кнопки "Вставить" — тултип не показываем */
-.toolbar-btn.paste-disabled[data-tooltip]:hover::after,
-.toolbar-btn.paste-disabled[data-tooltip]:hover::before {
+
+/* Для неактивной кнопки — тултип не показываем */
+.toolbar-btn.toolbar-btn-disabled[data-tooltip]:hover::after,
+.toolbar-btn.toolbar-btn-disabled[data-tooltip]:hover::before {
     display: none;
 }
 @media (max-width: 1250px) {
