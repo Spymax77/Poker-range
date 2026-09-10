@@ -1,18 +1,16 @@
 // ===== stats.js -- combos and color statistics =====
 App.stats = App.stats || {};
 
-App.stats.getCellAvailabilityPercent = function(nodeId, i, j, recursive = true, branch = null) {
-    const data = branch || App.state;
-    const nodes = data.nodes || [];
-    const node = nodes.find(item => item.id === nodeId) || getNode(nodeId);
+App.stats.getCellAvailabilityPercent = function(nodeId, i, j, recursive = true) {
+    const node = getNode(nodeId);
     if (!node || node.type !== 'subrange') return 100;
     if (node.parentId === null) return 0;
     const parentTableId = getTableId(node.parentId);
-    const parentMatrix = data.cellStorage[parentTableId];
+    const parentMatrix = App.state.cellStorage[parentTableId];
     if (!parentMatrix) return 0;
     const parentPid = parentMatrix[i][j];
     if (parentPid === null || parentPid === undefined) return 0;
-    const parentColors = data.colorsPerNode[parentTableId] || [];
+    const parentColors = App.state.colorsPerNode[parentTableId] || [];
     const parentColor = parentColors.find(color => color.id === parentPid);
     if (!parentColor) return 0;
     const selectedIndex = node.selectedComponentIndex !== undefined ? node.selectedComponentIndex : null;
@@ -33,19 +31,16 @@ App.stats.getCellAvailabilityPercent = function(nodeId, i, j, recursive = true, 
     }
     if (availability <= 0) return 0;
     if (recursive) {
-        const parentNode = nodes.find(item => item.id === node.parentId) || getNode(node.parentId);
-        if (parentNode && parentNode.type === 'subrange') {
-            availability *= App.stats.getCellAvailabilityPercent(node.parentId, i, j, true, data) / 100;
-        }
+        const parentNode = getNode(node.parentId);
+        if (parentNode && parentNode.type === 'subrange') availability *= App.stats.getCellAvailabilityPercent(node.parentId, i, j, true) / 100;
     }
     return availability;
 };
 
-App.stats.countTotalCombos = function(nodeId, branch = null) {
-    const data = branch || App.state;
-    const matrix = data.cellStorage[getTableId(nodeId)];
+App.stats.countTotalCombos = function(nodeId) {
+    const matrix = App.state.cellStorage[getTableId(nodeId)];
     if (!matrix) return 0;
-    const colors = data.colorsPerNode[getTableId(nodeId)] || [];
+    const colors = App.state.colorsPerNode[getTableId(nodeId)] || [];
     let total = 0;
     for (let i = 0; i < 13; i++) for (let j = 0; j < 13; j++) {
         const profileId = matrix[i][j];
@@ -57,7 +52,7 @@ App.stats.countTotalCombos = function(nodeId, branch = null) {
             const share = profile.components.reduce((sum, component) => sum + (component.share || 0), 0);
             combos *= share / 100;
         }
-        const availability = App.stats.getCellAvailabilityPercent(nodeId, i, j, true, data);
+        const availability = App.stats.getCellAvailabilityPercent(nodeId, i, j, true);
         total += combos * availability / 100;
     }
     return Math.round(total * 10) / 10;
@@ -107,13 +102,11 @@ App.stats.computeColorStats = function(nodeId, branch) {
 
     const colorStats = {};
     let foldCombos = 0;
-    let rangeCombos = 0;
     for (let i = 0; i < 13; i++) for (let j = 0; j < 13; j++) {
         const hand = rowsData[i][j];
         const handCombos = hand.includes('s') ? 4 : hand.includes('o') ? 12 : 6;
         const adjustedCombos = isSubrange ? availableCombos(handCombos, currentNode, i, j) : handCombos;
         if (adjustedCombos <= 0) continue;
-        rangeCombos += adjustedCombos;
         const pid = matrix[i][j];
         if (pid === null || pid === undefined) { foldCombos += adjustedCombos; continue; }
         const profile = colors.find(color => color.id === pid);
@@ -137,8 +130,6 @@ App.stats.computeColorStats = function(nodeId, branch) {
         if (previous < 100) foldCombos += adjustedCombos * ((100 - previous) / 100);
     }
     let totalCombosSum = Object.values(colorStats).reduce((sum, data) => sum + data.combos, 0);
-    totalCombosSum = Math.round(totalCombosSum * 10) / 10;
-    foldCombos = Math.round(foldCombos * 10) / 10;
     const getActionPriority = name => {
         const normalizedName = String(name || '').trim();
         if (/(?:^|\s)raise(?:\s|$)/i.test(normalizedName)) return 0;
@@ -150,17 +141,14 @@ App.stats.computeColorStats = function(nodeId, branch) {
         if (priorityDifference !== 0) return priorityDifference;
         return b[1].combos - a[1].combos;
     });
-    return { sorted, totalCombosSum, totalPercent: totalCombosSum / 1326 * 100, foldCombos, rangeCombos, foldPercent: foldCombos / 1326 * 100 };
+    return { sorted, totalCombosSum, totalPercent: totalCombosSum / 1326 * 100, foldCombos, foldPercent: foldCombos / 1326 * 100 };
 };
 
 App.stats.getRoundedRangePercentages = function(stats) {
-    const { sorted, foldCombos, totalCombosSum, rangeCombos } = stats;
+    const { sorted, foldCombos, totalCombosSum } = stats;
     const base = totalCombosSum + foldCombos;
-    // Для % of range используем комбинации, округлённые до двух знаков.
-    // Отображение количества комбинаций ниже по-прежнему остаётся с одним
-    // знаком после запятой.
-    const values = sorted.map(([, data]) => App.stats.roundCombosForPercent(data.combos));
-    if (foldCombos > 0) values.push(App.stats.roundCombosForPercent(foldCombos));
+    const values = sorted.map(([, data]) => data.combos);
+    if (foldCombos > 0) values.push(foldCombos);
     const rounded = values.map(value => Math.round((base ? value / base * 100 : 0) * 10) / 10);
     const sum = rounded.reduce((a, b) => a + b, 0);
     if (sum !== 100 && rounded.length) {
@@ -170,20 +158,20 @@ App.stats.getRoundedRangePercentages = function(stats) {
     return rounded;
 };
 
-// Округляем комбинации для вывода и переносим накопившуюся погрешность в Fold,
-// чтобы сумма строк совпадала с округлённым объёмом диапазона.
-App.stats.getDisplayedComboValues = function(stats) {
-    const { sorted, foldCombos, totalCombosSum, rangeCombos } = stats;
-    const values = sorted.map(([, data]) => Math.round(data.combos * 10) / 10);
-    const foldIndex = values.length;
-    values.push(Math.round(foldCombos * 10) / 10);
+App.stats.getRoundedComboValues = function(stats) {
+    const { sorted, foldCombos, totalCombosSum } = stats;
+    const percentages = App.stats.getRoundedRangePercentages(stats);
+    const target = Math.round((totalCombosSum + foldCombos) * 10) / 10;
+    const rounded = percentages.map(percent => Math.round(target * percent / 100 * 10) / 10);
+    const roundedSum = rounded.reduce((sum, value) => sum + value, 0);
+    const difference = Math.round((target - roundedSum) * 10) / 10;
 
-    const target = Math.round((rangeCombos ?? (totalCombosSum + foldCombos)) * 10) / 10;
-    const displayedSum = values.reduce((sum, value) => sum + value, 0);
-    const correction = Math.round((target - displayedSum) * 10) / 10;
+    if (difference !== 0 && rounded.length > 0) {
+        const foldIndex = rounded.length - 1;
+        rounded[foldIndex] = Math.round((rounded[foldIndex] + difference) * 10) / 10;
+    }
 
-    values[foldIndex] = Math.round((values[foldIndex] + correction) * 10) / 10;
-    return values;
+    return rounded;
 };
 
 App.stats.renderStatsTable = function(nodeId, branch, containerId) {
@@ -193,12 +181,12 @@ App.stats.renderStatsTable = function(nodeId, branch, containerId) {
     if (!stats) { element.innerHTML = '<div class="stats-empty">Нет данных</div>'; return; }
     const { sorted, totalCombosSum, totalPercent, foldCombos } = stats;
     const percentages = App.stats.getRoundedRangePercentages(stats);
-    const comboValues = App.stats.getDisplayedComboValues(stats);
+    const comboValues = App.stats.getRoundedComboValues(stats);
     let html = `<div class="stats-table stats-table--total"><div class="stats-row stats-row--total--prim"><div class="stats-cell stats-cell--empty"></div><div class="stats-cell stats-cell--percent--prim">${totalPercent.toFixed(1)}%</div><div class="stats-cell stats-cell--combos--prim">(${App.stats.formatCombos(totalCombosSum)}/1326)</div></div></div>`;
     html += '<div class="stats-table stats-table--details"><div class="stats-row stats-row--header"><div class="stats-cell stats-cell--header">Цвет</div><div class="stats-cell stats-cell--header">Действие</div><div class="stats-cell stats-cell--header">Combos</div><div class="stats-cell stats-cell--header">% of range</div><div class="stats-cell stats-cell--header">% of total</div></div>';
     sorted.forEach(([key, data], index) => { html += `<div class="stats-row"><div class="stats-cell stats-cell--color"><span class="stats-color" style="background-color: ${escapeHtml(data.color)};"></span></div><div class="stats-cell stats-cell--name">${escapeHtml(data.name)}</div><div class="stats-cell stats-cell--combos">${App.stats.formatCombos(comboValues[index])}</div><div class="stats-cell stats-cell--percent">${percentages[index].toFixed(1)}%</div><div class="stats-cell stats-cell--percent">${(data.combos / 1326 * 100).toFixed(1)}%</div></div>`; });
     const foldIndex = sorted.length;
-    html += `<div class="stats-row"><div class="stats-cell stats-cell--color"><span class="stats-color stats-color--fold"></span></div><div class="stats-cell stats-cell--name">Fold</div><div class="stats-cell stats-cell--combos">${App.stats.formatCombos(comboValues[foldIndex])}</div><div class="stats-cell stats-cell--percent">${(percentages[foldIndex] || 0).toFixed(1)}%</div><div class="stats-cell stats-cell--percent">${(foldCombos / 1326 * 100).toFixed(1)}%</div></div></div>`;
+    html += `<div class="stats-row"><div class="stats-cell stats-cell--color"><span class="stats-color stats-color--fold"></span></div><div class="stats-cell stats-cell--name">Fold</div><div class="stats-cell stats-cell--combos">${App.stats.formatCombos(comboValues[foldIndex] || 0)}</div><div class="stats-cell stats-cell--percent">${(percentages[foldIndex] || 0).toFixed(1)}%</div><div class="stats-cell stats-cell--percent">${(foldCombos / 1326 * 100).toFixed(1)}%</div></div></div>`;
     element.innerHTML = html;
 };
 
@@ -209,7 +197,7 @@ App.stats.renderActionLegend = function(nodeId, branch, containerId) {
     const stats = App.stats.computeColorStats(nodeId, branch);
     if (!stats) return;
     const { sorted, foldCombos } = stats;
-    const comboValues = App.stats.getDisplayedComboValues(stats);
+    const comboValues = App.stats.getRoundedComboValues(stats);
     const blocks = sorted.map(([, data]) => ({ color: data.color, name: data.name, combos: data.combos }));
     if (foldCombos > 0) blocks.push({ color: '#313338', name: 'Fold', combos: foldCombos, isFold: true });
     const percentages = App.stats.getRoundedRangePercentages(stats);
@@ -245,11 +233,4 @@ App.stats.renderActionBar = function(nodeId, branch, containerId) {
 App.stats.formatCombos = function(combos) {
     const rounded = Math.round(combos * 10) / 10;
     return rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(1);
-};
-
-// Для расчёта % of total используем промежуточное округление комбинаций
-// до двух знаков. Само количество комбинаций при выводе по-прежнему
-// форматируется через formatCombos() с одним знаком после запятой.
-App.stats.roundCombosForPercent = function(combos) {
-    return Math.round(combos * 100) / 100;
 };

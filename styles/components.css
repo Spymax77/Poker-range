@@ -1,12 +1,25 @@
 /* ===== ЛОГОТИП В ШАПКЕ ===== */
 
 .tabs {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 30px;
     padding: 3px;
 	margin-bottom: 5px;
     flex-wrap: wrap;
+}
+
+.tabs-toggle {
+    display: none;
+}
+
+.tabs-menu-toggle {
+    display: none;
+}
+
+.tab-buttons {
+    display: contents;
 }
 .toolbar-btn {
     color: #e5eaf0;
@@ -150,6 +163,130 @@
     .tab-btn {
         font-size: 12px;
         padding: 4px 10px;
+    }
+}
+
+/* ===== МОБИЛЬНОЕ МЕНЮ ВКЛАДОК ===== */
+@media (max-width: 530px) {
+    .tabs {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 20;
+        margin: 0;
+        padding: 10px 12px;
+        background: var(--bg-page);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, .28);
+        transform: translateY(calc(-100% - 8px));
+        visibility: hidden;
+        pointer-events: none;
+        transition: transform .22s ease, visibility .22s ease;
+    }
+
+    .tabs.tabs-open {
+        transform: translateY(0);
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    .tabs-toggle {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        z-index: 21;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid #3d3f46;
+        border-top: 0;
+        border-radius: 0 0 8px 8px;
+        background: #2d2f34;
+        color: #D4AF37;
+        cursor: pointer;
+        transform: translateX(-50%);
+        transition: background .2s ease;
+    }
+
+    .tabs-toggle:hover,
+    .tabs-toggle:focus-visible {
+        background: #3a3e48;
+        outline: none;
+    }
+
+    .tabs-toggle-icon {
+        width: 20px;
+        height: 20px;
+        transition: transform .22s ease;
+    }
+
+    .tabs-toggle[aria-expanded="true"] .tabs-toggle-icon {
+        transform: rotate(180deg);
+    }
+}
+
+/* ===== МОБИЛЬНОЕ МЕНЮ ВКЛАДОК ДО 850PX ===== */
+@media (max-width: 849px) {
+    .tabs-menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 36px;
+        padding: 6px;
+        border: 1px solid #3d3f46;
+        border-radius: 6px;
+        background: transparent;
+        color: #D4AF37;
+        cursor: pointer;
+        flex: 0 0 auto;
+    }
+
+    .tabs-menu-toggle:hover,
+    .tabs-menu-toggle:focus-visible {
+        background: rgba(255, 255, 255, .05);
+        outline: none;
+    }
+
+    .tabs-menu-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .tab-buttons {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 30;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        width: max-content;
+        min-width: 0;
+        padding: 6px;
+        border: 1px solid #3d3f46;
+        border-radius: 6px;
+        background: #2d2f34;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, .35);
+    }
+
+    .tabs.tabs-menu-open .tab-buttons {
+        display: flex;
+    }
+
+    .tabs.tabs-menu-open .tab-btn {
+        width: max-content;
+        min-width: 120px;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .tabs-menu-toggle[aria-expanded="true"] .tabs-menu-icon {
+        transform: rotate(90deg);
     }
 }
 /* ===== ПАНЕЛЬ ФИЛЬТРОВ GTO ===== */
@@ -1079,7 +1216,7 @@
 /* ===== GTO ACTION BAR (полоса долей действий по комбо, между легендой и превью) =====
    Высота 15px, ширина 490px (= ширине gtoActionLegend), деление на цветные
    сегменты через linear-gradient по тем же данным, что в gtoActionLegend. */
-.gto-action-bar {
+.stats-action-bar {
     width: 490px;
     height: 15px;
     flex: 0 0 auto;
@@ -1636,8 +1773,15 @@ body.dragging .tree-item.active .tree-actions-popup {
     position: relative;
     margin-top: 8px;
     width: 100%;
-    max-width: 530px;  /* чтобы совпадало с шириной матрицы */
+    max-width: 100%;
+    box-sizing: border-box;
    
+}
+
+/* Комментарии редактора не должны быть шире колонки с матрицей. */
+.constructor-matrix-col > .comments-wrapper {
+    width: 100%;
+    max-width: 100%;
 }
 
 .comments-toggle-btn {
@@ -1669,6 +1813,9 @@ body.dragging .tree-item.active .tree-actions-popup {
     align-items: center;
     justify-content: center;
     transition: 0.15s;
+}
+#styleEditToggle:active {
+    transform: scale(0.92);
 }
 
 #styleEditToggle:hover {
@@ -1934,6 +2081,59 @@ body.dragging .tree-item.active .tree-actions-popup {
     flex: 1;
 }
 
+.style-popup-row .style-reset-btn {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #8a848a;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+.style-popup-row .style-reset-btn svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+.style-popup-row .style-reset-btn:hover {
+    color: #D4AF37;
+    transform: scale(1.1);
+}
+
+/* Кастомный тултип для кнопки сброса (по образцу toolbar-btn) */
+.style-reset-btn[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) scale3d(0.3, 0.3, 1);
+    transform-origin: 50% 0%;
+    white-space: nowrap;
+    background: #2d2f34;
+    color: #e5eaf0;
+    font-size: 12px;
+    font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+    font-weight: 400;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #4a4e5a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s ease, transform 0.18s ease;
+}
+.style-reset-btn[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) scale3d(1, 1, 1);
+}
+
 
 
 .style-popup-actions {
@@ -2019,7 +2219,156 @@ body.dragging .tree-item.active .tree-actions-popup {
     flex: 0 0 auto;
 }
 
+/* ===== GTO: СТАТИСТИКА ПОД МАТРИЦЕЙ ===== */
+#gtoStatsContainer,
+#constructorStatsContainer,
+#workStatsContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-top: 6px;
+    font-size: 13px;
+    color: #a9afb5;
+    text-align: right;
+}
+
+/* В просмотре total-статистика находится в одной строке с rngNumber.
+   Сам контейнер не должен создавать отдельный flex-уровень. */
+#workStatsContainer {
+    display: contents;
+}
+
+.stats-table {
+    display: flex;
+    flex-direction: column;
+    min-width: 100%;
+}
+
+.stats-table--details {
+    overflow: hidden;
+	margin-top: 10px;
+    gap: 2px;
+}
+
+.stats-row {
+    display: grid;
+    grid-template-columns: 24px minmax(70px, auto) minmax(60px, auto) minmax(80px, auto) minmax(80px, auto);
+    align-items: center;
+}
+
+.stats-table--details .stats-row {
+    grid-template-columns: 40px minmax(80px, 1fr) repeat(3, minmax(75px, 1fr));
+    min-width: 0;
+	gap: 2px;
+}
+
+.stats-row--header {
+    color: #8a848a;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 8px rgba(0, 0, 0, 0.3);
+
+}
+
+.stats-row--total {
+    font-weight: 600;
+    grid-template-columns: 24px minmax(70px, auto) minmax(60px, auto) minmax(80px, auto) minmax(80px, auto);
+}
+
+.stats-row--total .stats-cell--percent {
+    grid-column: 2 / span 3;
+}
+
+.stats-row--total .stats-cell--combos {
+    grid-column: 5;
+}
+
+.stats-row--total--prim .stats-cell--percent--prim,
+.stats-row--total--prim .stats-cell--combos--prim {
+    width: max-content;
+    justify-self: end;
+}
+
+.stats-row--total--prim {
+    grid-template-columns: 24px minmax(0, 1fr) max-content max-content;
+}
+
+.stats-row--total--prim .stats-cell--percent--prim {
+    grid-column: 3;
+    padding-right: 5px;
+}
+
+.stats-row--total--prim .stats-cell--combos--prim {
+    grid-column: 4;
+}
+
+.stats-cell {
+    padding: 2px 8px 2px 0;
+    text-align: right;
+}
+
+.stats-cell--empty {
+    padding-right: 4px;
+}
+
+.stats-cell--header {
+    padding-bottom: 4px;
+	background: #313338;
+	border-radius: 2px;
+}
+
+.stats-cell--color {
+    padding-right: 4px;
+}
+
+.stats-cell--combos {
+    padding-right: 0;
+}
+
+.stats-table--details .stats-cell {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 24px;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+}
+
+.stats-table--details .stats-cell--color {
+    padding: 2px;
+}
+
+.stats-color {
+    display: inline-block;
+    width: 30px;
+    height: 18px;
+	border: 1px solid #3d3f46;
+    border-radius: 2px;
+}
+
+.stats-color--fold {
+    background: #313338;
+}
+
+.stats-empty {
+    color: var(--text-muted);
+}
+.stats-cell--name,
+.stats-cell--color,
+.stats-cell--combos,
+.stats-cell--percent {
+	background: #3b3d42;
+	border-radius: 2px;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
+}	
+	
 /* ===== КОНСТРУКТОР: РЕЖИМ АНАЛИЗА (реплицирует GTO-макет) ===== */
+
 .constructor-matrix-row {
     display: flex;
     align-items: flex-start;
@@ -2052,7 +2401,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     display: flex;
 }
 
-.gto-action-legend {
+.stats-action-legend {
     width: 490px;
     height: 80px;
     flex: 0 0 auto;
@@ -2060,7 +2409,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     gap: 3px;
 }
 
-.gto-action-legend-block {
+.stats-action-legend-block {
     flex: 1 1 0;
     height: 100%;
     min-width: 0;
@@ -2075,7 +2424,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     overflow: hidden;
 }
 
-.gto-action-legend-block__name {
+.stats-action-legend-block__name {
     font-size: 22px;
     color: #ffffff;
     line-height: 1.1;
@@ -2087,7 +2436,7 @@ body.dragging .tree-item.active .tree-actions-popup {
 	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
 }
 
-.gto-action-legend-block__bottom {
+.stats-action-legend-block__bottom {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: end;
@@ -2096,7 +2445,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     min-height: 0;
 }
 
-.gto-action-legend-block__percent {
+.stats-action-legend-block__percent {
     font-size: 22px;
     color: #ffffff;
     text-align: left;
@@ -2111,7 +2460,7 @@ body.dragging .tree-item.active .tree-actions-popup {
 	
 }
 
-.gto-action-legend-block__combos {
+.stats-action-legend-block__combos {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2126,26 +2475,26 @@ body.dragging .tree-item.active .tree-actions-popup {
     max-width: 100%;
 }
 
-.gto-action-legend-block__combos-number {
+.stats-action-legend-block__combos-number {
     font-size: 18px;
     color: #ffffff;
 	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
 }
 
-.gto-action-legend-block__combos-label {
+.stats-action-legend-block__combos-label {
     font-size: 15px;
     color: #ffffff;
 	text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3);
 }
 
-.gto-action-legend-block--fold {
+.stats-action-legend-block--fold {
     border: 1px solid #3d3f46;
     box-sizing: border-box;
 }
-.gto-action-legend-block--fold .gto-action-legend-block__name,
-.gto-action-legend-block--fold .gto-action-legend-block__percent,
-.gto-action-legend-block--fold .gto-action-legend-block__combos-number,
-.gto-action-legend-block--fold .gto-action-legend-block__combos-label {
+.stats-action-legend-block--fold .stats-action-legend-block__name,
+.stats-action-legend-block--fold .stats-action-legend-block__percent,
+.stats-action-legend-block--fold .stats-action-legend-block__combos-number,
+.stats-action-legend-block--fold .stats-action-legend-block__combos-label {
     color: #a9afb5;
 }
 
@@ -2166,19 +2515,16 @@ body.dragging .tree-item.active .tree-actions-popup {
 }
 #styleEditToggle { left: 0px; }
 #workCommentsToggleBtn { left: 36px; }
-#workOverlayToggleBtn { left: 72px; }
+#workStatsToggleBtn { left: 72px; }
+#workOverlayToggleBtn { left: 108px; }
 #constructorOverlayToggleBtn { left: 36px; }
 #gtoOverlayToggleBtn { left: 0px; }
+
 .comments-toggle-btn:hover,
 .icon-btn:hover {
     background: rgba(255, 255, 255, 0.08) !important;
 }
-.comments-toggle-btn:active,
-.icon-btn:active,
-.comments-toggle-btn.active,
-.icon-btn.active {
-    background: rgba(255, 255, 255, 0.12) !important;
-}
+
 
 /* ===== КНОПКА ОВЕРЛЕЯ — ховер как в toolbar ===== */
 #workOverlayToggleBtn {
@@ -2227,9 +2573,50 @@ body.dragging .tree-item.active .tree-actions-popup {
 }
 #commentsToggleBtn:active {
     transform: scale(0.92);
+
+}
+#commentsToggleBtn.active {
+	color: #D4AF37;
 }
 #commentsToggleBtn svg {
     stroke: currentColor;
+    fill: none;
+}
+#workCommentsToggleBtn svg {
+    stroke: currentColor;
+    fill: none;
+}
+#workCommentsToggleBtn {
+    color: #8a848a;
+    transition: color 0.15s ease;
+}
+#workCommentsToggleBtn:hover {
+    color: #d0d0d8;
+    background: transparent !important;
+}
+#workCommentsToggleBtn:active {
+    transform: scale(0.92);
+}
+#workCommentsToggleBtn.active {
+    color: #D4AF37;
+}
+#workStatsToggleBtn {
+    color: #8a848a;
+    transition: color 0.15s ease;
+}
+#workStatsToggleBtn:hover {
+    color: #d0d0d8;
+    background: transparent !important;
+}
+#workStatsToggleBtn:active {
+    transform: scale(0.92);
+}
+#workStatsToggleBtn.active {
+    color: #D4AF37;
+}
+#workStatsToggleBtn svg {
+    stroke: currentColor;
+    fill: none;
 }
 /* ===== ПОЛЕ ВВОДА В ОКНЕ ИМПОРТА ===== */
 .import-textarea {

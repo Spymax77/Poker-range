@@ -273,7 +273,7 @@ if (editColorId !== null) {
         }
     } else {
         // Если это ID — ищем цвет в getColorsForNode()
-        const color = getColorsForNode(App.state.currentNodeId).find(c => c.id === editColorId);
+        const color = App.colors.getColorsForNode(App.state.currentNodeId).find(c => c.id === editColorId);
         if (color) {
             const hsl = hexToHsl(color.color);
             h = hsl.h;
@@ -362,9 +362,9 @@ okBtn.addEventListener('click', function() {
             closePicker();
             return;
         }
-        createSimpleColor(App.state.currentNodeId, null, hex);
-        renderAllColors(App.state.currentNodeId, true);
-        refreshAllGrids();
+        App.colors.createSimpleColor(App.state.currentNodeId, null, hex);
+        App.colors.renderAllColors(App.state.currentNodeId, true);
+        App.refresh.allGrids();
         markUnsaved();
     }
 
@@ -419,7 +419,8 @@ okBtn.addEventListener('click', function() {
   updateUI(true);
   closePicker();
 
-window.openColorPicker = function(colorId, callback, anchorRect) {
+App.ui = App.ui || {};
+App.ui.openColorPicker = function(colorId, callback, anchorRect) {
     setTimeout(function() {
         openPicker(colorId, callback, anchorRect);
     }, 100);

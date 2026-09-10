@@ -1,6 +1,7 @@
 // ===== clipboard.js -- extracted from all.js (copy/paste/duplicate range) =====
 // ===== ДУБЛИРОВАНИЕ ДИАПАЗОНА =====
-function duplicateRange(nodeId) {
+App.clipboard = App.clipboard || {};
+App.clipboard.duplicateRange = function(nodeId) {
     const original = getNode(nodeId);
     if (!original) return;
 
@@ -8,31 +9,31 @@ function duplicateRange(nodeId) {
     if (App.state.hasUnsavedChanges) {
         const node = getNode(App.state.currentNodeId);
         const message = node
-            ? `Диапазон <span style="color: #D4AF37; font-weight: 600;">${escapeHtml(node.name)}</span> был отредактирован. Сохранить изменения?`
+            ? `Диапазон «${node.name}» был отредактирован. Сохранить изменения?`
             : 'Сохранить изменения?';
 
-        showSaveConfirmModal(message, function() {
+        App.modals.showSaveConfirmModal(message, function() {
             // ДА — сохраняем
             persistAll();
             clearUnsaved();
-            createCopyAndFinalize(original);
-        }, function() {
+            App.clipboard.createCopyAndFinalize(original);
+        }, async function() {
             // НЕТ — откатываем
-            loadFromStorage();
-            refreshAll();
-            updateCurrentDisplay();
+            await loadFromStorage();
+            App.refresh.all();
+            App.grid.updateCurrentDisplay();
             clearUnsaved();
-            createCopyAndFinalize(original);
+            App.clipboard.createCopyAndFinalize(original);
         });
         return;
     }
 
     // ===== 2. ЕСЛИ ИЗМЕНЕНИЙ НЕТ — СОЗДАЁМ КОПИЮ =====
-    createCopyAndFinalize(original);
+    App.clipboard.createCopyAndFinalize(original);
 }
 
 // ===== СОЗДАНИЕ КОПИИ ДИАПАЗОНА =====
-function createCopyAndFinalize(original) {
+App.clipboard.createCopyAndFinalize = function(original) {
     // ===== 1. Генерируем уникальное имя =====
     const parent = getNode(original.parentId);
     let siblings = [];
@@ -71,11 +72,11 @@ function createCopyAndFinalize(original) {
 
     // 3.1 Копируем матрицу
     const originalTable = App.state.cellStorage[sourceId];
-    ensureTable(newId);
+    App.grid.ensureTable(newId);
     const newTable = App.state.cellStorage[targetId];
 
     // 3.2 Копируем все цвета (и простые, и мульти) с созданием colorMap
-    const sourceColors = getColorsForNode(original.id);
+    const sourceColors = App.colors.getColorsForNode(original.id);
     const targetColors = [];
     const colorMap = {};
 
@@ -114,7 +115,7 @@ function createCopyAndFinalize(original) {
     App.state.colorsPerNode[targetId] = targetColors;
 
     // 3.4 Копируем активный элемент
-    const activeId = getActiveForNode(original.id);
+    const activeId = App.colors.getActiveForNode(original.id);
     if (activeId && colorMap[activeId]) {
         App.state.activePerNode[targetId] = colorMap[activeId];
     }
@@ -135,9 +136,9 @@ function createCopyAndFinalize(original) {
 
     // ===== 4. Сохраняем и активируем =====
     persistAll();
-    refreshAll();
-    selectNode(newId);
-    updateCurrentDisplay();
+    App.refresh.all();
+    App.navigation.selectNode(newId);
+    App.grid.updateCurrentDisplay();
 
     const newNodeFinal = getNode(newId);
     if (newNodeFinal) {
@@ -145,15 +146,15 @@ function createCopyAndFinalize(original) {
     }
 }
 // ===== КОПИРОВАНИЕ ДИАПАЗОНА В БУФЕР =====
-function copyRange(nodeId) {
+App.clipboard.copyRange = function(nodeId) {
     const node = getNode(nodeId);
     if (!node) {
-        showFloatingModal('Диапазон не найден');
+        App.modals.showFloatingModal('Диапазон не найден');
         return;
     }
 
     if (node.type !== 'range' && node.type !== 'subrange') {
-        showFloatingModal('Можно копировать только диапазоны');
+        App.modals.showFloatingModal('Можно копировать только диапазоны');
         return;
     }
 
@@ -185,25 +186,25 @@ function copyRange(nodeId) {
     
     
     // Обновляем меню (активируем кнопку "Вставить")
-    updatePasteButtonState();
-	refreshAll();
+    App.clipboard.updatePasteButtonState();
+	App.refresh.all();
 }
 
 // ===== ВСТАВКА ДИАПАЗОНА ИЗ БУФЕРА =====
-function pasteRange(nodeId) {
+App.clipboard.pasteRange = function(nodeId) {
     if (!App.state.clipboardRangeData) {
-        showFloatingModal('Нет скопированного диапазона');
+        App.modals.showFloatingModal('Нет скопированного диапазона');
         return;
     }
 
     const targetNode = getNode(nodeId);
     if (!targetNode) {
-        showFloatingModal('Целевой диапазон не найден');
+        App.modals.showFloatingModal('Целевой диапазон не найден');
         return;
     }
 
     if (targetNode.type !== 'range' && targetNode.type !== 'subrange') {
-        showFloatingModal('Вставлять можно только в диапазоны');
+        App.modals.showFloatingModal('Вставлять можно только в диапазоны');
         return;
     }
 
@@ -226,11 +227,11 @@ function pasteRange(nodeId) {
 
     // Если диапазон не пустой — показываем подтверждение
     if (!isTargetEmpty) {
-        showSaveConfirmModal(
-            `Диапазон «${escapeHtml(targetNode.name)}» не пустой. Вставить новые данные?`,
+        App.modals.showSaveConfirmModal(
+            `Диапазон «${targetNode.name}» не пустой. Вставить новые данные?`,
             function() {
                 // ДА — выполняем вставку
-                executePaste(nodeId);
+                App.clipboard.executePaste(nodeId);
             },
             function() {
                 // НЕТ — ничего не делаем
@@ -240,11 +241,11 @@ function pasteRange(nodeId) {
     }
 
     // Если пустой — сразу вставляем
-    executePaste(nodeId);
+    App.clipboard.executePaste(nodeId);
 }
 
 // ===== ВЫПОЛНЕНИЕ ВСТАВКИ =====
-function executePaste(nodeId) {
+App.clipboard.executePaste = function(nodeId) {
     if (!App.state.clipboardRangeData) return;
 
     const targetTableId = getTableId(nodeId);
@@ -290,7 +291,7 @@ function executePaste(nodeId) {
     App.state.colorsPerNode[targetTableId] = newColors;
 
     // 4. Вставляем матрицу с ОБНОВЛЕННЫМИ ID (через colorMap)
-    ensureTable(nodeId);
+    App.grid.ensureTable(nodeId);
     const targetMatrix = App.state.cellStorage[targetTableId];
     
     if (App.state.clipboardRangeData.matrix) {
@@ -322,27 +323,27 @@ function executePaste(nodeId) {
     
     
     // 👇 ДЕЛАЕМ ДИАПАЗОН АКТИВНЫМ
-    selectNode(nodeId);
+    App.navigation.selectNode(nodeId);
     
     // 7. Обновляем интерфейс
-    refreshAll();
-    updateCurrentDisplay();
+    App.refresh.all();
+    App.grid.updateCurrentDisplay();
     markUnsaved();
 
     const targetName = getNode(nodeId)?.name || 'диапазон';
      App.state.clipboardRangeData = null;
-     updatePasteButtonState();
+     App.clipboard.updatePasteButtonState();
 }
 
 // ===== ПРОВЕРКА, ЕСТЬ ЛИ ДАННЫЕ В БУФЕРЕ =====
-function hasClipboardData() {
+App.clipboard.hasClipboardData = function() {
     return App.state.clipboardRangeData !== null;
 }
 // ===== ОБНОВЛЕНИЕ СОСТОЯНИЯ КНОПКИ "ВСТАВИТЬ" =====
 // Гашение вынесено в класс .toolbar-btn-disabled (styles/components.css), тем же
 // классом гасятся остальные кнопки редактирования в режиме анализа конструктора
 // (см. updateConstructorToolbarState в grid.js).
-function updatePasteButtonState() {
+App.clipboard.updatePasteButtonState = function() {
     const pasteBtn = document.getElementById('tablePasteBtn');
     if (!pasteBtn) return;
 
@@ -355,8 +356,7 @@ function updatePasteButtonState() {
         return;
     }
 
-    const hasData = hasClipboardData();
+    const hasData = App.clipboard.hasClipboardData();
     pasteBtn.classList.toggle('toolbar-btn-disabled', !hasData);
     pasteBtn.title = hasData ? 'Вставить диапазон' : 'Сначала скопируйте диапазон';
 }
-

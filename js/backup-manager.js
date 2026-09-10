@@ -4,8 +4,8 @@
     let backupContainer = null;
 
     function createBackupButtons() {
-        const tabs = document.querySelector('.tabs');
-        if (!tabs) return;
+        const toolbar = document.querySelector('#constructorPage .table-toolbar');
+        if (!toolbar) return;
 
         if (backupContainer) {
             backupContainer.remove();
@@ -40,7 +40,7 @@
             </button>
         `;
 
-        tabs.appendChild(container);
+        toolbar.appendChild(container);
         backupContainer = container;
 
         document.getElementById('exportTreeBtn').addEventListener('click', exportTree);
@@ -52,7 +52,7 @@
         const rootNodes = App.state.nodes.filter(n => n.parentId === null);
         
         if (rootNodes.length === 0) {
-            showFloatingModal('Нет данных для экспорта');
+            App.modals.showFloatingModal('Нет данных для экспорта');
             return;
         }
 
@@ -69,7 +69,7 @@
                 const tableId = getTableId(node.id);
                 const colors = App.state.colorsPerNode[tableId] || [];
                 
-                // ===== ЭКСПОРТ ЦВЕТОВ =====
+                // ===== ЭКСПОРТ ЦВЕТОВ (ОПТИМИЗИРОВАННЫЙ) =====
                 if (colors.length > 0) {
                     const simpleColors = colors.filter(c => c.type === 'simple' || (!c.type && c.color));
                     const multiColors = colors.filter(c => c.type === 'multi' || (c.components && c.components.length > 0));
@@ -85,35 +85,36 @@
                     }
                     
                     if (multiColors.length > 0) {
-                        colorsData.multi = multiColors.map(c => ({
-                            id: c.id,
-                            name: c.name || 'Смесь',
-                            components: c.components.map(comp => ({
+                        colorsData.multi = multiColors.map(c => {
+                            const components = c.components.map(comp => ({
                                 colorId: comp.colorId,
                                 share: comp.share
-                            })),
-                            boundaries: c.boundaries || []
-                        }));
+                            }));
+                            
+                            // Оптимизация: не сохраняем name если он "Смесь" (дефолт)
+                            // Оптимизация: не сохраняем boundaries, т.к. они вычисляются из share
+                            const result = {
+                                id: c.id,
+                                components: components
+                            };
+                            
+                            // Сохраняем name только если он отличается от "Смесь"
+                            if (c.name && c.name !== 'Смесь') {
+                                result.name = c.name;
+                            }
+                            
+                            return result;
+                        });
                     }
                     
                     result.colors = colorsData;
                 }
                 
-                // ===== ЭКСПОРТ МАТРИЦЫ (ЗАПОЛНЕННЫЕ ЯЧЕЙКИ) =====
+                // ===== ЭКСПОРТ МАТРИЦЫ (ОПТИМИЗИРОВАННЫЙ - МАССИВ 13x13) =====
                 const matrix = App.state.cellStorage[tableId];
                 if (matrix) {
-                    const cells = {};
-                    for (let i = 0; i < 13; i++) {
-                        for (let j = 0; j < 13; j++) {
-                            if (matrix[i][j] !== null) {
-                                const key = i + ',' + j;
-                                cells[key] = matrix[i][j];
-                            }
-                        }
-                    }
-                    if (Object.keys(cells).length > 0) {
-                        result.cells = cells;
-                    }
+                    // Сохраняем матрицу как массив 13×13 (компактнее чем объект с ключами)
+                    result.cells = matrix;
                 }
             }
             
@@ -131,7 +132,8 @@
         
         const exportData = rootNodes.map(node => serializeNode(node));
         
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        // Экспорт БЕЗ форматирования (компактный JSON)
+        const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -198,7 +200,7 @@
                     const data = JSON.parse(ev.target.result);
                     
                     if (!isValidTreeStructure(data)) {
-                        showFloatingModal('Неверный формат файла. Импорт отменён.');
+                        App.modals.showFloatingModal('Неверный формат файла. Импорт отменён.');
                         return;
                     }
 
@@ -228,7 +230,7 @@
                         
                         if (type === 'range' || type === 'subrange') {
                             // 1. СОЗДАЁМ ТАБЛИЦУ
-                            ensureTable(newId);
+                            App.grid.ensureTable(newId);
                             const tableId = getTableId(newId);
                             
                             // 2. ВОССТАНАВЛИВАЕМ ЦВЕТА
@@ -265,12 +267,23 @@
                                         App.state.colorsPerNode[tableId].some(c => c.id === comp.colorId && c.type === 'simple')
                                     );
                                     
+                                    // Восстанавливаем boundaries из share при импорте (если не указаны)
+                                    let boundaries = mc.boundaries;
+                                    if (!boundaries || boundaries.length === 0) {
+                                        boundaries = [];
+                                        let sum = 0;
+                                        for (const comp of components) {
+                                            sum += comp.share;
+                                            boundaries.push(sum);
+                                        }
+                                    }
+                                    
                                     App.state.colorsPerNode[tableId].push({
                                         id: colorId,
                                         name: mc.name || 'Смесь',
                                         type: 'multi',
                                         components: components,
-                                        boundaries: mc.boundaries || []
+                                        boundaries: boundaries
                                     });
                                 }
                                 
@@ -287,16 +300,31 @@
                                 }
                             }
                             
-                            // ===== 3. ВОССТАНАВЛИВАЕМ ЗАПОЛНЕННЫЕ ЯЧЕЙКИ =====
+                            // ===== 3. ВОССТАНАВЛИВАЕМ ЗАПОЛНЕННЫЕ ЯЧЕЙКИ (С ПОДДЕРЖКОЙ ОБОИХ ФОРМАТОВ) =====
                             if (importedNode.cells) {
                                 const currentTableId = getTableId(newId);
                                 const currentMatrix = App.state.cellStorage[currentTableId];
                                 if (currentMatrix) {
-                                    for (const [key, colorId] of Object.entries(importedNode.cells)) {
-                                        const [row, col] = key.split(',').map(Number);
-                                        // Проверяем, что такой цвет существует в текущей таблице
-                                        if (App.state.colorsPerNode[currentTableId].some(c => c.id === colorId)) {
-                                            currentMatrix[row][col] = colorId;
+                                    if (Array.isArray(importedNode.cells)) {
+                                        // НОВЫЙ формат - массив 13×13
+                                        for (let i = 0; i < 13; i++) {
+                                            for (let j = 0; j < 13; j++) {
+                                                if (importedNode.cells[i] && importedNode.cells[i][j] !== null && importedNode.cells[i][j] !== undefined) {
+                                                    const colorId = importedNode.cells[i][j];
+                                                    if (App.state.colorsPerNode[currentTableId].some(c => c.id === colorId)) {
+                                                        currentMatrix[i][j] = colorId;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // СТАРЫЙ формат - объект {"0,0": 385, ...}
+                                        for (const [key, colorId] of Object.entries(importedNode.cells)) {
+                                            const [row, col] = key.split(',').map(Number);
+                                            // Проверяем, что такой цвет существует в текущей таблице
+                                            if (App.state.colorsPerNode[currentTableId].some(c => c.id === colorId)) {
+                                                currentMatrix[row][col] = colorId;
+                                            }
                                         }
                                     }
                                 }
@@ -317,13 +345,13 @@
                     }
                     
                     persistAll();
-                    refreshAll();
+                    App.refresh.all();
                     
                     const importedCount = App.state.nodes.length - oldNodesCount;
-                    showFloatingModal(`✅ Импортировано ${importedCount} узлов с цветами и матрицей`);
+                    App.modals.showFloatingModal(`✅ Импортировано ${importedCount} узлов с цветами и матрицей`);
                     
                 } catch(err) {
-                    showFloatingModal('❌ Ошибка импорта: ' + err.message);
+                    App.modals.showFloatingModal('❌ Ошибка импорта: ' + err.message);
                     console.error(err);
                 }
             };
@@ -363,15 +391,26 @@
                 }
 
                 if (multiColors.length > 0) {
-                    colorsData.multi = multiColors.map(c => ({
-                        id: c.id,
-                        name: c.name || 'Смесь',
-                        components: c.components.map(comp => ({
+                    colorsData.multi = multiColors.map(c => {
+                        const components = c.components.map(comp => ({
                             colorId: comp.colorId,
                             share: comp.share
-                        })),
-                        boundaries: c.boundaries || []
-                    }));
+                        }));
+                        
+                        // Оптимизация: не сохраняем name если он "Смесь" (дефолт)
+                        // Оптимизация: не сохраняем boundaries, т.к. они вычисляются из share
+                        const result = {
+                            id: c.id,
+                            components: components
+                        };
+                        
+                        // Сохраняем name только если он отличается от "Смесь"
+                        if (c.name && c.name !== 'Смесь') {
+                            result.name = c.name;
+                        }
+                        
+                        return result;
+                    });
                 }
 
                 result.colors = colorsData;
@@ -379,17 +418,8 @@
 
             const matrix = App.gto.cellStorage[tableId];
             if (matrix) {
-                const cells = {};
-                for (let i = 0; i < 13; i++) {
-                    for (let j = 0; j < 13; j++) {
-                        if (matrix[i][j] !== null) {
-                            cells[i + ',' + j] = matrix[i][j];
-                        }
-                    }
-                }
-                if (Object.keys(cells).length > 0) {
-                    result.cells = cells;
-                }
+                // Сохраняем матрицу как массив 13×13 (компактнее чем объект с ключами)
+                result.cells = matrix;
             }
         }
 
@@ -468,12 +498,23 @@
                         App.editor.colorsPerNode[tableId].some(c => c.id === comp.colorId && c.type === 'simple')
                     );
 
+                    // Восстанавливаем boundaries из share при импорте (если не указаны)
+                    let boundaries = mc.boundaries;
+                    if (!boundaries || boundaries.length === 0) {
+                        boundaries = [];
+                        let sum = 0;
+                        for (const comp of components) {
+                            sum += comp.share;
+                            boundaries.push(sum);
+                        }
+                    }
+
                     App.editor.colorsPerNode[tableId].push({
                         id: colorId,
                         name: mc.name || 'Смесь',
                         type: 'multi',
                         components: components,
-                        boundaries: mc.boundaries || []
+                        boundaries: boundaries
                     });
                 }
 
@@ -486,14 +527,29 @@
                 }
             }
 
-            // 3. ВОССТАНАВЛИВАЕМ ЗАПОЛНЕННЫЕ ЯЧЕЙКИ
+            // 3. ВОССТАНАВЛИВАЕМ ЗАПОЛНЕННЫЕ ЯЧЕЙКИ (С ПОДДЕРЖКОЙ ОБОИХ ФОРМАТОВ)
             if (importedNode.cells) {
                 const currentMatrix = App.editor.cellStorage[tableId];
                 if (currentMatrix) {
-                    for (const [key, colorId] of Object.entries(importedNode.cells)) {
-                        const [row, col] = key.split(',').map(Number);
-                        if (App.editor.colorsPerNode[tableId] && App.editor.colorsPerNode[tableId].some(c => c.id === colorId)) {
-                            currentMatrix[row][col] = colorId;
+                    if (Array.isArray(importedNode.cells)) {
+                        // НОВЫЙ формат - массив 13×13
+                        for (let i = 0; i < 13; i++) {
+                            for (let j = 0; j < 13; j++) {
+                                if (importedNode.cells[i] && importedNode.cells[i][j] !== null && importedNode.cells[i][j] !== undefined) {
+                                    const colorId = importedNode.cells[i][j];
+                                    if (App.editor.colorsPerNode[tableId] && App.editor.colorsPerNode[tableId].some(c => c.id === colorId)) {
+                                        currentMatrix[i][j] = colorId;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // СТАРЫЙ формат - объект {"0,0": 385, ...}
+                        for (const [key, colorId] of Object.entries(importedNode.cells)) {
+                            const [row, col] = key.split(',').map(Number);
+                            if (App.editor.colorsPerNode[tableId] && App.editor.colorsPerNode[tableId].some(c => c.id === colorId)) {
+                                currentMatrix[row][col] = colorId;
+                            }
                         }
                     }
                 }
@@ -514,22 +570,36 @@
         const rootNodes = App.gto.nodes.filter(n => n.parentId === null);
 
         if (rootNodes.length === 0) {
-            showFloatingModal('Нет данных GTO для добавления');
+            console.warn('⚠️ Нет данных GTO для добавления');
+            App.modals.showFloatingModal('Нет данных GTO для добавления');
             return;
         }
 
         const serialized = rootNodes.map(node => serializeGtoNode(node));
 
         const oldNodesCount = App.editor.nodes.length;
+        
         for (const rootData of serialized) {
             createEditorNodeFromData(rootData, null);
         }
+        
         const addedCount = App.editor.nodes.length - oldNodesCount;
 
-        persistAll();
-        refreshAll();
+        // Перенос изменяет структуру редактора и создаёт новые таблицы.
+        // Явно отмечаем их dirty, иначе V2-сохранение не отправит данные на сервер.
+        if (App.dirty) {
+            App.dirty.markStructureDirty('editor');
+            for (const node of App.editor.nodes.slice(oldNodesCount)) {
+                if (node.type === 'range' || node.type === 'subrange') {
+                    App.dirty.markTableDirty(node.id, 'editor');
+                }
+            }
+        }
 
-        showFloatingModal(`✅ Добавлено ${addedCount} узлов в редактор`);
+        persistAll();
+        App.refresh.all();
+
+        App.modals.showFloatingModal(`✅ Добавлено ${addedCount} узлов в редактор`);
     }
 
     function initGtoAddToEditorButton() {

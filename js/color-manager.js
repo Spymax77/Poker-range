@@ -10,28 +10,29 @@
 // ФУНКЦИИ ДОСТУПА
 // ============================================================
 
-function getColorsForNode(nodeId) {
+App.colors = App.colors || {};
+App.colors.getColorsForNode = function(nodeId) {
     const tableId = getTableId(nodeId);
     if (!tableId) return [];
     return App.state.colorsPerNode[tableId] || [];
 }
-function getSimpleColors(nodeId) {
-    const all = getColorsForNode(nodeId);
+App.colors.getSimpleColors = function(nodeId) {
+    const all = App.colors.getColorsForNode(nodeId);
     return all.filter(c => c.type === 'simple' || (!c.type && c.color));
 }
-function setColorsForNode(nodeId, colors) {
+App.colors.setColorsForNode = function(nodeId, colors) {
     const tableId = getTableId(nodeId);
     if (!tableId) return;
     App.state.colorsPerNode[tableId] = colors;
 }
 
-function getActiveForNode(nodeId) {
+App.colors.getActiveForNode = function(nodeId) {
     const tableId = getTableId(nodeId);
     if (!tableId) return null;
     return App.state.activePerNode[tableId] || null;
 }
 
-function setActiveForNode(nodeId, colorId) {
+App.colors.setActiveForNode = function(nodeId, colorId) {
     const tableId = getTableId(nodeId);
     if (!tableId) return;
     if (colorId === null) {
@@ -42,12 +43,12 @@ function setActiveForNode(nodeId, colorId) {
 }
 
 
-function getMultiColors(nodeId) {
-    const all = getColorsForNode(nodeId);
+App.colors.getMultiColors = function(nodeId) {
+    const all = App.colors.getColorsForNode(nodeId);
     return all.filter(c => c.type === 'multi' || (c.components && c.components.length > 0));
 }
 
-function getGradientStyleFromColorForNode(nodeId, color) {
+App.colors.getGradientStyleFromColorForNode = function(nodeId, color) {
     if (!color) return '';
     
     if (color.type === 'simple' || (!color.type && color.color)) {
@@ -55,14 +56,14 @@ function getGradientStyleFromColorForNode(nodeId, color) {
     }
     
     if (color.type === 'multi' || color.components) {
-        const colorsList = getColorsForNode(nodeId);
+        const colorsList = App.colors.getColorsForNode(nodeId);
         const componentColors = color.components.map(comp => {
             const compColor = colorsList.find(c => c.id === comp.colorId);
             return compColor ? compColor.color : '#3d3d3d';
         });
         const boundaries = color.boundaries || [];
         if (componentColors.length === 0) return '';
-        return getGradientStyle(componentColors, boundaries);
+        return App.colors.getGradientStyle(componentColors, boundaries);
     }
     
     return '';
@@ -72,7 +73,7 @@ function getGradientStyleFromColorForNode(nodeId, color) {
 // ФУНКЦИИ ГРАДИЕНТА
 // ============================================================
 
-function getPositions(color) {
+App.colors.getPositions = function(color) {
     let cnt = color.components ? color.components.length : 0;
     if (cnt === 0) return [100];
     let boundaries = color.boundaries || [];
@@ -86,7 +87,7 @@ function getPositions(color) {
     return boundaries;
 }
 
-function getGradientStyle(colors, positions) {
+App.colors.getGradientStyle = function(colors, positions) {
     if (colors.length === 1) {
         let fillPercent = positions[0];
         return `background: linear-gradient(to right, ${colors[0]} 0%, ${colors[0]} ${fillPercent}%, #313338 ${fillPercent}%, #313338 100%); background-size: 100% 100%; background-repeat: no-repeat;`;
@@ -105,7 +106,7 @@ function getGradientStyle(colors, positions) {
     return `background: linear-gradient(to right, ${stops.join(', ')}); background-size: 100% 100%; background-repeat: no-repeat;`;
 }
 
-function getSliderGradient(color) {
+App.colors.getSliderGradient = function(color) {
     let r = parseInt(color.slice(1,3), 16);
     let g = parseInt(color.slice(3,5), 16);
     let b = parseInt(color.slice(5,7), 16);
@@ -116,7 +117,7 @@ function getSliderGradient(color) {
     return `linear-gradient(145deg, ${darkColor}, ${color})`;
 }
 
-function getContrast(hex) {
+App.colors.getContrast = function(hex) {
     if (!hex || !hex.startsWith('#')) return 'white';
     let r = parseInt(hex.slice(1,3),16);
     let g = parseInt(hex.slice(3,5),16);
@@ -128,7 +129,7 @@ function getContrast(hex) {
 // СОЗДАНИЕ И УДАЛЕНИЕ
 // ============================================================
 
-function createSimpleColor(nodeId, name, hex) {
+App.colors.createSimpleColor = function(nodeId, name, hex) {
     const tableId = getTableId(nodeId);
     if (!tableId) return null;
     if (!App.state.colorsPerNode[tableId]) App.state.colorsPerNode[tableId] = [];
@@ -158,13 +159,13 @@ if (!finalName) {
     App.state.colorsPerNode[tableId].push(newColor);
     
     if (App.state.colorsPerNode[tableId].length === 1) {
-        setActiveForNode(nodeId, newId);
+        App.colors.setActiveForNode(nodeId, newId);
     }
     
     return newId;
 }
 
-function createMultiColor(nodeId, name, components, boundaries) {
+App.colors.createMultiColor = function(nodeId, name, components, boundaries) {
     const tableId = getTableId(nodeId);
     if (!tableId) return null;
     if (!App.state.colorsPerNode[tableId]) App.state.colorsPerNode[tableId] = [];
@@ -182,7 +183,7 @@ function createMultiColor(nodeId, name, components, boundaries) {
     return newId;
 }
 
-function deleteColor(nodeId, colorId) {
+App.colors.deleteColor = function(nodeId, colorId) {
     const tableId = getTableId(nodeId);
     if (!tableId) return false;
     const colorsList = App.state.colorsPerNode[tableId] || [];
@@ -193,36 +194,36 @@ function deleteColor(nodeId, colorId) {
     );
     
     if (isUsed) {
-        showFloatingModal('Данное действие используется в смеси. Сначала удалите смесь, использующую его.');
+        App.modals.showFloatingModal('Данное действие используется в смеси. Сначала удалите смесь, использующую его.');
         return false;
     }
     
     // Проверяем, используется ли цвет в матрице
-    const isUsedInMatrix = isColorUsedInMatrix(nodeId, colorId);
+    const isUsedInMatrix = App.colors.isColorUsedInMatrix(nodeId, colorId);
     if (isUsedInMatrix) {
-        showSaveConfirmModal(
+        App.modals.showSaveConfirmModal(
             'Данное действие используется в матрице. Все равно удалить?',
             function() {
-                proceedDeleteColor(nodeId, tableId, colorId);
+                App.colors.proceedDeleteColor(nodeId, tableId, colorId);
             },
             function() {}
         );
         return false;
     }
     
-    proceedDeleteColor(nodeId, tableId, colorId);
+    App.colors.proceedDeleteColor(nodeId, tableId, colorId);
     return true;
 }
 
-function proceedDeleteColor(nodeId, tableId, colorId) {
+App.colors.proceedDeleteColor = function(nodeId, tableId, colorId) {
     const colorsList = App.state.colorsPerNode[tableId] || [];
     const idx = colorsList.findIndex(c => c.id === colorId);
     if (idx === -1) return;
     
     colorsList.splice(idx, 1);
     
-    if (getActiveForNode(nodeId) === colorId) {
-        setActiveForNode(nodeId, null);
+    if (App.colors.getActiveForNode(nodeId) === colorId) {
+        App.colors.setActiveForNode(nodeId, null);
     }
     
     // Очищаем ячейки, где использовался этот цвет
@@ -237,12 +238,12 @@ function proceedDeleteColor(nodeId, tableId, colorId) {
         }
     }
     
-    renderAllColors(nodeId, true);
+    App.colors.renderAllColors(nodeId, true);
     App.events.emit('data:changed');
     App.events.emit('unsaved:mark');
 }
 
-function isColorUsedInMatrix(nodeId, colorId) {
+App.colors.isColorUsedInMatrix = function(nodeId, colorId) {
     const tid = getTableId(nodeId);
     const matrix = App.state.cellStorage[tid];
     if (!matrix) return false;
@@ -261,7 +262,7 @@ function isColorUsedInMatrix(nodeId, colorId) {
 // РЕНДЕРИНГ (ОБЪЕДИНЁННЫЙ)
 // ============================================================
 
-function renderAllColors(nodeId, editable) {
+App.colors.renderAllColors = function(nodeId, editable) {
     const isGto = App.currentMode === 'gto';
     const simpleContainer = document.getElementById(isGto ? "gtoPaletteList" : "paletteList");
     const multiContainer = document.getElementById(isGto ? "gtoProfileList" : "profileList");
@@ -272,28 +273,28 @@ function renderAllColors(nodeId, editable) {
     simpleContainer.innerHTML = '';
     multiContainer.innerHTML = '';
     
-    const allColors = getColorsForNode(nodeId);
+    const allColors = App.colors.getColorsForNode(nodeId);
     const simpleColors = allColors.filter(c => c.type === 'simple' || (!c.type && c.color));
     const multiColors = allColors.filter(c => c.type === 'multi' || (c.components && c.components.length > 0));
-    const activeId = getActiveForNode(nodeId);
+    const activeId = App.colors.getActiveForNode(nodeId);
     
     // Рендерим простые цвета
     simpleColors.forEach((color, index) => {
-        const el = renderSimpleColor(nodeId, color, activeId, editable, index);
+        const el = App.colors.renderSimpleColor(nodeId, color, activeId, editable, index);
         simpleContainer.appendChild(el);
     });
     
     // Рендерим мультицветы
     multiColors.forEach((color) => {
-        const el = renderMultiColor(nodeId, color, activeId, editable);
+        const el = App.colors.renderMultiColor(nodeId, color, activeId, editable);
         multiContainer.appendChild(el);
     });
     
-    updateProfileButtonVisibility();
+    App.colors.updateProfileButtonVisibility();
 	
 }
 
-function renderSimpleColor(nodeId, color, activeId, editable, index) {
+App.colors.renderSimpleColor = function(nodeId, color, activeId, editable, index) {
     const div = document.createElement("div");
     div.className = "palette-item";
     div.dataset.colorId = color.id;
@@ -305,8 +306,8 @@ function renderSimpleColor(nodeId, color, activeId, editable, index) {
     if (editable) {
         radio.onclick = (e) => {
             e.stopPropagation();
-            setActiveForNode(nodeId, color.id);
-            renderAllColors(nodeId, true);
+            App.colors.setActiveForNode(nodeId, color.id);
+            App.colors.renderAllColors(nodeId, true);
             App.events.emit('unsaved:mark');
         };
     } else {
@@ -321,13 +322,13 @@ function renderSimpleColor(nodeId, color, activeId, editable, index) {
     if (editable) {
         colorBox.onclick = (e) => {
             e.stopPropagation();
-            openColorPicker(color.id, function(newHex) {
-                const colorsList = getColorsForNode(nodeId);
+            App.ui.openColorPicker(color.id, function(newHex) {
+                const colorsList = App.colors.getColorsForNode(nodeId);
                 const colorToEdit = colorsList.find(c => c.id === color.id);
                 if (colorToEdit) {
                     colorToEdit.color = newHex;
                     colorBox.style.backgroundColor = newHex;
-                    renderAllColors(nodeId, true);
+                    App.colors.renderAllColors(nodeId, true);
                     App.events.emit('data:changed');
                     App.events.emit('unsaved:mark');
                 }
@@ -358,7 +359,7 @@ function renderSimpleColor(nodeId, color, activeId, editable, index) {
     removeBtn.className = "remove-palette-btn";
     if (editable) {
         removeBtn.onclick = () => {
-            deleteColor(nodeId, color.id);
+            App.colors.deleteColor(nodeId, color.id);
         };
     } else {
         removeBtn.style.visibility = "hidden";
@@ -367,8 +368,8 @@ function renderSimpleColor(nodeId, color, activeId, editable, index) {
     
     return div;
 }
-function generateNameForColor(nodeId, color) {
-    const simpleColors = getSimpleColors(nodeId);
+App.colors.generateNameForColor = function(nodeId, color) {
+    const simpleColors = App.colors.getSimpleColors(nodeId);
     if (!color.components || color.components.length === 0) return '';
     const names = color.components.map(comp => {
         const c = simpleColors.find(s => s.id === comp.colorId);
@@ -376,8 +377,8 @@ function generateNameForColor(nodeId, color) {
     });
     return names.join(' / ');
 }
-function refreshMultiColorSliders(nodeId, colorId) {
-    const colorsList = getColorsForNode(nodeId);
+App.colors.refreshMultiColorSliders = function(nodeId, colorId) {
+    const colorsList = App.colors.getColorsForNode(nodeId);
     const color = colorsList.find(c => c.id === colorId);
     if (!color || color.type !== 'multi') return;
     
@@ -385,8 +386,8 @@ function refreshMultiColorSliders(nodeId, colorId) {
     if (!ref) return;
     
     const { sliderContainer, minusBtn, plusBtn, radioSpan } = ref;
-    const positions = getPositions(color);
-    const simpleColors = getSimpleColors(nodeId);
+    const positions = App.colors.getPositions(color);
+    const simpleColors = App.colors.getSimpleColors(nodeId);
     
 
     
@@ -435,12 +436,12 @@ function refreshMultiColorSliders(nodeId, colorId) {
         thumb.onclick = (e) => {
             e.stopPropagation();
             if (!ref.editable) return;
-            const simpleColorsList = getSimpleColors(nodeId);
+            const simpleColorsList = App.colors.getSimpleColors(nodeId);
             if (simpleColorsList.length === 0) {
                 alert("Сначала создайте простое действие!");
                 return;
             }
-            showColorPickerForMulti(nodeId, thumb, color, i, ref.editable);
+            App.colors.showColorPickerForMulti(nodeId, thumb, color, i, ref.editable);
         };
         
         // Перетаскивание ползунка (ВСЕГДА активное)
@@ -469,7 +470,7 @@ function refreshMultiColorSliders(nodeId, colorId) {
             prev = b;
         }
     }
-                refreshMultiColorSliders(nodeId, color.id);
+                App.colors.refreshMultiColorSliders(nodeId, color.id);
                 App.events.emit('data:changed');
                 App.events.emit('unsaved:mark');
             };
@@ -495,7 +496,7 @@ function refreshMultiColorSliders(nodeId, colorId) {
         plusBtn.style.display = canAdd ? 'inline-flex' : 'none';
     }
     if (radioSpan) {
-        const activeId = getActiveForNode(nodeId);
+        const activeId = App.colors.getActiveForNode(nodeId);
         if (activeId === color.id) {
             radioSpan.classList.add('active');
         } else {
@@ -503,11 +504,11 @@ function refreshMultiColorSliders(nodeId, colorId) {
         }
     }
 }
-function showColorPickerForMultiAdd(nodeId, anchor, color, editable) {
+App.colors.showColorPickerForMultiAdd = function(nodeId, anchor, color, editable) {
     if (!editable) return;
-    closePopup();
+    App.colors.closePopup();
     
-    const simpleColors = getSimpleColors(nodeId);
+    const simpleColors = App.colors.getSimpleColors(nodeId);
     if (simpleColors.length === 0) return;
     
     const popup = document.createElement("div");
@@ -555,10 +556,10 @@ if (color.components && color.components.length === color.boundaries.length) {
     }
 }
 
-    renderAllColors(nodeId, true);
+    App.colors.renderAllColors(nodeId, true);
     App.events.emit('data:changed');
     App.events.emit('unsaved:mark');
-    closePopup();
+    App.colors.closePopup();
 };
         
         popup.appendChild(opt);
@@ -591,13 +592,13 @@ App.state.activePopup = popup;
     
     const outside = (e) => {
         if (!popup.contains(e.target)) {
-            closePopup();
+            App.colors.closePopup();
             document.removeEventListener('click', outside);
         }
     };
     setTimeout(() => document.addEventListener('click', outside), 0);
 }
-function renderMultiColor(nodeId, color, activeId, editable) {
+App.colors.renderMultiColor = function(nodeId, color, activeId, editable) {
     const card = document.createElement("div");
     card.className = "profile-card";
     card.dataset.colorId = color.id;
@@ -610,8 +611,8 @@ function renderMultiColor(nodeId, color, activeId, editable) {
     radio.className = `profile-radio ${activeId === color.id ? 'active' : ''}`;
     if (editable) {
         radio.onclick = () => {
-            setActiveForNode(nodeId, color.id);
-            renderAllColors(nodeId, true);
+            App.colors.setActiveForNode(nodeId, color.id);
+            App.colors.renderAllColors(nodeId, true);
             App.events.emit('unsaved:mark');
         };
     } else {
@@ -623,7 +624,7 @@ function renderMultiColor(nodeId, color, activeId, editable) {
     const chipsContainer = document.createElement("div");
 	chipsContainer.className = "chips-container";
     
-    const simpleColors = getSimpleColors(nodeId);
+    const simpleColors = App.colors.getSimpleColors(nodeId);
     
     for (let i = 0; i < color.components.length; i++) {
         const comp = color.components[i];
@@ -644,12 +645,12 @@ chip.title = name;
         if (editable) {
             chip.onclick = (e) => {
                 e.stopPropagation();
-                const simpleColorsList = getSimpleColors(nodeId);
+                const simpleColorsList = App.colors.getSimpleColors(nodeId);
                 if (simpleColorsList.length === 0) {
-                    showFloatingModal("Сначала создайте простое действие!");
+                    App.modals.showFloatingModal("Сначала создайте простое действие!");
                     return;
                 }
-                showColorPickerForMulti(nodeId, chip, color, i, editable);
+                App.colors.showColorPickerForMulti(nodeId, chip, color, i, editable);
             };
         }
         
@@ -675,7 +676,7 @@ for (const comp of color.components) {
     newBoundaries.push(sum);
 }
 color.boundaries = newBoundaries;
-                renderAllColors(nodeId, true);
+                App.colors.renderAllColors(nodeId, true);
                 App.events.emit('data:changed');
                 App.events.emit('unsaved:mark');
             };
@@ -704,12 +705,12 @@ color.boundaries = newBoundaries;
         
 addBtn.onclick = (e) => {
     e.stopPropagation();
-    const simpleColorsList = getSimpleColors(nodeId);
+    const simpleColorsList = App.colors.getSimpleColors(nodeId);
     if (simpleColorsList.length === 0) {
-        showFloatingModal("Сначала создайте простое действие!");
+        App.modals.showFloatingModal("Сначала создайте простое действие!");
         return;
     }
-    showColorPickerForMultiAdd(nodeId, addBtn, color, editable);
+    App.colors.showColorPickerForMultiAdd(nodeId, addBtn, color, editable);
 };
         
         chipsContainer.appendChild(addBtn);
@@ -720,7 +721,7 @@ addBtn.onclick = (e) => {
 // === 4. НАЗВАНИЕ (на уровне нижнего края квадратов) ===
 const nameSpan = document.createElement("span");
 nameSpan.className = "multi-profile-name";
-nameSpan.textContent = generateNameForColor(nodeId, color);
+nameSpan.textContent = App.colors.generateNameForColor(nodeId, color);
 // Название над строкой
 const nameWrapper = document.createElement("div");
 nameWrapper.style.display = "flex";
@@ -754,7 +755,7 @@ row.appendChild(sliderWrap);
     del.style.flexShrink = "0";
     if (editable) {
         del.onclick = () => {
-            deleteColor(nodeId, color.id);
+            App.colors.deleteColor(nodeId, color.id);
         };
     } else {
         del.style.visibility = "hidden";
@@ -771,13 +772,13 @@ App.state.profileRefs.set(color.id, {
     editable: editable
 });
     
-    refreshMultiColorSliders(nodeId, color.id);
+    App.colors.refreshMultiColorSliders(nodeId, color.id);
     
     return card;
 }
 
 
-function recalculateBoundaries(color) {
+App.colors.recalculateBoundaries = function(color) {
     if (!color.components || color.components.length === 0) return;
     const total = color.components.length;
     for (let i = 0; i < total; i++) {
@@ -789,11 +790,11 @@ function recalculateBoundaries(color) {
 // ВСПЛЫВАЮЩЕЕ ОКНО ДЛЯ ВЫБОРА ЦВЕТА В МУЛЬТИ
 // ============================================================
 
-function showColorPickerForMulti(nodeId, anchor, color, colorIdx, editable) {
+App.colors.showColorPickerForMulti = function(nodeId, anchor, color, colorIdx, editable) {
     if (!editable) return;
-    closePopup();
+    App.colors.closePopup();
     
-    const simpleColors = getSimpleColors(nodeId);
+    const simpleColors = App.colors.getSimpleColors(nodeId);
     if (simpleColors.length === 0) return;
     
     const popup = document.createElement("div");
@@ -816,9 +817,9 @@ function showColorPickerForMulti(nodeId, anchor, color, colorIdx, editable) {
         
         opt.onclick = () => {
             color.components[colorIdx].colorId = simple.id;
-            renderAllColors(nodeId, true);
+            App.colors.renderAllColors(nodeId, true);
             App.events.emit('data:changed');
-            closePopup();
+            App.colors.closePopup();
             App.events.emit('unsaved:mark');
         };
         
@@ -852,7 +853,7 @@ App.state.activePopup = popup;
     
     const outside = (e) => {
         if (!popup.contains(e.target)) {
-            closePopup();
+            App.colors.closePopup();
             document.removeEventListener('click', outside);
         }
     };
@@ -864,14 +865,14 @@ App.state.activePopup = popup;
 // ============================================================
 
 
-function closePopup() {
+App.colors.closePopup = function() {
     if (App.state.activePopup) {
         App.state.activePopup.remove();
         App.state.activePopup = null;
     }
 }
 
-function updateProfileButtonVisibility() {
+App.colors.updateProfileButtonVisibility = function() {
     const isGto = App.currentMode === 'gto';
     const simpleBtn = document.getElementById(isGto ? "gtoAddPaletteColorBtn" : "addPaletteColorBtn");
     const multiBtn = document.getElementById(isGto ? "gtoNewProfileBtn" : "newProfileBtn");
@@ -890,14 +891,14 @@ function updateProfileButtonVisibility() {
 // ДЕЙСТВИЯ UI: ПАЛИТРА / ПРОФИЛИ
 // ============================================================
 
-function addPaletteColor() {
+App.colors.addPaletteColor = function() {
     // Создаём новое простое действие через пикер
-    openColorPicker(null, function(newHex) {
+    App.ui.openColorPicker(null, function(newHex) {
         if (App.state.currentNodeId && newHex) {
             const name = prompt("Введите название действия:", "Новое действие");
             if (name !== null && name.trim() !== '') {
-                createSimpleColor(App.state.currentNodeId, name.trim(), newHex);
-                renderAllColors(App.state.currentNodeId, true);
+                App.colors.createSimpleColor(App.state.currentNodeId, name.trim(), newHex);
+                App.colors.renderAllColors(App.state.currentNodeId, true);
                 App.events.emit('data:changed');
                 App.events.emit('unsaved:mark');
             }
@@ -905,17 +906,17 @@ function addPaletteColor() {
     });
 }
 
-function createNewProfile() {
+App.colors.createNewProfile = function() {
     if (!App.state.currentNodeId) return;
     
-    const simpleColors = getSimpleColors(App.state.currentNodeId);
+    const simpleColors = App.colors.getSimpleColors(App.state.currentNodeId);
     if (simpleColors.length === 0) {
-        showFloatingModal("Сначала создайте хотя бы одно простое действие!");
+        App.modals.showFloatingModal("Сначала создайте хотя бы одно простое действие!");
         return;
     }
     
     // Берём активный цвет, если есть, иначе первый
-    const activeId = getActiveForNode(App.state.currentNodeId);
+    const activeId = App.colors.getActiveForNode(App.state.currentNodeId);
     let activeSimple = simpleColors.find(c => c.id === activeId);
     if (!activeSimple) {
         activeSimple = simpleColors[0];
@@ -925,8 +926,8 @@ function createNewProfile() {
     const boundaries = [100];
     const name = activeSimple.name + " (смесь)";
     
-    createMultiColor(App.state.currentNodeId, name, components, boundaries);
-    renderAllColors(App.state.currentNodeId, true);
+    App.colors.createMultiColor(App.state.currentNodeId, name, components, boundaries);
+    App.colors.renderAllColors(App.state.currentNodeId, true);
     App.events.emit('data:changed');
     App.events.emit('unsaved:mark');
 }

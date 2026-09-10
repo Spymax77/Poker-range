@@ -1,7 +1,8 @@
 // ===== tree.js -- extracted from all.js (range tree render & node ops) =====
 
 // ===== ГЕНЕРАЦИЯ УНИКАЛЬНОГО ИМЕНИ =====
-function generateUniqueName(baseName, existingNames) {
+App.tree = App.tree || {};
+App.tree.generateUniqueName = function(baseName, existingNames) {
     if (!existingNames.includes(baseName)) {
         return baseName;
     }
@@ -12,14 +13,14 @@ function generateUniqueName(baseName, existingNames) {
     return `${baseName} (${counter})`;
 }
 // ===== ДЕРЕВО (с компактным меню) =====
-function addChildNode(parentId) {
+App.tree.addChildNode = function(parentId) {
     let parent = getNode(parentId);
     if (!parent) return;
     
     // Собираем имена всех дочерних узлов
     const children = parent.childrenIds.map(id => getNode(id)).filter(n => n);
     const existingNames = children.map(n => n.name);
-    const newName = generateUniqueName('Новый элемент', existingNames);
+    const newName = App.tree.generateUniqueName('Новый элемент', existingNames);
     
     let newId = App.state.nextNodeId++;
     let newNode = {
@@ -31,13 +32,13 @@ function addChildNode(parentId) {
     };
     addNode(newNode);
     parent.childrenIds.push(newId);
-    ensureTable(newId);
+    App.grid.ensureTable(newId);
     persistAll();
-    refreshAll();
-    selectNode(newId);
+    App.refresh.all();
+    App.navigation.selectNode(newId);
 }
 
-function renameNode(nodeId) {
+App.tree.renameNode = function(nodeId) {
     let node = getNode(nodeId);
     if (!node) return;
     let newName = prompt("Новое имя:", node.name);
@@ -45,11 +46,11 @@ function renameNode(nodeId) {
         node.name = newName.trim().slice(0, 35);
     }
     persistAll();
-    refreshAll();
-    if (App.state.currentNodeId === nodeId) updateCurrentDisplay();
+    App.refresh.all();
+    if (App.state.currentNodeId === nodeId) App.grid.updateCurrentDisplay();
 }
 
-function moveNodeUp(nodeId) {
+App.tree.moveNodeUp = function(nodeId) {
     let node = getNode(nodeId);
     if (!node) return;
     let parentId = node.parentId;
@@ -73,10 +74,10 @@ function moveNodeUp(nodeId) {
         }
     }
     persistAll();
-    refreshAll();
+    App.refresh.all();
 }
 
-function moveNodeDown(nodeId) {
+App.tree.moveNodeDown = function(nodeId) {
     let node = getNode(nodeId);
     if (!node) return;
     let parentId = node.parentId;
@@ -100,10 +101,10 @@ function moveNodeDown(nodeId) {
         }
     }
     persistAll();
-    refreshAll();
+    App.refresh.all();
 }
 
-function deleteNode(nodeId) {
+App.tree.deleteNode = function(nodeId) {
     let node = getNode(nodeId);
     if (!node) return;
 
@@ -146,7 +147,7 @@ function deleteNode(nodeId) {
 
         // ПРАВИЛО 1: единственный диапазон во всём дереве
         if (rangesInFolder.length > 0 && rangesInFolder.length === allRangesInTree.length) {
-            showFloatingModal("Эту папку удалить нельзя, так как в ней содержится единственный диапазон");
+            App.modals.showFloatingModal("Эту папку удалить нельзя, так как в ней содержится единственный диапазон");
             return;
         }
 
@@ -159,7 +160,7 @@ function deleteNode(nodeId) {
         }
 
         if (hasFilledRanges) {
-            showSaveConfirmModal(
+            App.modals.showSaveConfirmModal(
                 "В данной папке есть заполненные диапазоны. Все равно удалить?",
                 function() {
                     // ДА — продолжаем удаление
@@ -176,7 +177,7 @@ function deleteNode(nodeId) {
     // ===== СТАРАЯ ПРОВЕРКА ДЛЯ ДИАПАЗОНОВ =====
     const allRanges = App.state.nodes.filter(n => n.type === 'range' || n.type === 'subrange');
     if (allRanges.length <= 1 && (node.type === 'range' || node.type === 'subrange')) {
-        showFloatingModal("Нельзя удалить единственный диапазон");
+        App.modals.showFloatingModal("Нельзя удалить единственный диапазон");
         return;
     }
 	    // ===== ПРАВИЛО 3: проверка на заполненность диапазона =====
@@ -198,7 +199,7 @@ function deleteNode(nodeId) {
         }
 
         if (isFilled) {
-            showSaveConfirmModal(
+            App.modals.showSaveConfirmModal(
                 "Данный диапазон не пустой. Все равно удалить?",
                 function() {
                     // ДА — продолжаем удаление
@@ -298,7 +299,7 @@ let p = getNode(n.parentId);
             }
 
             if (foundRange) {
-                selectNode(foundRange.id);
+                App.navigation.selectNode(foundRange.id);
             } else {
                 App.state.currentNodeId = null;
             }
@@ -351,7 +352,7 @@ let p = getNode(n.parentId);
         }
 
         persistAll();
-        refreshAll();
+        App.refresh.all();
     }
 
     // Запускаем удаление (если папка не заблокирована)
@@ -359,7 +360,7 @@ let p = getNode(n.parentId);
         proceedDelete(nodeId);
     }
 }
-function startInlineRename(nodeId) {
+App.tree.startInlineRename = function(nodeId) {
     const node = getNode(nodeId);
     if (!node) return;
     
@@ -418,19 +419,19 @@ renameInput.addEventListener('mousedown', function(e) {
     renameInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
-            finishInlineRename(true);
+            App.tree.finishInlineRename(true);
         } else if (e.key === 'Escape') {
             e.preventDefault();
-            finishInlineRename(false);
+            App.tree.finishInlineRename(false);
         }
     });
     
     renameInput.addEventListener('blur', function() {
-        finishInlineRename(true);
+        App.tree.finishInlineRename(true);
     });
 }
 
-function finishInlineRename(save) {
+App.tree.finishInlineRename = function(save) {
     if (!renameInput || renameNodeId === null) return;
     
     const node = getNode(renameNodeId);
@@ -442,13 +443,13 @@ function finishInlineRename(save) {
     if (save && newName.length > 0) {
         node.name = newName;
         persistAll();
-        refreshAll();
+        App.refresh.all();
         if (App.state.currentNodeId === renameNodeId) {
-            updateCurrentDisplay();
+            App.grid.updateCurrentDisplay();
         }
     } else {
         // Отмена или пустое имя — возвращаем старое
-        refreshAll();
+        App.refresh.all();
     }
     
     // Очищаем
@@ -457,11 +458,11 @@ function finishInlineRename(save) {
     renameOldName = '';
 }
 
-function addRootNode() {
+App.tree.addRootNode = function() {
     // Собираем имена всех корневых узлов
     const rootNodes = App.state.nodes.filter(n => n.parentId === null);
     const existingNames = rootNodes.map(n => n.name);
-    const newName = generateUniqueName('Новая папка', existingNames);
+    const newName = App.tree.generateUniqueName('Новая папка', existingNames);
 
     let newId = App.state.nextNodeId++;
     let newNode = {
@@ -472,13 +473,13 @@ function addRootNode() {
         type: 'folder'
     };
     addNode(newNode);
-    ensureTable(newId);
+    App.grid.ensureTable(newId);
     persistAll();
-    refreshAll();
-    selectNode(newId);
+    App.refresh.all();
+    App.navigation.selectNode(newId);
 }
 
-function createChildNode(parentId, type) {
+App.tree.createChildNode = function(parentId, type) {
     let parent = getNode(parentId);
     if (!parent) return;
 
@@ -494,13 +495,13 @@ function createChildNode(parentId, type) {
         baseName = 'Поддиапазон';
     }
     
-    const newName = generateUniqueName(baseName, existingNames);
+    const newName = App.tree.generateUniqueName(baseName, existingNames);
 
     // ============================================================
     // ДЛЯ ПОДДИАПАЗОНА — ПОКАЗЫВАЕМ ДИАЛОГ, ПОТОМ СОЗДАЁМ
     // ============================================================
     if (type === 'subrange') {
-        showComponentSelectionDialog(parentId, function(selectedIndex) {
+        App.modals.showComponentSelectionDialog(parentId, function(selectedIndex) {
             if (selectedIndex !== -1) {
                 // ✅ ПОЛЬЗОВАТЕЛЬ ВЫБРАЛ → СОЗДАЁМ УЗЕЛ
                 const newId = App.state.nextNodeId++;
@@ -514,7 +515,7 @@ function createChildNode(parentId, type) {
                 };
                 addNode(newNode);
                 parent.childrenIds.push(newId);
-                ensureTable(newId);
+                App.grid.ensureTable(newId);
                 
                 const tableId = getTableId(newId);
                 App.state.colorsPerNode[tableId] = [];
@@ -527,9 +528,11 @@ function createChildNode(parentId, type) {
                 });
                 App.state.activePerNode[tableId] = colorId;
                 
-                persistAll();
-                refreshAll();
-                selectNode(newId);
+                App.dirty.markStructureDirty();
+                App.dirty.markTableDirty(newId);
+                flushPersist();
+                App.refresh.all();
+                App.navigation.selectNode(newId);
             }
             // ❌ Если отмена → НИЧЕГО НЕ ДЕЛАЕМ
         });
@@ -549,7 +552,7 @@ function createChildNode(parentId, type) {
     };
     addNode(newNode);
     parent.childrenIds.push(newId);
-    ensureTable(newId);
+    App.grid.ensureTable(newId);
     
     if (type === 'range') {
         const tableId = getTableId(newId);
@@ -564,11 +567,15 @@ function createChildNode(parentId, type) {
         App.state.activePerNode[tableId] = colorId;
     }
 
-    persistAll();
-    refreshAll();
-    selectNode(newId);
+    App.dirty.markStructureDirty();
+    if (type === 'range') {
+        App.dirty.markTableDirty(newId);
+    }
+    flushPersist();
+    App.refresh.all();
+    App.navigation.selectNode(newId);
 }
-function renderTree(containerId, activeNodeId, editable, onSelectNode) {
+App.tree.renderTree = function(containerId, activeNodeId, editable, onSelectNode) {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = "";
@@ -576,11 +583,117 @@ function renderTree(containerId, activeNodeId, editable, onSelectNode) {
     let rootOrder = App.state.nodes.filter(n => n.parentId === null).map(n => n.id);
     rootNodes.sort((a, b) => rootOrder.indexOf(a.id) - rootOrder.indexOf(b.id));
     for (let node of rootNodes) {
-        renderTreeNode(container, node, activeNodeId, editable, onSelectNode);
+        App.tree.renderTreeNode(container, node, activeNodeId, editable, onSelectNode);
     }
-}
+};
+
+App.tree.scrollNodeIntoView = function(nodeId) {
+    const treeId = App.currentMode === 'gto' ? 'gtoTree' : 'constructorTree';
+    const item = document.querySelector(
+        `#${treeId} .tree-item[data-node-id="${nodeId}"]`
+    );
+    if (item) {
+        item.scrollIntoView({ block: 'nearest' });
+    }
+};
+
+// ===== КЛАВИАТУРНАЯ НАВИГАЦИЯ ПО ДЕРЕВУ =====
+    App.tree.getKeyboardBranch = function() {
+        return App.currentMode === 'gto' ? App.gto : App.editor;
+    };
+
+    App.tree.getVisibleNodeIds = function(branch) {
+        const result = [];
+        const visit = function(node) {
+            if (!node) return;
+            result.push(node.id);
+            if (!branch.expandedNodes.has(node.id)) return;
+            (node.childrenIds || []).forEach(childId => visit(getNodeFrom(branch, childId)));
+        };
+        branch.nodes.filter(node => node.parentId === null).forEach(visit);
+        return result;
+    };
+
+    App.tree.toggleNodeExpansion = function(nodeId, expanded) {
+        const branch = App.tree.getKeyboardBranch();
+        const node = getNodeFrom(branch, nodeId);
+        if (!node || !node.childrenIds || !node.childrenIds.length) return false;
+
+        const shouldExpand = expanded === undefined
+            ? !branch.expandedNodes.has(nodeId)
+            : expanded;
+        if (shouldExpand) {
+            branch.expandedNodes.add(nodeId);
+        } else {
+            branch.expandedNodes.delete(nodeId);
+        }
+
+        const treeId = App.currentMode === 'gto' ? 'gtoTree' : 'constructorTree';
+        const item = document.querySelector(
+            `#${treeId} .tree-item[data-node-id="${nodeId}"]`
+        );
+        const childrenDiv = item ? item.nextElementSibling : null;
+        const arrow = item ? item.querySelector('.tree-arrow') : null;
+        if (childrenDiv && childrenDiv.classList.contains('tree-children')) {
+            childrenDiv.classList.toggle('open', shouldExpand);
+        }
+        if (arrow) {
+            arrow.textContent = shouldExpand ? '▼' : '▶';
+        }
+
+        if (App.dirty) App.dirty.markMetadataDirty(App.currentMode);
+        persistAll();
+        return true;
+    };
+
+    App.tree.moveKeyboardSelection = function(offset) {
+        const branch = App.tree.getKeyboardBranch();
+        const visibleIds = App.tree.getVisibleNodeIds(branch);
+        if (!visibleIds.length) return;
+
+        const currentId = getNodeFrom(branch, branch.selectedNodeId)
+            ? branch.selectedNodeId
+            : branch.currentNodeId;
+        const currentIndex = visibleIds.indexOf(currentId);
+        const nextIndex = currentIndex < 0
+            ? (offset > 0 ? 0 : visibleIds.length - 1)
+            : Math.max(0, Math.min(visibleIds.length - 1, currentIndex + offset));
+        const nextId = visibleIds[nextIndex];
+        if (App.currentMode === 'gto') {
+            App.navigation.selectGtoNode(nextId);
+        } else {
+            App.navigation.selectNode(nextId);
+        }
+    };
+
+    App.tree.handleKeyboardNavigation = function(key) {
+        const branch = App.tree.getKeyboardBranch();
+        const selectedId = getNodeFrom(branch, branch.selectedNodeId)
+            ? branch.selectedNodeId
+            : branch.currentNodeId;
+        const selectedNode = selectedId === null ? null : getNodeFrom(branch, selectedId);
+        if (!selectedNode) return false;
+
+        if (key === 'ArrowDown' || key === 'ArrowUp') {
+            App.tree.moveKeyboardSelection(key === 'ArrowDown' ? 1 : -1);
+            return true;
+        }
+        if (key === 'ArrowRight') {
+            return App.tree.toggleNodeExpansion(selectedNode.id, true);
+        }
+        if (key === 'ArrowLeft') {
+            if (selectedNode.childrenIds && selectedNode.childrenIds.length &&
+                branch.expandedNodes.has(selectedNode.id)) {
+                return App.tree.toggleNodeExpansion(selectedNode.id, false);
+            }
+            if (selectedNode.parentId !== null) {
+                return App.tree.toggleNodeExpansion(selectedNode.parentId, false);
+            }
+        }
+        return false;
+    };
 // ===== ВЫЧИСЛЕНИЕ УРОВНЯ ВЛОЖЕННОСТИ =====
-function getNodeLevel(nodeId) {
+App.tree.getNodeLevel = function(nodeId) {
     let level = 0;
     let current = getNode(nodeId);
     while (current && current.parentId !== null) {
@@ -592,7 +705,7 @@ function getNodeLevel(nodeId) {
 // ============================================================
 // ПОЛУЧАЕМ ЦВЕТ ВЫБРАННОГО КОМПОНЕНТА ДЛЯ ПОДДИАПАЗОНА
 // ============================================================
-function getSubrangeColor(node) {
+App.tree.getSubrangeColor = function(node) {
     if (node.type !== 'subrange' || node.selectedComponentIndex === null) {
         return null;
     }
@@ -611,7 +724,7 @@ function getSubrangeColor(node) {
     }
     return null;
 }
-function renderTreeNode(parentContainer, node, activeNodeId, editable, onSelectNode) {
+App.tree.renderTreeNode = function(parentContainer, node, activeNodeId, editable, onSelectNode) {
     const nodeDiv = document.createElement("div");
     nodeDiv.className = "tree-node";
 
@@ -623,7 +736,7 @@ function renderTreeNode(parentContainer, node, activeNodeId, editable, onSelectN
     itemDiv.addEventListener('mousedown', function(e) {
     if (!editable) return;
     if (e.button !== 0) return;
-    if (!canDrag(node.id)) return;
+    if (!App.dragDrop.canDrag(node.id)) return;
     if (e.target.closest('.tree-actions-popup')) return;
 
     App.state.isDragging = false;
@@ -651,7 +764,7 @@ arrow.style.width = "18px";
 arrow.style.marginRight = "1px";
 arrow.style.textAlign = "center";
 // ===== ДИНАМИЧЕСКИЙ ОТСТУП ДЛЯ СТРЕЛКИ =====
-const level = getNodeLevel(node.id);
+const level = App.tree.getNodeLevel(node.id);
 const STEP = 20;
 const marginLeft = level * STEP;
 arrow.style.marginLeft = marginLeft + 'px';
@@ -666,16 +779,7 @@ if (hasChildren) {
         const childrenDiv = itemDiv.nextElementSibling;
         if (!childrenDiv || !childrenDiv.classList.contains('tree-children')) return;
 
-        const wasOpen = App.state.expandedNodes.has(node.id);
-        if (wasOpen) {
-            App.state.expandedNodes.delete(node.id);
-            childrenDiv.classList.remove('open');
-        } else {
-            App.state.expandedNodes.add(node.id);
-            childrenDiv.classList.add('open');
-        }
-        arrow.textContent = wasOpen ? "▶" : "▼";
-        persistAll(); 
+        App.tree.toggleNodeExpansion(node.id);
     };
 } else {
     arrow.textContent = "";
@@ -691,7 +795,7 @@ if (hasChildren) {
     nameSpan.addEventListener('dblclick', function(e) {
     e.stopPropagation();
     if (editable) {
-        startInlineRename(node.id);
+        App.tree.startInlineRename(node.id);
     }
 });
     const iconSpan = document.createElement("span");
@@ -724,8 +828,8 @@ if (hasChildren) {
     
     iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24">
         <rect x="3" y="3" width="8" height="8" rx="1"/>
-        <rect x="13.5" y="3.5" width="7" height="7" rx="1" ${color ? `fill="${color}" stroke="${color}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
-        <rect x="3.5" y="13.5" width="7" height="7" rx="1" ${color ? `fill="${color}" stroke="${color}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
+        <rect x="13.5" y="3.5" width="7" height="7" rx="1" ${color ? `fill="${escapeHtml(color)}" stroke="${escapeHtml(color)}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
+        <rect x="3.5" y="13.5" width="7" height="7" rx="1" ${color ? `fill="${escapeHtml(color)}" stroke="${escapeHtml(color)}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
         <rect x="13" y="13" width="8" height="8" rx="1"/>
     </svg>`;
 }
@@ -754,7 +858,7 @@ menuBtn.innerHTML = `
     addFolderBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">Добавить папку</span>`;
     addFolderBtn.onclick = (e) => {
         e.stopPropagation();
-        createChildNode(node.id, 'folder');
+        App.tree.createChildNode(node.id, 'folder');
         closeMenu();
     };
     popupMenu.appendChild(addFolderBtn);
@@ -763,7 +867,7 @@ menuBtn.innerHTML = `
     addRangeBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">Добавить диапазон</span>`;
     addRangeBtn.onclick = (e) => {
         e.stopPropagation();
-        createChildNode(node.id, 'range');
+        App.tree.createChildNode(node.id, 'range');
         closeMenu();
     };
     popupMenu.appendChild(addRangeBtn);
@@ -772,7 +876,7 @@ menuBtn.innerHTML = `
     addSubrangeBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">Добавить поддиапазон</span>`;
     addSubrangeBtn.onclick = (e) => {
         e.stopPropagation();
-        createChildNode(node.id, 'subrange');
+        App.tree.createChildNode(node.id, 'subrange');
         closeMenu();
     };
     popupMenu.appendChild(addSubrangeBtn);
@@ -781,7 +885,7 @@ menuBtn.innerHTML = `
     duplicateBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">Дублировать диапазон</span>`;
     duplicateBtn.onclick = (e) => {
         e.stopPropagation();
-        duplicateRange(node.id);
+        App.clipboard.duplicateRange(node.id);
         closeMenu();
     };
     popupMenu.appendChild(duplicateBtn);
@@ -795,21 +899,21 @@ copyBtn.innerHTML = `
 `;
 copyBtn.onclick = (e) => {
     e.stopPropagation();
-    copyRange(node.id);
+    App.clipboard.copyRange(node.id);
     closeMenu();
 };
 popupMenu.appendChild(copyBtn);
 
 // Вставить диапазон
 const pasteBtn = document.createElement("button");
-const hasData = hasClipboardData();
+const hasData = App.clipboard.hasClipboardData();
 pasteBtn.innerHTML = `
     <span class="menu-icon"></span>
     <span class="menu-text">Вставить диапазон</span>
 `;
 pasteBtn.onclick = (e) => {
     e.stopPropagation();
-    pasteRange(node.id);
+    App.clipboard.pasteRange(node.id);
     closeMenu();
 };
 
@@ -833,7 +937,7 @@ const renameBtn = document.createElement("button");
 renameBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">Переименовать</span>`;
 renameBtn.onclick = (e) => {
     e.stopPropagation();
-    startInlineRename(node.id);
+    App.tree.startInlineRename(node.id);
     closeMenu();
 };
 popupMenu.appendChild(renameBtn);
@@ -843,7 +947,7 @@ upBtn.innerHTML = `<span class="menu-icon">↑</span><span class="menu-text">В�
 upBtn.onclick = (e) => {
     e.stopPropagation();
     e.preventDefault();
-    moveNodeUp(node.id);
+    App.tree.moveNodeUp(node.id);
     closeMenu();
 };
 popupMenu.appendChild(upBtn);
@@ -853,7 +957,7 @@ downBtn.innerHTML = `<span class="menu-icon">↓</span><span class="menu-text">�
 downBtn.onclick = (e) => {
     e.stopPropagation();
     e.preventDefault();
-    moveNodeDown(node.id);
+    App.tree.moveNodeDown(node.id);
     closeMenu();
 };
 popupMenu.appendChild(downBtn);
@@ -862,7 +966,7 @@ const delBtn = document.createElement("button");
 delBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">Удалить</span>`;
 delBtn.onclick = (e) => {
     e.stopPropagation();
-    deleteNode(node.id);
+    App.tree.deleteNode(node.id);
     closeMenu();
 };
 popupMenu.appendChild(delBtn);
@@ -954,7 +1058,7 @@ document.querySelectorAll('.popup-menu').forEach(m => {
         let childNodes = node.childrenIds.map(cid => getNode(cid)).filter(n => n);
         childNodes.sort((a, b) => node.childrenIds.indexOf(a.id) - node.childrenIds.indexOf(b.id));
         for (let child of childNodes) {
-            renderTreeNode(childrenInner, child, activeNodeId, editable, onSelectNode);
+            App.tree.renderTreeNode(childrenInner, child, activeNodeId, editable, onSelectNode);
         }
     }
 
@@ -963,11 +1067,10 @@ document.querySelectorAll('.popup-menu').forEach(m => {
     parentContainer.appendChild(nodeDiv);
 }
 
-function refreshTreeOnly() {
+App.tree.refreshTreeOnly = function() {
     if (App.currentMode === 'gto') {
-        renderGtoPage();
+        App.navigation.renderGtoPage();
     } else if (document.getElementById("constructorPage").classList.contains("active-page")) {
-        renderTree("constructorTree", App.state.currentNodeId, true, selectNode);
+        App.tree.renderTree("constructorTree", App.state.selectedNodeId || App.state.currentNodeId, true, App.navigation.selectNode);
     }
 }
-

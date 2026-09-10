@@ -1,12 +1,13 @@
 // ===== paint.js -- extracted from all.js (cell painting) =====
 
-function updateCellStyle(cell, pid) {
+App.paint = App.paint || {};
+App.paint.updateCellStyle = function(cell, pid) {
     if (pid === null) {
         cell.removeAttribute("style");
         return;
     }
     
-    const profiles = getColorsForNode(App.state.currentNodeId);
+    const profiles = App.colors.getColorsForNode(App.state.currentNodeId);
     const prof = profiles.find(p => p.id === pid);
     if (!prof) {
         cell.removeAttribute("style");
@@ -14,7 +15,7 @@ function updateCellStyle(cell, pid) {
     }
     
     // ✅ Правильно: используем существующую функцию
-    let gradStyle = getGradientStyleFromColorForNode(App.state.currentNodeId, prof);
+    let gradStyle = App.colors.getGradientStyleFromColorForNode(App.state.currentNodeId, prof);
     if (gradStyle) {
         cell.setAttribute("style", gradStyle + "; color: #F0F0F0;");
     } else {
@@ -22,16 +23,16 @@ function updateCellStyle(cell, pid) {
     }
 }
 
-function paintCell(row, col) {
-    const activeProfile = getActiveForNode(App.state.currentNodeId);
+App.paint.paintCell = function(row, col) {
+    const activeProfile = App.colors.getActiveForNode(App.state.currentNodeId);
     if (!App.state.currentNodeId || !activeProfile) return;
     const gridId = App.currentMode === 'gto' ? 'gtoGrid' : 'constructorGrid';
 const cell = document.querySelector(`#${gridId} .hand-cell[data-row='${row}'][data-col='${col}']`);
     if (!cell) return;
-    const currentPid = getCellProfile(App.state.currentNodeId, row, col);
+    const currentPid = App.grid.getCellProfile(App.state.currentNodeId, row, col);
     let newPid = (currentPid === activeProfile) ? null : activeProfile;
-    setCellProfile(App.state.currentNodeId, row, col, newPid, false);
-    updateCellStyle(cell, newPid);
+    App.grid.setCellProfile(App.state.currentNodeId, row, col, newPid, false);
+    App.paint.updateCellStyle(cell, newPid);
     cell.justChanged = true;
     let cellKey = `${row}_${col}`;
     let newBlockUntil = Infinity;
@@ -41,7 +42,7 @@ const cell = document.querySelector(`#${gridId} .hand-cell[data-row='${row}'][da
 	markUnsaved();
 }
 
-function handlePaintStart(e) {
+App.paint.handlePaintStart = function(e) {
     // Матрица GTO недоступна для редактирования — рисуем только в конструкторе
     const isEditor = document.getElementById("constructorPage").classList.contains("active-page");
     if (!isEditor) return;
@@ -55,11 +56,11 @@ function handlePaintStart(e) {
     App.state.painting = true;
     const row = parseInt(cell.getAttribute('data-row'));
     const col = parseInt(cell.getAttribute('data-col'));
-    paintCell(row, col);
+    App.paint.paintCell(row, col);
     App.state.lastPaintedCell = `${row},${col}`;
 }
 
-function handlePaintMove(e) {
+App.paint.handlePaintMove = function(e) {
     if (!App.state.painting) return;
     
     // Матрица GTO недоступна для редактирования — рисуем только в конструкторе
@@ -79,11 +80,11 @@ function handlePaintMove(e) {
     const col = parseInt(cell.getAttribute('data-col'));
     const key = `${row},${col}`;
     if (App.state.lastPaintedCell === key) return;
-    paintCell(row, col);
+    App.paint.paintCell(row, col);
     App.state.lastPaintedCell = key;  // ← ИСПРАВЛЕНО!
 }
 
-function handlePaintEnd() {
+App.paint.handlePaintEnd = function() {
     App.state.painting = false;
     App.state.lastPaintedCell = null;
     // В режиме анализа рисование отключено (см. handlePaintStart/handlePaintMove),
@@ -94,7 +95,7 @@ function handlePaintEnd() {
     // закрепления добавляется на уже отсоединённый от DOM старый элемент
     // ячейки и визуально не появляется.
     if (App.state.currentNodeId && App.currentMode !== 'gto' && !App.state.analysisMode) {
-        updateCurrentDisplay();
+        App.grid.updateCurrentDisplay();
     }
 }
 

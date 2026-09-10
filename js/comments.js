@@ -2,34 +2,35 @@
 // comments.js — работа с комментариями к диапазонам
 // ============================================================
 
-function getComments(nodeId) {
+App.comments = App.comments || {};
+App.comments.getComments = function(nodeId) {
     const tableId = getTableId(nodeId);
     return App.state.commentsPerNode[tableId] || '';
 }
 
-function setComments(nodeId, text) {
+App.comments.setComments = function(nodeId, text) {
     const tableId = getTableId(nodeId);
     App.state.commentsPerNode[tableId] = text;
     markUnsaved();
 }
 
-function renderComments(nodeId) {
+App.comments.renderComments = function(nodeId) {
     const textarea = document.getElementById('commentsTextarea');
     if (!textarea) return;
     
-    const comments = getComments(nodeId);
+    const comments = App.comments.getComments(nodeId);
     textarea.value = comments;
 }
 
 // ===== ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ КОММЕНТАРИЕВ В ПРОСМОТРЕ =====
-function renderWorkComments(nodeId) {
+App.comments.renderWorkComments = function(nodeId) {
     const textarea = document.getElementById('workCommentsTextarea');
     if (!textarea) return;
-    const comments = getComments(nodeId);
+    const comments = App.comments.getComments(nodeId);
     textarea.value = comments;
 }
 
-function toggleComments() {
+App.comments.toggleComments = function() {
     const area = document.getElementById('commentsArea');
     const btn = document.getElementById('commentsToggleBtn');
     
@@ -51,24 +52,24 @@ function toggleComments() {
     }
 }
 
-function saveComments() {
+App.comments.saveComments = function() {
     if (!App.state.currentNodeId) return;
     
     const textarea = document.getElementById('commentsTextarea');
     if (!textarea) return;
     
-    setComments(App.state.currentNodeId, textarea.value);
+    App.comments.setComments(App.state.currentNodeId, textarea.value);
     persistAll();
     clearUnsaved();
 }
 
 // ===== ИНИЦИАЛИЗАЦИЯ КОММЕНТАРИЕВ =====
-function initComments() {
+App.comments.initComments = function() {
     const toggleBtn = document.getElementById('commentsToggleBtn');
     const textarea = document.getElementById('commentsTextarea');
     
     if (toggleBtn) {
-        toggleBtn.addEventListener('click', toggleComments);
+        toggleBtn.addEventListener('click', App.comments.toggleComments);
     }
     
     if (textarea) {
@@ -78,7 +79,7 @@ function initComments() {
             if (saveTimeout) clearTimeout(saveTimeout);
             saveTimeout = setTimeout(() => {
                 if (App.state.currentNodeId) {
-                    setComments(App.state.currentNodeId, this.value);
+                    App.comments.setComments(App.state.currentNodeId, this.value);
                 }
             }, 500);
         });
@@ -86,7 +87,7 @@ function initComments() {
         // Сохраняем при потере фокуса
         textarea.addEventListener('blur', function() {
             if (App.state.currentNodeId) {
-                setComments(App.state.currentNodeId, this.value);
+                App.comments.setComments(App.state.currentNodeId, this.value);
                 persistAll();
                 clearUnsaved();
             }

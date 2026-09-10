@@ -77,8 +77,11 @@ const GTO_EXISTING_FILES = [
 	{ gameType: 'cash', tableSize: '6max', limit: 'nl50',  stack: '100bb', sizing: '2.25' },
     { gameType: 'cash', tableSize: '6max', limit: 'nl50',  stack: '100bb', sizing: '2.5' },
     { gameType: 'cash', tableSize: '6max', limit: 'nl50',  stack: '100bb', sizing: '3' },
+	{ gameType: 'cash', tableSize: '6max', limit: 'nl100', stack: '100bb', sizing: '2.25' },
     { gameType: 'cash', tableSize: '6max', limit: 'nl100', stack: '100bb', sizing: '2.5' },
-    { gameType: 'cash', tableSize: '6max', limit: 'nl100', stack: '100bb', sizing: '3' }
+    { gameType: 'cash', tableSize: '6max', limit: 'nl100', stack: '100bb', sizing: '3' },
+    { gameType: 'cash', tableSize: '6max', limit: 'nl200', stack: '100bb', sizing: '2.5' },
+    { gameType: 'cash', tableSize: '6max', limit: 'nl200', stack: '100bb', sizing: '3' }
 ];
 
 // ===== НАЙТИ ТОЧНОЕ СОВПАДЕНИЕ КОМБИНАЦИИ ФИЛЬТРОВ В МАНИФЕСТЕ =====
@@ -206,25 +209,55 @@ function convertGtoJson(jsonArray) {
                         colorId: colorIdMap[comp.colorId] || comp.colorId,
                         share: comp.share
                     }));
+                    
+                    // Восстанавливаем name если отсутствует
+                    const multiName = mc.name || 'Смесь';
+                    
+                    // Восстанавливаем boundaries из share если отсутствуют
+                   let boundaries = mc.boundaries;
+if (!boundaries || boundaries.length === 0) {
+    boundaries = [];
+    let sum = 0;
+    for (const comp of mappedComponents) {
+        sum += comp.share;
+        boundaries.push(sum);
+    }
+}
+                    
                     colorList.push({
                         id: newId,
-                        name: mc.name,
+                        name: multiName,
                         type: 'multi',
                         components: mappedComponents,
-                        boundaries: mc.boundaries || []
+                        boundaries: boundaries
                     });
                 }
             }
 
-            // Таблица 13×13 из cells {"row,col": oldColorId}
+            // Таблица 13×13 из cells (поддержка обоих форматов)
             const matrix = Array(13).fill().map(() => Array(13).fill(null));
             if (item.cells) {
-                for (const [key, oldColorId] of Object.entries(item.cells)) {
-                    const [r, c] = key.split(',').map(Number);
-                    if (r >= 0 && r < 13 && c >= 0 && c < 13) {
-                        matrix[r][c] = colorIdMap[oldColorId] !== undefined
-                            ? colorIdMap[oldColorId]
-                            : oldColorId;
+                if (Array.isArray(item.cells)) {
+                    // НОВЫЙ формат - массив 13×13
+                    for (let i = 0; i < 13; i++) {
+                        for (let j = 0; j < 13; j++) {
+                            if (item.cells[i] && item.cells[i][j] !== null && item.cells[i][j] !== undefined) {
+                                const oldColorId = item.cells[i][j];
+                                matrix[i][j] = colorIdMap[oldColorId] !== undefined
+                                    ? colorIdMap[oldColorId]
+                                    : oldColorId;
+                            }
+                        }
+                    }
+                } else {
+                    // СТАРЫЙ формат - объект {"row,col": oldColorId}
+                    for (const [key, oldColorId] of Object.entries(item.cells)) {
+                        const [r, c] = key.split(',').map(Number);
+                        if (r >= 0 && r < 13 && c >= 0 && c < 13) {
+                            matrix[r][c] = colorIdMap[oldColorId] !== undefined
+                                ? colorIdMap[oldColorId]
+                                : oldColorId;
+                        }
                     }
                 }
             }
@@ -272,6 +305,7 @@ function cloneGtoStateSnapshot() {
         commentsPerNode: JSON.parse(JSON.stringify(App.gto.commentsPerNode || {})),
         expandedNodes: new Set(App.gto.expandedNodes || []),
         currentNodeId: App.gto.currentNodeId,
+        selectedNodeId: App.gto.selectedNodeId,
         nextNodeId: App.gto.nextNodeId,
         nextColorId: App.gto.nextColorId
     };
@@ -286,6 +320,7 @@ function restoreGtoStateSnapshot(snapshot) {
     App.gto.commentsPerNode = JSON.parse(JSON.stringify(snapshot.commentsPerNode || {}));
     App.gto.expandedNodes = new Set(snapshot.expandedNodes || []);
     App.gto.currentNodeId = snapshot.currentNodeId;
+    App.gto.selectedNodeId = snapshot.selectedNodeId || snapshot.currentNodeId || null;
     App.gto.nextNodeId = snapshot.nextNodeId;
     App.gto.nextColorId = snapshot.nextColorId;
     if (App.gto.nodes && App.gto.nodes.length) {
@@ -297,15 +332,17 @@ function restoreGtoStateSnapshot(snapshot) {
 // onSuccess вызывается только после успешной загрузки и рендера —
 // используется, чтобы переключать активную кнопку фильтра лишь тогда,
 // когда решение реально доступно.
-function loadGtoData(fileName, onSuccess) {
+function loadGtoData(fileName, onSuccess, resetView) {
     if (!fileName) {
         console.warn('⚠️ Имя файла не указано');
         return Promise.reject(new Error('Имя файла не указано'));
     }
 
+    // Снимок нужен только для восстановления предыдущего дерева при ошибке.
+    // После успешной загрузки нового JSON состояние просмотра не переносим:
+    // новый диапазон всегда открывается с начальным состоянием.
     const snapshot = cloneGtoStateSnapshot();
     const assetUrls = getGtoAssetUrls(fileName);
-    console.log('📂 Загружаем GTO:', fileName, assetUrls);
 
     async function fetchWithFallback() {
         let lastError = null;
@@ -344,29 +381,45 @@ function loadGtoData(fileName, onSuccess) {
             rebuildNodeIndexFor(App.gto);
 
             const firstRange = App.gto.nodes.find(n => n.type === 'range');
-            App.gto.currentNodeId = firstRange ? firstRange.id : null;
+            const savedCurrent = getNodeFrom(App.gto, snapshot.currentNodeId);
+            const canRestoreView = !resetView && savedCurrent &&
+                (savedCurrent.type === 'range' || savedCurrent.type === 'subrange');
 
-            App.gto.expandedNodes = new Set();
-            if (firstRange) {
-                const rootFolder = App.gto.nodes.find(n => n.parentId === null && n.type === 'folder');
-                if (rootFolder) {
-                    App.gto.expandedNodes.add(rootFolder.id);
-                }
-                let currentId = firstRange.id;
-                while (currentId !== null) {
-                    const node = getNodeFrom(App.gto, currentId);
-                    if (!node || node.parentId === null) break;
-                    const parent = getNodeFrom(App.gto, node.parentId);
-                    if (parent && parent.type === 'folder') {
-                       App.gto.expandedNodes.add(parent.id);
+            if (canRestoreView) {
+                // При F5 сохраняем активный диапазон и раскрытие дерева,
+                // восстановленные до загрузки JSON из persistence.
+                App.gto.currentNodeId = savedCurrent.id;
+                // Подсветка дерева должна совпадать с активным диапазоном.
+                App.gto.selectedNodeId = savedCurrent.id;
+                const availableNodeIds = new Set(App.gto.nodes.map(node => node.id));
+                App.gto.expandedNodes = new Set(
+                    Array.from(snapshot.expandedNodes || [])
+                        .filter(nodeId => availableNodeIds.has(nodeId))
+                );
+            } else {
+                // При переключении JSON начинаем с состояния по умолчанию:
+                // открыта только корневая папка первого диапазона (обычно UTG),
+                // активен первый диапазон в ней.
+                App.gto.currentNodeId = firstRange ? firstRange.id : null;
+                App.gto.selectedNodeId = App.gto.currentNodeId;
+                App.gto.expandedNodes = new Set();
+                if (firstRange) {
+                    // Раскрываем весь путь к первому диапазону: техническую
+                    // корневую папку JSON и папку UTG внутри неё.
+                    let folder = getNodeFrom(App.gto, firstRange.parentId);
+                    while (folder && folder.type === 'folder') {
+                        App.gto.expandedNodes.add(folder.id);
+                        folder = folder.parentId === null
+                            ? null
+                            : getNodeFrom(App.gto, folder.parentId);
                     }
-                    currentId = node.parentId;
                 }
             }
 
-            persistAll();
-            renderGtoPage();
-            animateGtoFade();
+            // GTO загружен из JSON - только в памяти, БЕЗ сохранения на сервер
+            
+            App.navigation.renderGtoPage();
+            App.animations.gtoFade();
 
             const gtoTree = document.getElementById('gtoTree');
             if (gtoTree) {
@@ -374,8 +427,6 @@ function loadGtoData(fileName, onSuccess) {
                 void gtoTree.offsetWidth;
                 gtoTree.classList.add('matrix-fade');
             }
-
-            console.log(`✅ Загружен: ${fileName} (узлов: ${App.gto.nodes.length})`);
 
             if (typeof onSuccess === 'function') {
                 onSuccess();
@@ -386,7 +437,7 @@ function loadGtoData(fileName, onSuccess) {
         .catch(err => {
             console.error('❌ Ошибка загрузки GTO:', err);
             restoreGtoStateSnapshot(snapshot);
-            showFloatingModal('В данный момент такое решение GTO недоступно');
+            App.modals.showFloatingModal('В данный момент такое решение GTO недоступно');
             return false;
         });
 }
@@ -408,6 +459,17 @@ function loadGtoByFilters(overrides, onSuccess) {
         Object.assign(filters, overrides);
     }
 
+    // При переключении JSON состояние дерева сбрасывается на стартовое,
+    // поэтому его нужно отдельно отметить как изменённое и сохранить.
+    // При обычной загрузке без overrides (например, после F5) этого делать
+    // не нужно: состояние уже было восстановлено из persistence.
+    const persistViewAfterSwitch = () => {
+        if (overrides && App.dirty) {
+            App.dirty.markMetadataDirty('gto');
+            persistAll();
+        }
+    };
+
     // Проверяем, существует ли точная комбинация
     let entry = findManifestEntry(filters);
 
@@ -417,7 +479,7 @@ function loadGtoByFilters(overrides, onSuccess) {
         // fallback именно по изменённому значению; если для него вообще нет
         // ни одного файла — сообщаем пользователю и выходим.
         // Если overrides не задан (первичная загрузка / восстановленные из
-        // localStorage фильтры, файл которых мог быть удалён) — подбираем
+        // сохранённые фильтры, файл которых мог быть удалён) — подбираем
         // любую существующую комбинацию с тем же лимитом, без сообщения об
         // ошибке, а если и такой нет — берём первую запись манифеста.
         const changedFilterName = overrides ? Object.keys(overrides)[0] : 'limit';
@@ -429,7 +491,7 @@ function loadGtoByFilters(overrides, onSuccess) {
                 // Ни точной комбинации, ни fallback не найдено — показываем сообщение.
                 const label = getFilterLabel(changedFilterName);
                 const optText = document.querySelector(`.gto-filter-options[data-filter="${changedFilterName}"] .opt[data-value="${changedValue}"]`)?.textContent.trim() || changedValue;
-                showFloatingModal(`Решений для ${label} «${optText}» не найдено`);
+                App.modals.showFloatingModal(`Решений для ${label} «${optText}» не найдено`);
                 return;
             }
             // Совсем ничего не подошло (например, восстановленный лимит больше
@@ -438,21 +500,21 @@ function loadGtoByFilters(overrides, onSuccess) {
         }
 
         if (!entry) {
-            showFloatingModal('В данный момент такое решение GTO недоступно');
+            App.modals.showFloatingModal('В данный момент такое решение GTO недоступно');
             return;
         }
 
         // Нашли fallback — переключаем все активные кнопки на комбинацию
         // из манифеста и загружаем её (без рекурсии — она реально существует).
-        console.log(`⚠️ Точной комбинации нет, загружаем fallback: ${getFilterLabel(changedFilterName)} ${changedValue}`);
         setActiveFiltersFromEntry(entry);
         const fallbackFileName = buildGtoFileName(entry);
         if (fallbackFileName) {
             loadGtoData(fallbackFileName, () => {
                 saveGtoFilters();
                 updateGtoFilterColors();
+                persistViewAfterSwitch();
                 if (onSuccess) onSuccess();
-            });
+            }, Boolean(overrides));
         }
         return;
     }
@@ -460,14 +522,15 @@ function loadGtoByFilters(overrides, onSuccess) {
     // Точная комбинация существует — собираем имя файла и загружаем.
     const fileName = buildGtoFileName(filters);
     if (!fileName) {
-        showFloatingModal('В данный момент такое решение GTO недоступно');
+        App.modals.showFloatingModal('В данный момент такое решение GTO недоступно');
         return;
     }
 
     loadGtoData(fileName, () => {
         updateGtoFilterColors();
+        persistViewAfterSwitch();
         if (onSuccess) onSuccess();
-    });
+    }, Boolean(overrides));
 }
 
 // ===== ЗАГРУЗИТЬ ПО УМОЛЧАНИЮ (NL25) =====
@@ -489,7 +552,7 @@ function loadDefaultGto() {
     updateGtoFilterColors();
 }
 
-// ===== СОХРАНИТЬ ФИЛЬТРЫ В LOCALSTORAGE =====
+// ===== СОХРАНИТЬ ФИЛЬТРЫ В ХРАНИЛИЩЕ =====
 function saveGtoFilters() {
     const filters = {};
     document.querySelectorAll('.gto-filter-options').forEach(group => {
@@ -501,7 +564,7 @@ function saveGtoFilters() {
     App.storage.save('gto_filters', filters);
 }
 
-// ===== ВОССТАНОВИТЬ ФИЛЬТРЫ ИЗ LOCALSTORAGE =====
+// ===== ВОССТАНОВИТЬ ФИЛЬТРЫ ИЗ ХРАНИЛИЩА =====
 function restoreGtoFilters() {
     const raw = App.storage.loadRaw('gto_filters');
     if (!raw) return false;
@@ -531,7 +594,7 @@ function initGtoFilters() {
     const ALLOWED_FILTERS = {
         'gameType': ['cash'],
         'tableSize': ['6max'],
-        'limit': ['nl25', 'nl50', 'nl100'],
+        'limit': ['nl25', 'nl50', 'nl100', 'nl200'],
         'stack': ['100bb'],
         'sizing': ['2.25', '2.5', '3']
     };
@@ -578,8 +641,8 @@ function initGtoFilters() {
 }
 
 // ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
-const originalSwitchTab = window.switchTab;
-window.switchTab = function(page) {
+const originalSwitchTab = App.navigation.switchTab;
+App.navigation.switchTab = function(page) {
     // Вызываем оригинальную функцию (она уже делает loadDefaultGto + renderGtoPage)
     if (originalSwitchTab) {
         originalSwitchTab(page);
@@ -591,7 +654,7 @@ window.switchTab = function(page) {
 document.addEventListener('DOMContentLoaded', function() {
     initGtoFilters();
     
-    // Пробуем восстановить сохранённые фильтры из localStorage
+    // Пробуем восстановить сохранённые фильтры из хранилища
     const restored = restoreGtoFilters();
     
     // Если фильтры не были восстановлены (первый запуск), устанавливаем NL25 по умолчанию
@@ -604,7 +667,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Если GTO-дерево уже восстановлено из localStorage (loadFromStorage в init.js
+    // Если GTO-дерево уже восстановлено из хранилища (loadFromStorage в init.js
     // выполняется раньше этого события) — не перезатираем сохранённый currentNodeId
     // и expandedNodes повторной загрузкой JSON. Загружаем данные только если
     // GTO-ветка действительно пуста (первый визит / очищенное хранилище).

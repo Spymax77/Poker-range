@@ -22,6 +22,7 @@ html, body {
 	
 	
 .app-card {
+    position: relative;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -197,7 +198,7 @@ html, body {
 }
 
 /* ===== GTO: ЯЧЕЙКА, ЗАКРЕПЛЁННАЯ ДЛЯ ПОСТОЯННОЙ ДЕМОНСТРАЦИИ gtoCellPreview =====
-   Ставится по клику (см. toggleGtoCellPin в js/grid.js). Обводка поверх ::after
+   Ставится по клику (см. toggleGtoCellPin в js/modules/grid/grid-preview.js). Обводка поверх ::after
    затемнения, чтобы выделение было видно и без наведения мышью. */
 #gtoGrid .hand-cell.gto-cell-pinned,
 #constructorGrid .hand-cell.gto-cell-pinned {
@@ -282,22 +283,21 @@ footer {
 
 /* ========== НОВЫЕ СТИЛИ ДЛЯ РЕЖИМА РАБОТЫ ========== */
 .work-layout {
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
     max-width: 100%;
     box-sizing: border-box;
 }
 
 .left-area {
-    display: inline-block;
-    vertical-align: top;
+    display: block;
     width: auto;
     position: relative;
-    margin-right: 24px;    /* ← заменяет gap */
 }
 
 .right-area {
-    display: inline-block;
-    vertical-align: top;
+    display: block;
     min-width: 500px;
     max-width: 1000px;
     padding-top: 14px;
@@ -305,18 +305,59 @@ footer {
     box-sizing: border-box;
 }
 
+@media (max-width: 974px) {
+    .work-layout {
+        flex-direction: column;
+    }
+}
+
 
 
 
 
 #workStatsFooter {
-    display: flex;
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) max-content;
     justify-content: flex-end;
     align-items: center;
     gap: 16px;
     margin-top: 6px;
     flex-wrap: wrap;
     font-size: 13px;
+}
+
+#workStatsContainer {
+    display: contents;
+}
+
+#workStatsContainer .stats-table--total {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    width: max-content;
+    justify-self: end;
+    margin-top: 0;
+}
+
+#workStatsFooter > #rngNumber {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end;
+}
+
+#workStatsContainer .stats-table--details {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: none;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+#workStatsContainer.details-visible .stats-table--details {
+    display: flex;
+    flex-direction: column;
 }
 
 
@@ -398,5 +439,4 @@ footer {
 	
 	
 	
-
 

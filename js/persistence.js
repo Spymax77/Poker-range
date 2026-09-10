@@ -1,154 +1,213 @@
 // ============================================================
-// persistence.js — сохранение/загрузка состояния в localStorage
+// persistence.js — сохранение/загрузка состояния (V2 только)
 // ============================================================
 
 // ===== PERSIST ALL =====
+let persistTimer = null;
+
+function persistAllNow(skipTables) {
+    // Если нет изменений — ничего не делаем
+    if (!App.dirty || !App.dirty.hasDirty()) {
+        return Promise.resolve();
+    }
+
+    if (!App.auth || !App.auth.isLoggedIn()) {
+        App.auth.requireAuthNotice();
+        return Promise.resolve();
+    }
+
+    var dirty = App.dirty._raw;
+    var promises = [];
+    var savedCount = 0;
+
+    for (var mi = 0; mi < ['editor', 'gto'].length; mi++) {
+        var mode = ['editor', 'gto'][mi];
+        var branch = mode === 'editor' ? App.editor : App.gto;
+
+        // Сохраняем метаданные
+        if (dirty.metadata[mode]) {
+            var metadata = {
+                currentNodeId: branch.currentNodeId,
+                selectedNodeId: branch.selectedNodeId,
+                expandedNodes: Array.from(branch.expandedNodes),
+                workLevels: branch.workLevels,
+                workDisplayNodeId: branch.workDisplayNodeId
+            };
+            promises.push(App.storage.saveRaw('poker_range_metadata_' + mode, JSON.stringify(metadata)));
+            savedCount++;
+        }
+
+        // Сохраняем структуру
+        if (dirty.structure[mode]) {
+            var structure = {
+                nodes: branch.nodes,
+                nextNodeId: branch.nextNodeId,
+                nextColorId: branch.nextColorId,
+                colorsPerNode: branch.colorsPerNode,
+                activePerNode: branch.activePerNode,
+                commentsPerNode: branch.commentsPerNode
+            };
+            promises.push(App.storage.saveRaw('poker_range_structure_' + mode, JSON.stringify(structure)));
+            savedCount++;
+        }
+
+        // Сохраняем изменённые таблицы ТОЛЬКО если это явное сохранение (не по таймеру)
+        if (!skipTables) {
+            var dirtyTables = App.dirty.getDirtyTables(mode);
+            for (var ti = 0; ti < dirtyTables.length; ti++) {
+                var nodeId = dirtyTables[ti];
+                var tableId = getTableId(Number(nodeId));
+                var tableData = branch.cellStorage[tableId];
+                if (tableData) {
+                    promises.push(App.storage.saveTable(mode, Number(nodeId), {
+                        nodeId: Number(nodeId),
+                        mode: mode,
+                        matrix: tableData
+                    }));
+                    savedCount++;
+                }
+            }
+        }
+    }
+
+    // Сохраняем общие UI-метаданные
+    if (dirty.metadata.editor || dirty.metadata.gto) {
+        var activeBtn = document.querySelector('.tab-btn.active');
+        var activeTab = activeBtn ? activeBtn.getAttribute('data-page') : 'constructor';
+        var uiMetadata = {
+            activeTab: activeTab,
+            analysisMode: App.state.analysisMode
+        };
+        promises.push(App.storage.saveMetadata(uiMetadata));
+    }
+
+    // Очищаем dirty: если skipTables — оставляем таблицы грязными (ждут явного сохранения)
+    if (skipTables) {
+        for (var m = 0; m < ['editor', 'gto'].length; m++) {
+            var md = ['editor', 'gto'][m];
+            dirty.metadata[md] = false;
+            dirty.structure[md] = false;
+        }
+    } else {
+        App.dirty.clearDirty();
+    }
+    return Promise.all(promises);
+}
+
 function persistAll() {
-    // Сохраняем активную вкладку
-    const activeBtn = document.querySelector('.tab-btn.active');
-    const activeTab = activeBtn ? activeBtn.getAttribute('data-page') : 'constructor';
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(function() {
+        persistTimer = null;
+        persistAllNow(true); // по таймеру — только структура, без таблиц
+    }, 2000);
+}
 
-    const data = {
-        // ---- РЕДАКТОР ----
-        editor: {
-            nodes: App.editor.nodes,
-            nextNodeId: App.editor.nextNodeId,
-            currentNodeId: App.editor.currentNodeId,
-            cellStorage: App.editor.cellStorage,
-            expandedNodes: Array.from(App.editor.expandedNodes),
-            workLevels: App.editor.workLevels,
-            workDisplayNodeId: App.editor.workDisplayNodeId,
-            colorsPerNode: App.editor.colorsPerNode,
-            activePerNode: App.editor.activePerNode,
-            nextColorId: App.editor.nextColorId,
-            commentsPerNode: App.editor.commentsPerNode
-        },
-        // ---- GTO ----
-        gto: {
-            nodes: App.gto.nodes,
-            nextNodeId: App.gto.nextNodeId,
-            currentNodeId: App.gto.currentNodeId,
-            cellStorage: App.gto.cellStorage,
-            expandedNodes: Array.from(App.gto.expandedNodes),
-            workLevels: App.gto.workLevels,
-            workDisplayNodeId: App.gto.workDisplayNodeId,
-            colorsPerNode: App.gto.colorsPerNode,
-            activePerNode: App.gto.activePerNode,
-            nextColorId: App.gto.nextColorId,
-            commentsPerNode: App.gto.commentsPerNode
-        },
-        activeTab: activeTab,
-        // Режим анализа конструктора должен переживать перезагрузку страницы (F5),
-        // поэтому сохраняем его на верхнем уровне (это UI-флаг, не привязан к editor/gto).
+function flushPersist() {
+    if (persistTimer) {
+        clearTimeout(persistTimer);
+        persistTimer = null;
+    }
+    return persistAllNow();
+}
+
+function persistActiveTab(activeTab) {
+    if (!App.auth || !App.auth.isLoggedIn()) {
+        return;
+    }
+    App.storage.saveMetadata({
+        activeTab: activeTab || 'constructor',
         analysisMode: App.state.analysisMode
-    };
+    });
+}
 
+// ===== V2: Загрузка разделённых данных =====
+async function loadFromStorageV2() {
+    var uiMetadata = App.storage.loadMetadata() || {};
 
-    App.storage.save("poker_range_tree_v6", data);
+    for (var mi = 0; mi < ['editor', 'gto'].length; mi++) {
+        var mode = ['editor', 'gto'][mi];
+        var branch = mode === 'editor' ? App.editor : App.gto;
+
+        // Загружаем структуру
+        var structure = App.storage.loadStructure(mode);
+        if (structure) {
+            branch.nodes = structure.nodes || [];
+            branch.nextNodeId = structure.nextNodeId || 1;
+            branch.nextColorId = structure.nextColorId || 1;
+            branch.colorsPerNode = structure.colorsPerNode || {};
+            branch.activePerNode = structure.activePerNode || {};
+            branch.commentsPerNode = structure.commentsPerNode || {};
+        }
+
+        // Загружаем метаданные
+        var metadata = App.storage.load('poker_range_metadata_' + mode);
+        if (metadata) {
+            branch.currentNodeId = metadata.currentNodeId || null;
+            branch.selectedNodeId = metadata.selectedNodeId || branch.currentNodeId || null;
+            branch.expandedNodes = new Set(metadata.expandedNodes || []);
+            branch.workLevels = metadata.workLevels || [{ parentNodeId: null, levelIndex: 0 }];
+            branch.workDisplayNodeId = metadata.workDisplayNodeId || null;
+        }
+
+        // Если currentNodeId не задан — выбираем первый range/subrange
+        if (!branch.currentNodeId && branch.nodes && branch.nodes.length > 0) {
+            var firstRange = branch.nodes.find(function(n) {
+                return n.type === 'range' || n.type === 'subrange';
+            });
+            if (firstRange) {
+                branch.currentNodeId = firstRange.id;
+            }
+        }
+
+        // Загружаем таблицы ТОЛЬКО для editor (GTO не сохраняется на сервер)
+        branch.cellStorage = {};
+        if (mode === 'editor' && branch.nodes) {
+            // СНАЧАЛА загружаем все таблицы с сервера
+            var tableKeys = [];
+            for (var ni = 0; ni < branch.nodes.length; ni++) {
+                tableKeys.push('poker_range_table_' + mode + '_' + branch.nodes[ni].id);
+            }
+            await App.storage.preload(tableKeys);
+            
+            // ПОТОМ читаем из кэша
+            for (var ni = 0; ni < branch.nodes.length; ni++) {
+                var node = branch.nodes[ni];
+                var tableData = App.storage.loadTable(mode, node.id);
+                if (tableData) {
+                    var tableId = getTableId(node.id);
+                    // tableData может быть объектом {matrix: ...} или сразу матрицей
+                    branch.cellStorage[tableId] = tableData.matrix || tableData;
+                }
+            }
+        }
+
+        rebuildNodeIndexFor(branch);
+    }
+
+    App.state.analysisMode = !!uiMetadata.analysisMode;
+
+    if (App.editor.nodes.length === 0) {
+        App.currentMode = 'editor';
+        App.refresh.resetToCleanData();
+    }
+
+    return uiMetadata.activeTab || 'constructor';
 }
 
 function loadFromStorage() {
-    let raw = App.storage.loadRaw("poker_range_tree_v6");
-    if (raw) {
-        try {
-            let d = JSON.parse(raw);
-            
-            // Проверяем новый формат (с editor/gto ветками) или старый
-            if (d.editor) {
-                // Новый формат: загружаем editor и gto отдельно
-                App.editor.nodes = d.editor.nodes || [];
-                App.editor.nextNodeId = d.editor.nextNodeId || 1;
-                App.editor.currentNodeId = d.editor.currentNodeId || null;
-                App.editor.cellStorage = d.editor.cellStorage || {};
-                App.editor.expandedNodes = new Set(d.editor.expandedNodes || []);
-                App.editor.workLevels = d.editor.workLevels || [];
-                App.editor.workDisplayNodeId = d.editor.workDisplayNodeId || null;
-                App.editor.colorsPerNode = d.editor.colorsPerNode || {};
-                App.editor.activePerNode = d.editor.activePerNode || {};
-                App.editor.nextColorId = d.editor.nextColorId || 1;
-                App.editor.commentsPerNode = d.editor.commentsPerNode || {};
-
-                if (d.gto) {
-                    App.gto.nodes = d.gto.nodes || [];
-                    App.gto.nextNodeId = d.gto.nextNodeId || 1;
-                    App.gto.currentNodeId = d.gto.currentNodeId || null;
-                    App.gto.cellStorage = d.gto.cellStorage || {};
-                    App.gto.expandedNodes = new Set(d.gto.expandedNodes || []);
-                    App.gto.workLevels = d.gto.workLevels || [];
-                    App.gto.workDisplayNodeId = d.gto.workDisplayNodeId || null;
-                    App.gto.colorsPerNode = d.gto.colorsPerNode || {};
-                    App.gto.activePerNode = d.gto.activePerNode || {};
-                    App.gto.nextColorId = d.gto.nextColorId || 1;
-                    App.gto.commentsPerNode = d.gto.commentsPerNode || {};
-                }
-            } else {
-                // Старый формат: загружаем только в editor
-                App.editor.nodes = d.nodes || [];
-                App.editor.nextNodeId = d.nextNodeId || 1;
-                App.editor.currentNodeId = d.currentNodeId || null;
-                App.editor.cellStorage = d.cellStorage || {};
-                App.editor.expandedNodes = new Set(d.expandedNodes || []);
-                App.editor.workLevels = d.workLevels || [];
-                App.editor.workDisplayNodeId = d.workDisplayNodeId || null;
-                App.editor.colorsPerNode = d.colorsPerNode || {};
-                App.editor.activePerNode = d.activePerNode || {};
-                App.editor.nextColorId = d.nextColorId || 1;
-                App.editor.commentsPerNode = d.commentsPerNode || {};
-            }
-
-            // Загружаем активную вкладку
-            const activeTab = d.activeTab || 'constructor';
-
-            // Загружаем режим анализа конструктора (должен переживать F5).
-            App.state.analysisMode = !!d.analysisMode;
-
-            // Пересобираем индексы после загрузки
-            rebuildNodeIndexFor(App.editor);
-            rebuildNodeIndexFor(App.gto);
-
-            if (App.editor.nodes.length === 0) {
-                App.currentMode = 'editor';
-                resetToCleanData();
-            }
-            return activeTab;
-        } catch(e) {
-            console.error('Ошибка загрузки:', e);
-            // Данные ЕСТЬ, но не парсятся — они повреждены.
-            // НЕ затираем молча: сначала спасаем точную копию в резервный
-            // ключ, затем предупреждаем пользователя. Только после этого
-            // поднимаем чистое дерево, чтобы приложение осталось рабочим.
-            const backupKey = "poker_range_tree_v6_corrupted_" + Date.now();
-            try {
-                App.storage.saveRaw(backupKey, raw);
-            } catch (backupErr) {
-                console.error('Не удалось сохранить резервную копию повреждённых данных:', backupErr);
-            }
-            if (typeof showFloatingModal === 'function') {
-                showFloatingModal(
-                    'Сохранённые данные повреждены и не могут быть прочитаны. ' +
-                    'Их копия сохранена под ключом «' + backupKey + '». ' +
-                    'Загружено чистое дерево.'
-                );
-            }
-            App.currentMode = 'editor';
-            resetToCleanData();
-            return 'constructor';
-        }
-    }
-    // Данных НЕТ вообще — обычный первый запуск, тихий сброс без предупреждения.
-    App.currentMode = 'editor';
-    resetToCleanData();
-    return 'constructor';
+    return loadFromStorageV2();
 }
 
 // ===== ФЛАГ ИЗМЕНЕНИЙ =====
 
 function markUnsaved() {
     App.state.hasUnsavedChanges = true;
+    if (App.grid && App.grid.updateConstructorToolbarState) App.grid.updateConstructorToolbarState();
 }
 
 function clearUnsaved() {
     App.state.hasUnsavedChanges = false;
+    if (App.grid && App.grid.updateConstructorToolbarState) App.grid.updateConstructorToolbarState();
 }
 
 // ===== ПОДПИСКИ НА СОБЫТИЯ PERSISTENCE =====

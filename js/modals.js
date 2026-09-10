@@ -3,7 +3,8 @@
 // ============================================================
 
 // ===== ПЛАВАЮЩЕЕ МОДАЛЬНОЕ ОКНО (информационное, с кнопкой ОК) =====
-function showFloatingModal(message, callback) {
+App.modals = App.modals || {};
+App.modals.showFloatingModal = function(message, callback) {
     if (!message) {
         console.warn('⚠️ showFloatingModal: не передан текст сообщения');
         if (callback) callback();
@@ -23,7 +24,7 @@ function showFloatingModal(message, callback) {
             <span>Сообщение</span>
         </div>
         <div class="save-confirm-body">
-            <p>${message}</p>
+            <p>${escapeHtml(message)}</p>
         </div>
         <div class="save-confirm-actions" style="justify-content: center;">
             <button class="btn btn-confirm" id="floatingOkBtn">ОК</button>
@@ -75,7 +76,7 @@ function showFloatingModal(message, callback) {
 }
 
 // ===== КАСТОМНОЕ ОКНО ДЛЯ ПОДТВЕРЖДЕНИЯ (Да/Нет) =====
-function showSaveConfirmModal(message, onSave, onCancel) {
+App.modals.showSaveConfirmModal = function(message, onSave, onCancel) {
     if (!message) {
         console.warn('⚠️ showSaveConfirmModal: не передан текст сообщения');
         return;
@@ -94,7 +95,7 @@ function showSaveConfirmModal(message, onSave, onCancel) {
             <span>Cообщение</span>
         </div>
         <div class="save-confirm-body">
-            <p>${message}</p>
+            <p>${escapeHtml(message)}</p>
         </div>
         <div class="save-confirm-actions">
             <button class="btn btn-cancel" id="saveConfirmNo">Нет</button>
@@ -152,7 +153,7 @@ function showSaveConfirmModal(message, onSave, onCancel) {
 }
 
 // ========== МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ (из HTML-шаблона) ==========
-function showConfirmModal(message, onConfirm) {
+App.modals.showConfirmModal = function(message, onConfirm) {
     const modal = document.getElementById("confirmModal");
     const msgSpan = document.getElementById("confirmMessage");
     const yesBtn = document.getElementById("confirmYes");
@@ -186,7 +187,7 @@ function showConfirmModal(message, onConfirm) {
 }
 
 // ===== ДИАЛОГ ВЫБОРА КОМПОНЕНТА (для поддиапазонов) =====
-function showComponentSelectionDialog(parentNodeId, callback) {
+App.modals.showComponentSelectionDialog = function(parentNodeId, callback) {
     
     const parent = getNode(parentNodeId);
     if (!parent) {
@@ -216,13 +217,13 @@ const components = colors.filter(c => c.type === 'simple' || (!c.type && c.color
 
 for (const comp of components) {
     const colorName = comp.name || 'Цвет';
-    const colorHex = comp.color || '#9C5479';
+    const colorHex = escapeHtml(comp.color || '#9C5479');
     
     listHtml += `
       <div class="component-option" data-index="${components.indexOf(comp)}">
     <div class="profile-radio" data-index="${components.indexOf(comp)}"></div>
     <div class="color-swatch" style="background: ${colorHex};"></div>
-    <span class="color-name">${colorName}</span>
+    <span class="color-name">${escapeHtml(colorName)}</span>
 </div> 
     `;
 }
@@ -319,7 +320,7 @@ const options = modal.querySelectorAll('.component-option');
 const radios = modal.querySelectorAll('.profile-radio');
 let selectedIndex = undefined;
 
-function selectOption(index) {
+App.modals.selectOption = function(index) {
     // Снимаем активность со всех радио
     radios.forEach(r => r.classList.remove('active'));
     // Находим радио для выбранного индекса
@@ -347,7 +348,7 @@ options.forEach(opt => {
         if (e.target.classList.contains('profile-radio')) return;
         const idx = this.dataset.index;
         const index = idx === 'null' ? null : parseInt(idx);
-        selectOption(index);
+        App.modals.selectOption(index);
     });
 });
 
@@ -357,7 +358,7 @@ radios.forEach(radio => {
         e.stopPropagation();
         const idx = this.dataset.index;
         const index = idx === 'null' ? null : parseInt(idx);
-        selectOption(index);
+        App.modals.selectOption(index);
     });
 });
 }

@@ -1,6 +1,13 @@
 // ===== КАРТА РУК (рука → координаты) =====
 // ===== КАРТА РУК (рука → координаты) =====
-function generateHandMap() {
+App.importManager = App.importManager || {};
+
+// Импортируемая доля, которая при отображении округляется до 0.0%,
+// не создаёт профиль и не записывается в матрицу.
+App.importManager.isDisplayablePercent = function(percent) {
+    return Math.round(percent * 10) / 10 > 0;
+};
+App.importManager.generateHandMap = function() {
     const map = {};
     for (let i = 0; i < 13; i++) {
         for (let j = 0; j < 13; j++) {
@@ -12,7 +19,7 @@ function generateHandMap() {
 }
 
 // ===== КОНВЕРТЕР: 4d4c → 44, AcKc → AKs, AcKd → AKo =====
-function convertToShortHand(handWithSuits) {
+App.importManager.convertToShortHand = function(handWithSuits) {
     if (/^[2-9TJQKA]{1,2}[so]?$/.test(handWithSuits)) {
         return handWithSuits;
     }
@@ -45,7 +52,7 @@ function convertToShortHand(handWithSuits) {
 }
 
 // ===== НОРМАЛИЗАЦИЯ: объединяет комбинации одной руки со средним арифметическим =====
-function normalizeHands(text) {
+App.importManager.normalizeHands = function(text) {
     const items = text.split(',').map(s => s.trim());
     const parsed = [];
     for (const item of items) {
@@ -63,7 +70,7 @@ function normalizeHands(text) {
 
     const groups = {};
     for (const item of parsed) {
-        const shortHand = convertToShortHand(item.hand);
+        const shortHand = App.importManager.convertToShortHand(item.hand);
         if (!groups[shortHand]) {
             groups[shortHand] = { frequencies: [], count: 0 };
         }
@@ -76,16 +83,15 @@ function normalizeHands(text) {
         const group = groups[shortHand];
         const sum = group.frequencies.reduce((a, b) => a + b, 0);
         const avg = sum / group.frequencies.length;
-        const roundedAvg = Math.round(avg * 10000) / 10000;
-        result.push({ hand: shortHand, freq: roundedAvg });
+        result.push({ hand: shortHand, freq: avg });
     }
 
     return result;
 }
 
 // ===== ПАРСИНГ ТЕКСТА (с частотами) =====
-function parseHandsWithFrequencies(text) {
-    const normalized = normalizeHands(text);
+App.importManager.parseHandsWithFrequencies = function(text) {
+    const normalized = App.importManager.normalizeHands(text);
     const groups = {};
     for (const item of normalized) {
         const key = item.freq;
@@ -102,7 +108,7 @@ function parseHandsWithFrequencies(text) {
 }
 
 // ===== ГРУППИРОВКА ПО ЧАСТОТАМ =====
-function groupByFrequency(parsedData) {
+App.importManager.groupByFrequency = function(parsedData) {
     const groups = {};
     for (const item of parsedData) {
         const key = item.freq;
@@ -113,9 +119,9 @@ function groupByFrequency(parsedData) {
 }
 
 // ===== ПРИМЕНЕНИЕ ИМПОРТА К МАТРИЦЕ =====
-function applyImportToMatrix(nodeId, text, colorId) {
+App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
     if (!nodeId || !text || colorId === null) {
-        showFloatingModal('Ошибка: нет диапазона, текста или цвета');
+        App.modals.showFloatingModal('Ошибка: нет диапазона, текста или цвета');
         return;
     }
 
@@ -134,15 +140,15 @@ function applyImportToMatrix(nodeId, text, colorId) {
         }
     }
 
-    const handMap = generateHandMap();
-    const parsed = parseHandsWithFrequencies(text);
+    const handMap = App.importManager.generateHandMap();
+    const parsed = App.importManager.parseHandsWithFrequencies(text);
     
     if (parsed.length === 0) {
-        showFloatingModal('Не найдено ни одной руки для импорта');
+        App.modals.showFloatingModal('Не найдено ни одной руки для импорта');
         return;
     }
 
-    const groups = groupByFrequency(parsed);
+    const groups = App.importManager.groupByFrequency(parsed);
     let paintedCount = 0;
     const multiColorMap = {};
 
@@ -165,7 +171,7 @@ function applyImportToMatrix(nodeId, text, colorId) {
                 // каскадный (recursive = true) процент доступности ячейки в цепочке
                 // родительских поддиапазонов. Если оверлея нет — доступность 100%,
                 // свободное пространство = 100%.
-                const freeSpace = getCellAvailabilityPercent(nodeId, row, col, true);
+                const freeSpace = App.stats.getCellAvailabilityPercent(nodeId, row, col, true);
 
                 if (freeSpace <= 0) {
                     continue;
@@ -174,7 +180,7 @@ function applyImportToMatrix(nodeId, text, colorId) {
                 // условная_вероятность = freq / (свободное_пространство / 100)
                 // (свободное_пространство здесь — проценты 0..100, как availabilityPercent;
                 // что эквивалентно (freq × 100) / свободное_пространство)
-                const normalizedFreq = Math.round((freq / (freeSpace / 100)) * 1000) / 1000;
+                const normalizedFreq = freq / (freeSpace / 100);
 
                 if (normalizedFreq <= 0) {
                     continue;
@@ -190,15 +196,15 @@ function applyImportToMatrix(nodeId, text, colorId) {
                     if (currentPid === null) {
                         finalColorId = colorId;
                     } else {
-                        finalColorId = getOrCreateMultiColorForCell(nodeId, row, col, colorId, 100);
+                        finalColorId = App.importManager.getOrCreateMultiColorForCell(nodeId, row, col, colorId, 100);
                         if (finalColorId === null) {
                             console.warn(`Не удалось создать мультицвет для ${hand}`);
                             continue;
                         }
                     }
                 } else {
-                    const percent = Math.round(normalizedFreq * 1000) / 10;
-                    if (percent === 0) {
+                    const percent = normalizedFreq * 100;
+                    if (!App.importManager.isDisplayablePercent(percent)) {
                         continue;
                     }
 
@@ -209,7 +215,7 @@ function applyImportToMatrix(nodeId, text, colorId) {
     } else {
         const cacheKey = 'sub_' + normalizedFreq;
         if (!multiColorMap[cacheKey]) {
-            const newId = createMultiColor(
+            const newId = App.colors.createMultiColor(
                 nodeId,
                 'Смесь',
                 [{ colorId: colorId, share: percent }],
@@ -227,7 +233,7 @@ function applyImportToMatrix(nodeId, text, colorId) {
     // Ячейка не пустая — добавляем второй/последующий цвет с нормированным процентом
     // Ограничиваем процент до 100, чтобы избежать переполнения
     const safePercent = Math.min(100, percent);
-    finalColorId = getOrCreateMultiColorForCell(nodeId, row, col, colorId, safePercent);
+    finalColorId = App.importManager.getOrCreateMultiColorForCell(nodeId, row, col, colorId, safePercent);
     if (finalColorId === null) {
         console.warn(`Не удалось создать мультицвет для ${hand}`);
         continue;
@@ -235,7 +241,7 @@ function applyImportToMatrix(nodeId, text, colorId) {
 }
                 }
 
-                setCellProfile(nodeId, row, col, finalColorId);
+                App.grid.setCellProfile(nodeId, row, col, finalColorId);
                 paintedCount++;
             }
         } else {
@@ -244,9 +250,9 @@ function applyImportToMatrix(nodeId, text, colorId) {
             if (freq === 1.0) {
                 targetColorId = colorId;
             } else {
-                const percent = Math.round(freq * 1000) / 10;
+                const percent = freq * 100;
 
-                if (percent === 0) {
+                if (!App.importManager.isDisplayablePercent(percent)) {
                     continue;
                 }
 
@@ -255,7 +261,7 @@ function applyImportToMatrix(nodeId, text, colorId) {
     if (percent >= 99) {
         targetColorId = colorId;
     } else {
-        const newId = createMultiColor(
+        const newId = App.colors.createMultiColor(
             nodeId,
             'Смесь',
             [{ colorId: colorId, share: percent }],
@@ -278,7 +284,10 @@ function applyImportToMatrix(nodeId, text, colorId) {
                     if (freq === 1.0) {
                         finalColorId = colorId;
                     } else {
-                        const percent = Math.round(freq * 1000) / 10;
+                        const percent = freq * 100;
+                        if (!App.importManager.isDisplayablePercent(percent)) {
+                            continue;
+                        }
 
                         const tid = getTableId(nodeId);
                         const matrix = App.state.cellStorage[tid];
@@ -287,7 +296,7 @@ function applyImportToMatrix(nodeId, text, colorId) {
                         if (currentPid === null) {
                             finalColorId = targetColorId;
                         } else {
-                            finalColorId = getOrCreateMultiColorForCell(nodeId, row, col, colorId, percent);
+                            finalColorId = App.importManager.getOrCreateMultiColorForCell(nodeId, row, col, colorId, percent);
                             if (finalColorId === null) {
                                 console.warn(`Не удалось создать мультицвет для ${hand}`);
                                 continue;
@@ -295,7 +304,7 @@ function applyImportToMatrix(nodeId, text, colorId) {
                         }
                     }
 
-                    setCellProfile(nodeId, row, col, finalColorId);
+                    App.grid.setCellProfile(nodeId, row, col, finalColorId);
                     paintedCount++;
                 } else {
                     console.warn(`Рука не найдена в матрице: ${hand}`);
@@ -304,17 +313,17 @@ function applyImportToMatrix(nodeId, text, colorId) {
         }
     }
 
-    renderAllColors(nodeId, true);
-    refreshAll();
-    updateCurrentDisplay();
+    App.colors.renderAllColors(nodeId, true);
+    App.refresh.all();
+    App.grid.updateCurrentDisplay();
     markUnsaved();
 
-    deduplicateMultiColors(nodeId);
-    removeUnusedMultiColors(nodeId);
+    App.importManager.deduplicateMultiColors(nodeId);
+    App.importManager.removeUnusedMultiColors(nodeId);
 }
 
 // ===== СОЗДАНИЕ ОКНА ИМПОРТА =====
-function createImportWindow() {
+App.importManager.createImportWindow = function() {
     const overlay = document.createElement('div');
     overlay.className = 'save-confirm-overlay';
 
@@ -371,7 +380,7 @@ function createImportWindow() {
 }
 
 // ===== ПЕРЕТАСКИВАНИЕ ОКНА =====
-function makeDraggable(modal, header) {
+App.importManager.makeDraggable = function(modal, header) {
     let isDragging = false;
     let offsetX, offsetY;
 
@@ -411,7 +420,7 @@ function makeDraggable(modal, header) {
 // (то есть в поле нет мигающего курсора). Как только пользователь
 // кликает в textarea и активирует ввод текста, хоткеи отключаются
 // автоматически — потому что document.activeElement становится TEXTAREA.
-async function handleImportHotkeys(e) {
+App.importManager.handleImportHotkeys = async function(e) {
     const tag = document.activeElement && document.activeElement.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
@@ -426,18 +435,18 @@ async function handleImportHotkeys(e) {
     try {
         const clipboardText = await navigator.clipboard.readText();
         if (!clipboardText) {
-            showFloatingModal('Буфер обмена пуст');
+            App.modals.showFloatingModal('Буфер обмена пуст');
             return;
         }
         textarea.value = clipboardText;
     } catch (err) {
         console.warn('Не удалось прочитать буфер обмена:', err);
-        showFloatingModal('❌ Не удалось прочитать буфер обмена. Разрешите доступ к буферу обмена в браузере.');
+        App.modals.showFloatingModal('❌ Не удалось прочитать буфер обмена. Разрешите доступ к буферу обмена в браузере.');
     }
 }
 
 // ===== ПОКАЗ ОКНА ИМПОРТА =====
-function showImportWindow() {
+App.importManager.showImportWindow = function() {
     // В режиме анализа импорт запрещён: кнопка #importRangeBtn погашена классом
     // .toolbar-btn-disabled, но showImportWindow вызывается ещё и напрямую
     // (userscript открывает окно программным importBtn.click()), поэтому режим
@@ -450,16 +459,16 @@ function showImportWindow() {
     }
 
     const savedNodeId = App.state.currentNodeId;
-    const { overlay, modal } = createImportWindow();
+    const { overlay, modal } = App.importManager.createImportWindow();
     App.state.importWindowInstance = overlay;
 
     const header = modal.querySelector('#importHeader');
-    makeDraggable(modal, header);
+    App.importManager.makeDraggable(modal, header);
 
     // ===== ХОТКЕИ 1/2 ДЛЯ ВСТАВКИ ИЗ БУФЕРА ОБМЕНА =====
     // Активны, только когда фокус НЕ находится в одном из текстовых полей
     // (то есть курсор для ввода текста не мигает внутри поля).
-    document.addEventListener('keydown', handleImportHotkeys);
+    document.addEventListener('keydown', App.importManager.handleImportHotkeys);
 
     // ===== УСТАНАВЛИВАЕМ ЦВЕТА ДЛЯ ОБОИХ ПОЛЕЙ =====
     const tableId = getTableId(App.state.currentNodeId);
@@ -468,7 +477,7 @@ function showImportWindow() {
 
     // Проверяем, есть ли цвета в палитре
     if (simpleColors.length === 0) {
-        showFloatingModal('❌ Сначала создайте хотя бы один цвет в палитре');
+        App.modals.showFloatingModal('❌ Сначала создайте хотя бы один цвет в палитре');
         App.state.importWindowInstance.remove();
         App.state.importWindowInstance = null;
         return;
@@ -477,21 +486,21 @@ function showImportWindow() {
     // Цвет 1 — первый простой цвет
     const color1 = simpleColors[0];
     App.state.selectedColorId1 = color1.id;
-    updateImportColorDisplay(1, color1.color, color1.name);
+    App.importManager.updateImportColorDisplay(1, color1.color, color1.name);
 
     // Цвет 2 — второй простой цвет (если есть), иначе тот же первый
     const color2 = simpleColors[1] || color1;
     App.state.selectedColorId2 = color2.id;
-    updateImportColorDisplay(2, color2.color, color2.name);
+    App.importManager.updateImportColorDisplay(2, color2.color, color2.name);
 
     // ===== ОБРАБОТЧИКИ ДЛЯ ВЫБОРА ЦВЕТОВ =====
     modal.querySelector('#importColorSelector1').addEventListener('click', function(e) {
         e.stopPropagation();
-        showColorPickerForImport(1, document.getElementById('importColorBox1'));
+        App.importManager.showColorPickerForImport(1, document.getElementById('importColorBox1'));
     });
     modal.querySelector('#importColorSelector2').addEventListener('click', function(e) {
         e.stopPropagation();
-        showColorPickerForImport(2, document.getElementById('importColorBox2'));
+        App.importManager.showColorPickerForImport(2, document.getElementById('importColorBox2'));
     });
 
     // ===== ЗАКРЫТИЕ ОКНА =====
@@ -500,7 +509,7 @@ function showImportWindow() {
             clearInterval(window._importCheckInterval);
             window._importCheckInterval = null;
         }
-        document.removeEventListener('keydown', handleImportHotkeys);
+        document.removeEventListener('keydown', App.importManager.handleImportHotkeys);
         if (App.state.importWindowInstance) {
             App.state.importWindowInstance.remove();
             App.state.importWindowInstance = null;
@@ -526,13 +535,13 @@ function showImportWindow() {
         const text2 = document.getElementById('importTextarea2').value.trim();
 
         if (!text1 && !text2) {
-            showFloatingModal('Вставьте данные хотя бы в одно поле');
+            App.modals.showFloatingModal('Вставьте данные хотя бы в одно поле');
             return;
         }
 
         // Первый импорт (всегда)
         if (text1) {
-            applyImportToMatrix(App.state.currentNodeId, text1, App.state.selectedColorId1);
+            App.importManager.applyImportToMatrix(App.state.currentNodeId, text1, App.state.selectedColorId1);
         }
 
         // Второй импорт (если есть текст во втором поле)
@@ -542,7 +551,7 @@ function showImportWindow() {
             const overwriteState = overwriteCheck ? overwriteCheck.checked : false;
             if (overwriteCheck) overwriteCheck.checked = false;
             
-            applyImportToMatrix(App.state.currentNodeId, text2, App.state.selectedColorId2);
+            App.importManager.applyImportToMatrix(App.state.currentNodeId, text2, App.state.selectedColorId2);
             
             // Восстанавливаем состояние чекбокса
             if (overwriteCheck) overwriteCheck.checked = overwriteState;
@@ -556,7 +565,7 @@ function showImportWindow() {
 }
 
 // ===== ВЫБОР ЦВЕТА В ОКНЕ ИМПОРТА =====
-function showColorPickerForImport(index, anchor) {
+App.importManager.showColorPickerForImport = function(index, anchor) {
     const tableId = getTableId(App.state.currentNodeId);
     const colors = App.state.colorsPerNode[tableId] || [];
     const simpleColors = colors.filter(c => c.type === 'simple' || (!c.type && c.color));
@@ -587,10 +596,10 @@ function showColorPickerForImport(index, anchor) {
         opt.addEventListener('click', () => {
             if (index === 1) {
                 App.state.selectedColorId1 = color.id;
-                updateImportColorDisplay(1, color.color, color.name);
+                App.importManager.updateImportColorDisplay(1, color.color, color.name);
             } else {
                 App.state.selectedColorId2 = color.id;
-                updateImportColorDisplay(2, color.color, color.name);
+                App.importManager.updateImportColorDisplay(2, color.color, color.name);
             }
             popup.remove();
         });
@@ -629,7 +638,7 @@ function showColorPickerForImport(index, anchor) {
 }
 
 // ===== ОБНОВЛЕНИЕ ОТОБРАЖЕНИЯ ЦВЕТА В ОКНЕ =====
-function updateImportColorDisplay(index, color, name) {
+App.importManager.updateImportColorDisplay = function(index, color, name) {
     const box = document.getElementById('importColorBox' + index);
     const nameEl = document.getElementById('importColorName' + index);
     if (!box || !nameEl) return;
@@ -639,16 +648,17 @@ function updateImportColorDisplay(index, color, name) {
 }
 
 // ===== ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ЯЧЕЙКИ ПЕРЕД СОЗДАНИЕМ МУЛЬТИЦВЕТА =====
-function getOrCreateMultiColorForCell(nodeId, row, col, colorId, percent) {
+App.importManager.getOrCreateMultiColorForCell = function(nodeId, row, col, colorId, percent) {
     const tableId = getTableId(nodeId);
     const matrix = App.state.cellStorage[tableId];
     if (!matrix) return null;
+    if (!App.importManager.isDisplayablePercent(percent)) return null;
 
     const currentPid = matrix[row][col];
     const colors = App.state.colorsPerNode[tableId] || [];
 
     if (currentPid === null) {
-        const newId = createMultiColor(
+        const newId = App.colors.createMultiColor(
             nodeId,
             'Смесь',
             [{ colorId: colorId, share: percent }],
@@ -707,7 +717,7 @@ newColor.boundaries = newBoundaries;
 }
 
 // ===== ДЕДУПЛИКАЦИЯ МУЛЬТИЦВЕТОВ =====
-function deduplicateMultiColors(nodeId) {
+App.importManager.deduplicateMultiColors = function(nodeId) {
     const tableId = getTableId(nodeId);
     const colors = App.state.colorsPerNode[tableId] || [];
     const matrix = App.state.cellStorage[tableId];
@@ -751,11 +761,11 @@ function deduplicateMultiColors(nodeId) {
         }
     }
 
-    renderAllColors(nodeId, true);
+    App.colors.renderAllColors(nodeId, true);
 }
 
 // ===== УДАЛЕНИЕ НЕИСПОЛЬЗУЕМЫХ МУЛЬТИЦВЕТОВ =====
-function removeUnusedMultiColors(nodeId) {
+App.importManager.removeUnusedMultiColors = function(nodeId) {
     const tableId = getTableId(nodeId);
     const matrix = App.state.cellStorage[tableId];
     if (!matrix) return;
@@ -785,7 +795,7 @@ function removeUnusedMultiColors(nodeId) {
 
     if (removedCount > 0) {
         console.log(`🗑️ Удалено ${removedCount} неиспользуемых мультицветов`);
-        renderAllColors(nodeId, true);
+        App.colors.renderAllColors(nodeId, true);
     }
 }
 
@@ -793,6 +803,6 @@ function removeUnusedMultiColors(nodeId) {
 document.addEventListener('DOMContentLoaded', function() {
     const btn = document.getElementById('importRangeBtn');
     if (btn) {
-        btn.addEventListener('click', showImportWindow);
+        btn.addEventListener('click', App.importManager.showImportWindow);
     }
 });

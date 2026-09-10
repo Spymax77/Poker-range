@@ -156,11 +156,8 @@ App.stats.computeColorStats = function(nodeId, branch) {
 App.stats.getRoundedRangePercentages = function(stats) {
     const { sorted, foldCombos, totalCombosSum, rangeCombos } = stats;
     const base = totalCombosSum + foldCombos;
-    // Для % of range используем комбинации, округлённые до двух знаков.
-    // Отображение количества комбинаций ниже по-прежнему остаётся с одним
-    // знаком после запятой.
-    const values = sorted.map(([, data]) => App.stats.roundCombosForPercent(data.combos));
-    if (foldCombos > 0) values.push(App.stats.roundCombosForPercent(foldCombos));
+    const values = sorted.map(([, data]) => data.combos);
+    if (foldCombos > 0) values.push(foldCombos);
     const rounded = values.map(value => Math.round((base ? value / base * 100 : 0) * 10) / 10);
     const sum = rounded.reduce((a, b) => a + b, 0);
     if (sum !== 100 && rounded.length) {
@@ -245,11 +242,4 @@ App.stats.renderActionBar = function(nodeId, branch, containerId) {
 App.stats.formatCombos = function(combos) {
     const rounded = Math.round(combos * 10) / 10;
     return rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(1);
-};
-
-// Для расчёта % of total используем промежуточное округление комбинаций
-// до двух знаков. Само количество комбинаций при выводе по-прежнему
-// форматируется через formatCombos() с одним знаком после запятой.
-App.stats.roundCombosForPercent = function(combos) {
-    return Math.round(combos * 100) / 100;
 };

@@ -1,6 +1,7 @@
 // ===== drag-drop.js -- extracted from all.js (tree drag & drop) =====
 // ===== DRAG & DROP: ПРОВЕРКА, МОЖНО ЛИ ТАЩИТЬ =====
-function canDrag(nodeId) {
+App.dragDrop = App.dragDrop || {};
+App.dragDrop.canDrag = function(nodeId) {
     const node = getNode(nodeId);
     if (!node) return false;
 
@@ -26,7 +27,7 @@ function canDrag(nodeId) {
 
 
 // ===== DRAG & DROP: ПРОВЕРКА, МОЖНО ЛИ ВСТАВИТЬ =====
-function canDrop(sourceId, targetId) {
+App.dragDrop.canDrop = function(sourceId, targetId) {
     // Запрещаем вставку в родителя
     const source = getNode(sourceId);
     if (source && source.parentId === targetId) {
@@ -58,7 +59,7 @@ function canDrop(sourceId, targetId) {
 }
 
 // ===== DRAG & DROP: ПРОВЕРКА, ВНУТРИ ЛИ ДИАПАЗОНА =====
-function isInsideRange(nodeId) {
+App.dragDrop.isInsideRange = function(nodeId) {
     let current = getNode(nodeId);
     while (current) {
         const parent = getNode(current.parentId);
@@ -155,10 +156,10 @@ if (App.state.isDragging) {
         hintEl.style.transform = 'translateX(-50%)';
     }
 
-    highlightDropTarget(e.clientX, e.clientY);
+    App.dragDrop.highlightDropTarget(e.clientX, e.clientY);
 
-    const targetId = getDropTarget(e.clientX, e.clientY);
-    updateGhostTarget(targetId);
+    const targetId = App.dragDrop.getDropTarget(e.clientX, e.clientY);
+    App.dragDrop.updateGhostTarget(targetId);
 }
 });
 
@@ -180,13 +181,13 @@ document.addEventListener('mouseup', function(e) {
             hintEl.remove();
         }
 
-        clearHighlight();
+        App.dragDrop.clearHighlight();
 
-        const targetId = getDropTarget(e.clientX, e.clientY);
+        const targetId = App.dragDrop.getDropTarget(e.clientX, e.clientY);
 
 if (targetId && targetId !== App.state.dragData.nodeId) {
-    if (canDrop(App.state.dragData.nodeId, targetId)) {
-        showMoveConfirm(App.state.dragData.nodeId, targetId);
+    if (App.dragDrop.canDrop(App.state.dragData.nodeId, targetId)) {
+        App.dragDrop.showMoveConfirm(App.state.dragData.nodeId, targetId);
     }
 }
 document.body.classList.remove('dragging');
@@ -195,7 +196,7 @@ document.body.classList.remove('dragging');
     App.state.dragData = null;
     App.state.isDragging = false;
 });
-function clearHighlight() {
+App.dragDrop.clearHighlight = function() {
     if (App.state.highlightedNode) {
         App.state.highlightedNode.style.background = '';
         App.state.highlightedNode.style.border = '';
@@ -207,13 +208,13 @@ function clearHighlight() {
         App.state.expandTimeout = null;
     }
 }
-function highlightDropTarget(clientX, clientY) {
+App.dragDrop.highlightDropTarget = function(clientX, clientY) {
     // Если цель — текущий родитель, не подсвечиваем
 if (App.state.dragData) {
-    const targetId = getDropTarget(clientX, clientY);
+    const targetId = App.dragDrop.getDropTarget(clientX, clientY);
     const source = getNode(App.state.dragData.nodeId);
     if (source && source.parentId === targetId) {
-        clearHighlight();
+        App.dragDrop.clearHighlight();
         return;
     }
 }
@@ -222,7 +223,7 @@ if (App.state.dragData) {
     const treeItem = element?.closest('.tree-item');
     
     if (!treeItem) {
-        clearHighlight();
+        App.dragDrop.clearHighlight();
         return;
     }
 
@@ -233,7 +234,7 @@ if (App.state.dragData) {
     if (!node) return;
 
     if (node.type === 'folder') {
-        clearHighlight();
+        App.dragDrop.clearHighlight();
         treeItem.style.background = '#3a3d45';
 		treeItem.style.borderTop = '1px solid #D4AF37';
         treeItem.style.borderBottom = '1px solid #D4AF37';
@@ -254,7 +255,7 @@ if (App.state.dragData) {
 
             App.state.expandTimeout = setTimeout(() => {
                 App.state.expandedNodes.add(node.id);
-                refreshTreeOnly();
+                App.tree.refreshTreeOnly();
 
                 setTimeout(() => {
                     const newItem = document.querySelector(`.tree-item[data-node-id="${node.id}"]`);
@@ -270,11 +271,11 @@ if (App.state.dragData) {
             }, 800);
         }
     } else {
-        clearHighlight();
+        App.dragDrop.clearHighlight();
     }
 }
 // ===== DRAG & DROP: ОПРЕДЕЛЕНИЕ ЦЕЛИ ПОД МЫШКОЙ =====
-function getDropTarget(clientX, clientY) {
+App.dragDrop.getDropTarget = function(clientX, clientY) {
     const element = document.elementFromPoint(clientX, clientY);
     const treeItem = element?.closest('.tree-item');
     if (!treeItem) return null;
@@ -292,7 +293,7 @@ if (node.type === 'folder' || node.type === 'range') {
 return null;
 }
 
-function updateGhostTarget(targetNodeId) {
+App.dragDrop.updateGhostTarget = function(targetNodeId) {
     const hintEl = document.getElementById('dragHint');
     if (!hintEl) return;
 
@@ -307,14 +308,14 @@ function updateGhostTarget(targetNodeId) {
         return;
     }
 
-    if (canDrop(App.state.dragData.nodeId, targetNodeId)) {
+    if (App.dragDrop.canDrop(App.state.dragData.nodeId, targetNodeId)) {
         hintEl.innerHTML = `→ переместить в <strong>${escapeHtml(target.name)}</strong>`;
     } else {
         hintEl.innerHTML = `🚫`;
     }
 }
 // ===== DRAG & DROP: ОКНО ПОДТВЕРЖДЕНИЯ ПЕРЕМЕЩЕНИЯ =====
-function showMoveConfirm(sourceId, targetId) {
+App.dragDrop.showMoveConfirm = function(sourceId, targetId) {
     const source = getNode(sourceId);
     const target = getNode(targetId);
     if (!source || !target) return;
@@ -348,40 +349,40 @@ function showMoveConfirm(sourceId, targetId) {
     // Закрытие по клику вне
     overlay.addEventListener('click', function(e) {
         if (e.target === overlay) {
-            closeMovePopup(overlay, sourceId);
+            App.dragDrop.closeMovePopup(overlay, sourceId);
         }
     });
 
     // Escape
     const escapeHandler = function(e) {
         if (e.key === 'Escape') {
-            closeMovePopup(overlay, sourceId);
+            App.dragDrop.closeMovePopup(overlay, sourceId);
             document.removeEventListener('keydown', escapeHandler);
         }
     };
     document.addEventListener('keydown', escapeHandler);
 
     popup.querySelector('#moveCancelBtn').onclick = () => {
-        closeMovePopup(overlay, sourceId);
+        App.dragDrop.closeMovePopup(overlay, sourceId);
     };
 
     popup.querySelector('#moveConfirmBtn').onclick = () => {
         overlay.remove();
-        moveNodeWithChildren(sourceId, targetId);
-        clearHighlight();
+        App.dragDrop.moveNodeWithChildren(sourceId, targetId);
+        App.dragDrop.clearHighlight();
         const el = document.querySelector(`.tree-item[data-node-id="${sourceId}"]`);
         if (el) el.style.opacity = '1';
     };
 }
 
-function closeMovePopup(overlay, sourceId) {
+App.dragDrop.closeMovePopup = function(overlay, sourceId) {
     overlay.remove();
-    clearHighlight();
+    App.dragDrop.clearHighlight();
     const el = document.querySelector(`.tree-item[data-node-id="${sourceId}"]`);
     if (el) el.style.opacity = '1';
 }
 // ===== DRAG & DROP: ПЕРЕМЕЩЕНИЕ УЗЛА =====
-function moveNodeWithChildren(sourceId, targetId) {
+App.dragDrop.moveNodeWithChildren = function(sourceId, targetId) {
     const source = getNode(sourceId);
     const target = getNode(targetId);
     if (!source || !target) return;
@@ -397,6 +398,6 @@ function moveNodeWithChildren(sourceId, targetId) {
     target.childrenIds.push(sourceId);
 
     persistAll();
-    refreshAll();
-    selectNode(sourceId);
+    App.refresh.all();
+    App.navigation.selectNode(sourceId);
 }

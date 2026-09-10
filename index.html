@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -25,7 +25,12 @@ ym(110799161, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer:
 <noscript><div><img src="https://mc.yandex.ru/watch/110799161" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
 <!-- /Yandex.Metrika counter -->
 <div class="app-card">
-    <div class="tabs">
+    <button type="button" class="tabs-toggle" id="tabsToggle" aria-controls="mainTabs" aria-expanded="false" aria-label="Показать панель вкладок">
+        <svg class="tabs-toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5 8.5 12 15l7-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
+    <div class="tabs" id="mainTabs">
     <!-- Логотип -->
     <div class="logo-container">
         <div class="matrix-grid">
@@ -55,13 +60,36 @@ ym(110799161, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer:
     </div>
 
     <!-- Кнопки -->
+    <button type="button" class="tabs-menu-toggle" id="tabsMenuToggle" aria-controls="tabButtons" aria-expanded="false" aria-label="Открыть меню вкладок">
+        <svg class="tabs-menu-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+    </button>
+    <div class="tab-buttons" id="tabButtons">
     <button class="tab-btn" data-page="gto">GTO</button>
-    <button class="tab-btn active" data-page="constructor">Редактор</button>
+    <button class="tab-btn" data-page="constructor">Редактор</button>
     <button class="tab-btn" data-page="work">Просмотр</button>
+    </div>
+    <div class="auth-panel" id="authPanel">
+        <button type="button" class="auth-avatar-btn" id="authAvatarBtn" aria-haspopup="true" aria-expanded="false" aria-label="Аккаунт">
+            <svg class="auth-avatar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v2h20v-2c0-3.33-6.67-5-10-5z"/>
+            </svg>
+            <span class="auth-avatar-name" id="authUserName"></span>
+            <svg class="auth-avatar-caret" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 10l5 5 5-5z"/>
+            </svg>
+        </button>
+        <div class="auth-dropdown" id="authDropdown">
+            <button type="button" class="auth-menu-item" id="authLoginItem">Войти</button>
+            <button type="button" class="auth-menu-item" id="authRegisterItem">Регистрация</button>
+            <button type="button" class="auth-menu-item" id="authLogoutItem" hidden>Выйти</button>
+        </div>
+    </div>
 </div>
 
     <!-- КОНСТРУКТОР -->
-    <div id="constructorPage" class="page active-page">
+    <div id="constructorPage" class="page">
         <div class="three-columns">
             <!-- ЛЕВАЯ КОЛОНКА: ДЕРЕВО -->
             <div class="tree-panel">
@@ -181,10 +209,11 @@ ym(110799161, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer:
                 <div class="matrix-wrapper">
                     <div id="constructorGrid" class="hands-grid"></div>
                 </div>
+                <div id="constructorStatsContainer"></div>
             </div>
             <div class="constructor-legend-col">
-                <div id="constructorActionLegend" class="gto-action-legend"></div>
-                <div id="constructorActionBar" class="gto-action-bar"></div>
+                <div id="constructorActionLegend" class="stats-action-legend"></div>
+                <div id="constructorActionBar" class="stats-action-bar"></div>
                 <div id="constructorCellPreview" class="gto-cell-preview"></div>
             </div>
         </div>
@@ -248,6 +277,7 @@ ym(110799161, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer:
                 <span class="opt" data-value="nl25">NL25</span>
                 <span class="opt" data-value="nl50">NL50</span>
                 <span class="opt" data-value="nl100">NL100</span>
+                <span class="opt" data-value="nl200">NL200</span>
             </div>
         </div>
         <div class="gto-filter-divider"></div>
@@ -289,11 +319,19 @@ ym(110799161, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer:
                         <div class="matrix-wrapper">
                             <div id="gtoGrid" class="hands-grid"></div>
                         </div>
-                        <div id="gtoStatsContainer" style="margin-top: 6px; font-size: 13px; color: #a9afb5; text-align: right;">0.0% (0/1326)</div>
+                        <div id="gtoStatsContainer">
+                            <div class="stats-table stats-table--total">
+                                <div class="stats-row stats-row--total">
+                                    <div class="stats-cell stats-cell--empty"></div>
+                                    <div class="stats-cell stats-cell--percent">0.0%</div>
+                                    <div class="stats-cell stats-cell--combos">(0/1326)</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="gto-legend-col">
-                        <div id="gtoActionLegend" class="gto-action-legend"></div>
-                        <div id="gtoActionBar" class="gto-action-bar"></div>
+                        <div id="gtoActionLegend" class="stats-action-legend"></div>
+                        <div id="gtoActionBar" class="stats-action-bar"></div>
                         <div id="gtoCellPreview" class="gto-cell-preview"></div>
                     </div>
                 </div>
@@ -331,7 +369,7 @@ ym(110799161, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer:
 						</div>
                         <div id="workStatsFooter">
                             <div class="rng-widget" id="rngNumber">42</div>
-                            <div id="workStats">0.0% (0/1326)</div>
+                            <div id="workStatsContainer"></div>
                         </div>
                     </div>
                 </div>
@@ -373,23 +411,37 @@ ym(110799161, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer:
             </div>
         </div>
     </div>
+	<div id="saveStatus" class="save-status" aria-live="polite">Синхронизировано</div>
 	<script src="js/store.js"></script>
+	<script src="js/auth.js"></script>
 	<script src="js/storage.js"></script>
+	<script src="js/dirty-tracker.js"></script>
+	<script src="js/ui-utils.js"></script>
 	<script src="js/modals.js"></script>
 	<script src="js/persistence.js"></script>
    <script src="js/color-manager.js"></script>
 	<script src="js/comments.js"></script>
 	<script src="js/stats.js"></script>
-	<script src="js/grid.js"></script>
+    <script type="module" src="js/modules/grid/grid-utils.js"></script>
+    <script type="module" src="js/modules/grid/grid-operations.js"></script>
+    <script type="module" src="js/modules/grid/grid-renderer.js"></script>
+    <script type="module" src="js/modules/grid/grid-preview.js"></script>
+    <script type="module" src="js/modules/grid/grid-tooltip.js"></script>
+    <script type="module" src="js/modules/grid/grid-toolbar.js"></script>
+    <script type="module" src="js/modules/grid/grid-api.js"></script>
 	<script src="js/paint.js"></script>
 	<script src="js/tree.js"></script>
 	<script src="js/navigation.js"></script>
+	<script src="js/work-navigation.js"></script>
+	<script src="js/style-manager.js"></script>
+	<script src="js/refresh.js"></script>
+	<script src="js/animations.js"></script>
 	<script src="js/drag-drop.js"></script>
 	<script src="js/clipboard.js"></script>
 	<script src="js/init.js"></script>
 	<script src="js/gto-loader.js"></script>
 	<script src="js/import-manager.js"></script>
-    <script src="js/ui-utils.js"></script>
+    <script src="js/dirty-integration.js"></script>
 	<script src="js/backup-manager.js"></script>
 	
 </body>
