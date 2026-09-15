@@ -2,21 +2,45 @@
 (function() {
 
     let backupContainer = null;
+    const mobileBackupQuery = window.matchMedia('(max-width: 849px)');
 
     function createBackupButtons() {
         const toolbar = document.querySelector('#constructorPage .table-toolbar');
         if (!toolbar) return;
+
+        const constructorPage = document.getElementById('constructorPage');
+        const isConstructor = constructorPage?.classList.contains('active-page');
+        const toolbarRight = toolbar.querySelector('.toolbar-right');
+        const target = mobileBackupQuery.matches ? toolbarRight : toolbar;
+
+        if (!isConstructor || !target) {
+            if (backupContainer && !isConstructor) {
+                backupContainer.remove();
+                backupContainer = null;
+            }
+            return;
+        }
+
+        // Повторные вызовы приходят от MutationObserver и переключения вкладок.
+        // Если контейнер уже на месте, не пересоздаём кнопки и обработчики.
+        const existingContainer = document.querySelector('#constructorPage .backup-tree-actions');
+        if (existingContainer) {
+            backupContainer = existingContainer;
+            if (existingContainer.parentElement !== target) {
+                target.appendChild(existingContainer);
+            }
+            existingContainer.style.marginLeft = mobileBackupQuery.matches ? '0' : 'auto';
+            return;
+        }
 
         if (backupContainer) {
             backupContainer.remove();
             backupContainer = null;
         }
 
-        const isConstructor = document.getElementById('constructorPage').classList.contains('active-page');
-        if (!isConstructor) return;
-
         const container = document.createElement('div');
-        container.style.marginLeft = 'auto';
+        container.className = 'backup-tree-actions';
+        container.style.marginLeft = mobileBackupQuery.matches ? '0' : 'auto';
         container.style.display = 'flex';
         container.style.gap = '6px';
         container.style.alignItems = 'center';
@@ -40,7 +64,7 @@
             </button>
         `;
 
-        toolbar.appendChild(container);
+        target.appendChild(container);
         backupContainer = container;
 
         document.getElementById('exportTreeBtn').addEventListener('click', exportTree);
@@ -566,7 +590,7 @@
     }
 
     // ===== ДОБАВИТЬ ТЕКУЩЕЕ GTO-ДЕРЕВО В РЕДАКТОР =====
-    function addGtoTreeToEditor() {
+    async function addGtoTreeToEditor() {
         const rootNodes = App.gto.nodes.filter(n => n.parentId === null);
 
         if (rootNodes.length === 0) {
@@ -596,8 +620,16 @@
             }
         }
 
-        persistAll();
         App.refresh.all();
+
+        // Перенос GTO должен сохранить не только структуру, но и все созданные
+        // матрицы. Обычный persistAll() сохраняет по таймеру только структуру
+        // (skipTables=true), поэтому после F5 таблицы могли быть пустыми.
+        if (typeof flushPersist === 'function') {
+            await flushPersist();
+        } else {
+            persistAll();
+        }
 
         App.modals.showFloatingModal(`✅ Добавлено ${addedCount} узлов в редактор`);
     }
@@ -608,6 +640,22 @@
             btn.addEventListener('click', addGtoTreeToEditor);
         }
     }
+
+    // ===== НАБЛЮДЕНИЕ ЗА АКТИВНОЙ ВКЛАДКОЙ =====
+    // Активная вкладка восстанавливается асинхронно после загрузки storage,
+    // поэтому одного вызова на DOMContentLoaded недостаточно.
+    const constructorPage = document.getElementById('constructorPage');
+    if (constructorPage && typeof MutationObserver !== 'undefined') {
+        const backupObserver = new MutationObserver(function() {
+            createBackupButtons();
+        });
+        backupObserver.observe(constructorPage, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    }
+
+    mobileBackupQuery.addEventListener?.('change', createBackupButtons);
 
     // ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -621,10 +669,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             createBackupButtons();
             initGtoAddToEditorButton();
+            createBackupButtons();
         });
     } else {
         createBackupButtons();
         initGtoAddToEditorButton();
+        createBackupButtons();
     }
 
 })();

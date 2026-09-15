@@ -1,0 +1,838 @@
+/* ===== БАЗОВАЯ МОБИЛЬНАЯ КОМПОНОВКА =====
+   Этап 1: меняем только раскладку контейнеров. Размер и поведение
+   интерактивной матрицы на этом этапе не изменяются. */
+
+.gto-filter-toggle {
+    display: none;
+}
+
+/* После переноса в общий toolbar кнопки режимов больше не позиционируются
+   относительно матрицы. */
+.toolbar-right .matrix-mode-toolbar {
+    position: static;
+    flex-direction: row;
+    gap: 4px;
+    margin: 0;
+}
+
+@media (max-width: 849px) {
+    /* Легенда действий в анализе редактора и GTO: на мобильном уменьшаем
+       типографику до 70% от desktop-размера. */
+    .stats-action-legend .stats-action-legend-block__name,
+    .stats-action-legend .stats-action-legend-block__percent {
+        font-size: 15.4px;
+    }
+
+    .stats-action-legend .stats-action-legend-block__combos-number {
+        font-size: 12.6px;
+    }
+
+    .stats-action-legend .stats-action-legend-block__combos-label {
+        font-size: 10.5px;
+    }
+
+    /* Блоки действий в превью выбранной ячейки: тот же масштаб 70%, что и
+       у цветной легенды, для GTO и анализа редактора. */
+    .gto-cell-preview__actions .gto-cell-preview__action-name,
+    .gto-cell-preview__actions .gto-cell-preview__action-percent {
+        font-size: 12.6px;
+    }
+
+    html,
+    body {
+        overflow: hidden;
+    }
+
+    .app-card {
+        width: 100%;
+        min-width: 0;
+        padding-bottom: 12px;
+    }
+
+    .page.active-page,
+    #gtoPage.active-page,
+    #workPage.active-page,
+    #constructorPage.active-page {
+        width: 100%;
+        min-width: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Дерево, рабочая область и профили идут последовательно по вертикали. */
+    .three-columns {
+        width: 100%;
+        min-width: 0;
+        flex-direction: column;
+        gap: 16px;
+        overflow: visible;
+    }
+
+    .tree-panel {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        max-height: 24vh;
+        height: 24vh;
+        min-height: 140px;
+        flex: 0 0 auto;
+        overflow: hidden;
+        transition: height 0.25s ease, max-height 0.25s ease;
+    }
+
+    /* Контент дерева прокручивается внутри своей панели, а не расширяет страницу. */
+    .tree-panel > [id$="Tree"] {
+        min-height: 0;
+        max-height: calc(24vh - 55px);
+        height: calc(24vh - 55px);
+        transition: height 0.25s ease, max-height 0.25s ease;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tree-resize-handle {
+        display: none;
+    }
+
+    .tree-collapse-wrapper {
+        padding: 2px 0 2px 8px;
+        line-height: 1.2;
+    }
+
+    /* Этап 2: увеличиваем touch-области дерева. Размеры применяются только
+       на мобильных ширинах и не меняют desktop-компоновку. */
+    .tree-toolbar {
+        min-height: 48px;
+        gap: 6px;
+        padding: 3px 0;
+    }
+
+    .tree-toolbar .toolbar-btn {
+        min-width: 42px;
+        min-height: 42px;
+        padding: 8px;
+    }
+
+    .tree-toolbar .divider {
+        height: 30px;
+        margin-inline: 2px;
+    }
+
+    .tree-item {
+        min-height: 42px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        gap: 5px;
+    }
+
+    .tree-item-name {
+        min-height: 26px;
+        gap: 5px;
+    }
+
+    .tree-item .tree-arrow {
+        display: inline-flex !important;
+        align-self: center !important;
+        min-width: 26px !important;
+        min-height: 26px !important;
+        width: 26px !important;
+        height: 26px !important;
+        margin-right: 1px;
+        padding: 0 !important;
+        align-items: center !important;
+        justify-content: center !important;
+        line-height: 1 !important;
+        vertical-align: middle !important;
+        transform: translateY(1px) !important;
+    }
+
+    .tree-item .tree-actions-popup {
+        min-width: 38px;
+        min-height: 38px;
+        margin-right: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 1;
+    }
+
+    .tree-item .tree-menu-btn {
+        width: 38px;
+        height: 38px;
+        padding: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tree-collapse-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 5px 6px;
+    }
+
+    /* Мобильное меню действий дерева — полноценная широкая панель, а не
+       узкий popup, прижатый к правому краю каталога. */
+    .tree-actions-popup .popup-menu {
+        position: fixed !important;
+        top: auto !important;
+        right: 12px !important;
+        bottom: 12px !important;
+        left: 12px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        max-height: calc(100vh - 24px);
+        overflow-y: auto;
+        padding: 4px 0;
+        border: 1px solid #515763;
+        border-radius: 12px;
+        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.65);
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tree-actions-popup .popup-menu button {
+        min-height: 44px;
+        padding: 9px 16px;
+        gap: 10px;
+        font-size: 15px;
+        line-height: 1.15;
+    }
+
+    .tree-actions-popup .popup-menu button .menu-icon {
+        width: 24px;
+        min-width: 24px;
+        font-size: 18px;
+    }
+
+    .tree-actions-popup .popup-menu button:active {
+        background: #3a3c43;
+    }
+
+    /* При работе с каталогом верхняя панель временно расширяется.
+       По умолчанию дерево компактное, чтобы матрица не теряла место. */
+    .tree-panel:has(.tree-item:hover),
+    .tree-panel:has(.tree-actions-popup.menu-open),
+    .tree-panel.tree-interacting {
+        height: 58vh;
+        max-height: 58vh;
+    }
+
+    .tree-panel:has(.tree-item:hover) > [id$="Tree"],
+    .tree-panel:has(.tree-actions-popup.menu-open) > [id$="Tree"],
+    .tree-panel.tree-interacting > [id$="Tree"] {
+        height: calc(58vh - 55px);
+        max-height: calc(58vh - 55px);
+    }
+
+    .table-profiles-wrapper,
+    .table-profiles-row,
+    .table-panel,
+    .profiles-panel {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+    }
+
+    .table-profiles-wrapper {
+        flex: 0 0 auto;
+        padding: 0 8px;
+        overflow: visible;
+    }
+
+    .table-profiles-row {
+        flex-direction: column;
+        gap: 16px;
+        overflow: visible;
+    }
+
+    .table-profiles-row .table-panel,
+    .table-panel {
+        flex: 0 0 auto;
+        padding-left: 0;
+        padding-right: 0;
+        overflow: visible;
+    }
+
+    .profiles-panel {
+        flex: 0 0 auto;
+        padding: 16px 8px;
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    /* Матрица остаётся своего рабочего размера и получает локальную прокрутку. */
+    .matrix-wrapper,
+    .matrix1-wrapper {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: visible;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .matrix-wrapper > .hands-grid,
+    .matrix1-wrapper > .hands-grid {
+        width: max-content;
+        max-width: none;
+    }
+
+    .range-title-wrapper {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .toolbar-range-name {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .work-single-panel {
+        width: 100%;
+        min-width: 0;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .work-layout,
+    .left-area,
+    .right-area,
+    #workTableWrapper,
+    #workLevelsContainer {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    /* Просмотр: матрица не имеет собственного вертикального или горизонтального
+       скролла — прокручивается только страница вкладки. */
+    #workPage .left-area,
+    #workPage #workTableWrapper,
+    #workPage .matrix1-wrapper,
+    #workPage #workGrid {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    #workPage .left-area,
+    #workPage #workTableWrapper {
+        display: block;
+    }
+
+    #workPage .matrix1-wrapper {
+        overflow: visible !important;
+    }
+
+    #workPage .matrix1-wrapper > .hands-grid {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        grid-template-columns: repeat(13, minmax(0, 1fr));
+    }
+
+    #workPage .matrix1-wrapper .hand-cell {
+        width: 100%;
+        height: auto;
+        min-width: 0;
+        aspect-ratio: 1;
+        font-size: clamp(8px, 2.6vw, 13px);
+    }
+
+    /* GTO: матрица и легенда не должны конкурировать в одной широкой строке. */
+    #gtoPage .gto-matrix-row {
+        width: 100%;
+        min-width: 0;
+        flex-direction: column;
+        gap: 12px;
+        overflow: visible;
+    }
+
+    #gtoPage .gto-matrix-col,
+    #gtoPage .gto-legend-col {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    #gtoPage .gto-matrix-col {
+        flex: 0 0 auto;
+    }
+
+    #gtoPage .gto-legend-col {
+        flex: 0 0 auto;
+        align-items: stretch;
+        overflow: hidden;
+    }
+
+    #gtoPage .gto-legend-col .stats-action-legend,
+    #gtoPage .gto-legend-col .stats-action-bar,
+    #gtoPage .gto-legend-col .gto-cell-preview {
+        width: 100% !important;
+        flex: 0 0 100%;
+        max-width: 100%;
+        min-width: 0;
+        align-self: stretch;
+        box-sizing: border-box;
+    }
+
+    #gtoPage #gtoCellPreview {
+        margin-top: 0;
+    }
+
+    /* Компактная кнопка GTO не должна занимать заметную часть панели дерева. */
+    #gtoPage .add-node-btn {
+        width: auto;
+        min-width: 0;
+        max-width: max-content;
+        margin: 4px auto 0;
+        min-height: 0;
+        height: 30px;
+        padding: 4px 8px;
+        font-size: 11px;
+        line-height: 1;
+        border-radius: 16px;
+        white-space: nowrap;
+    }
+
+    /* Фильтры GTO на телефоне скрыты по умолчанию и раскрываются кнопкой. */
+    #gtoPage .gto-filter-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-start;
+        width: auto;
+        min-width: 0;
+        margin: 0 8px 6px;
+        padding: 6px 12px;
+        border: 1px solid #454545;
+        border-radius: 6px;
+        background: #2c2f36;
+        color: #a9afb5;
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+        line-height: 1.2;
+    }
+
+    #gtoPage .gto-filter-toggle:active,
+    #gtoPage .gto-filter-toggle:focus-visible {
+        border-color: #D4AF37;
+        color: #D4AF37;
+        outline: none;
+    }
+
+    #gtoPage .gto-filter-bar {
+        display: flex;
+        max-height: 0;
+        min-height: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-12px);
+        pointer-events: none;
+        transition: max-height 0.25s ease, opacity 0.2s ease, transform 0.25s ease, margin 0.25s ease, padding 0.25s ease;
+    }
+
+    #gtoPage .gto-filter-bar.gto-filter-open {
+        max-height: 420px;
+        margin-bottom: 10px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .three-columns {
+        gap: 12px;
+    }
+
+    .tree-panel {
+        max-height: 24vh;
+        height: 24vh;
+        min-height: 130px;
+    }
+
+    .tree-panel > [id$="Tree"] {
+        max-height: calc(24vh - 55px);
+        height: calc(24vh - 55px);
+    }
+
+    .tree-panel:has(.tree-item:hover),
+    .tree-panel:has(.tree-actions-popup.menu-open),
+    .tree-panel.tree-interacting {
+        height: 58vh;
+        max-height: 58vh;
+    }
+
+    .tree-panel:has(.tree-item:hover) > [id$="Tree"],
+    .tree-panel:has(.tree-actions-popup.menu-open) > [id$="Tree"],
+    .tree-panel.tree-interacting > [id$="Tree"] {
+        height: calc(58vh - 55px);
+        max-height: calc(58vh - 55px);
+    }
+
+    .table-profiles-wrapper {
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+
+    .profiles-panel {
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+
+    .tree-toolbar,
+    .table-toolbar {
+        margin-left: 0;
+        margin-right: 0;
+    }
+}
+
+/* В портретной ориентации матрица GTO полностью помещается по ширине экрана.
+   Дополнительная горизонтальная прокрутка здесь не нужна: прокручивается только
+   сама страница. В альбомной ориентации сохраняется локальная прокрутка матрицы. */
+@media (max-width: 600px) and (orientation: portrait) {
+    #gtoPage .matrix-wrapper {
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    #gtoPage .matrix-wrapper > .hands-grid {
+        width: 100%;
+        max-width: 100%;
+        grid-template-columns: repeat(13, minmax(0, 1fr));
+    }
+
+    #gtoPage .matrix-wrapper .hand-cell {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1;
+        min-width: 0;
+        font-size: clamp(9px, 3vw, 13px);
+    }
+}
+
+/* GTO на телефоне не использует отдельную прокрутку матрицы ни в одной
+   ориентации. Прокручивается только страница целиком. */
+@media (max-width: 849px) {
+    #gtoPage .matrix-wrapper {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        overflow: visible !important;
+    }
+
+    #gtoPage .matrix-wrapper > .hands-grid {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        grid-template-columns: repeat(13, minmax(0, 1fr));
+    }
+
+    #gtoPage .matrix-wrapper .hand-cell {
+        width: 100%;
+        height: auto;
+        min-width: 0;
+        min-height: 0;
+        aspect-ratio: 1;
+        font-size: clamp(8px, 2.6vw, 13px);
+        line-height: 1.1;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* Анализ редактора на телефоне повторяет мобильную компоновку GTO:
+   легенда располагается под матрицей, а не сбоку от неё. */
+@media (max-width: 849px) {
+    #constructorPage.analysis-mode .constructor-matrix-row {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        overflow: visible;
+    }
+
+    #constructorPage.analysis-mode .constructor-matrix-col,
+    #constructorPage.analysis-mode .constructor-legend-col {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    #constructorPage.analysis-mode .constructor-matrix-col {
+        flex: 0 0 auto;
+        align-self: stretch;
+    }
+
+    #constructorPage.analysis-mode .constructor-legend-col {
+        flex: 0 0 auto;
+        align-self: stretch;
+        align-items: stretch;
+        overflow: hidden;
+    }
+
+    #constructorPage.analysis-mode .constructor-legend-col .stats-action-legend,
+    #constructorPage.analysis-mode .constructor-legend-col .stats-action-bar,
+    #constructorPage.analysis-mode .constructor-legend-col .gto-cell-preview {
+        width: 100% !important;
+        flex: 0 0 100%;
+        max-width: 100%;
+        min-width: 0;
+        align-self: stretch;
+        box-sizing: border-box;
+    }
+
+    #constructorPage.analysis-mode #constructorCellPreview {
+        margin-top: 0;
+    }
+}
+
+/* В редакторе, как и в GTO, не создаём отдельную прокрутку матрицы.
+   Прокручивается только страница редактора целиком. */
+@media (max-width: 849px) {
+    #constructorPage .matrix-row,
+    #constructorPage .constructor-matrix-row,
+    #constructorPage .constructor-matrix-col,
+    #constructorPage .constructor-matrix-col .matrix-wrapper {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    #constructorPage .constructor-matrix-row {
+        flex: 1 1 auto;
+        align-self: stretch;
+    }
+
+    #constructorPage .constructor-matrix-col {
+        flex: 1 1 auto;
+        align-self: stretch;
+    }
+
+    /* Кнопки режимов находятся над матрицей справа и не занимают её ширину. */
+    #constructorPage .matrix-row {
+        position: relative;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        padding-top: 0;
+        box-sizing: border-box;
+    }
+
+    #constructorPage .toolbar-right {
+        width: 100%;
+        margin-left: 0;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    #constructorPage .toolbar-right .matrix-mode-toolbar {
+        position: static;
+        margin-left: auto;
+        margin-right: 0;
+        flex-direction: row;
+        gap: 4px;
+        z-index: auto;
+    }
+
+    #constructorPage .toolbar-right .backup-tree-actions {
+        margin-left: 0 !important;
+        flex: 0 0 auto;
+        gap: 2px !important;
+    }
+
+    /* На телефоне импорт/экспорт показываются только иконками, чтобы toolbar
+       помещался в одну строку. */
+    #constructorPage .table-toolbar #importRangeBtn .toolbar-btn-label,
+    #constructorPage .table-toolbar #exportTreeBtn span,
+    #constructorPage .table-toolbar #importTreeBtn span,
+    #constructorPage .table-toolbar .backup-tree-actions span {
+        display: none;
+    }
+
+    #constructorPage .table-toolbar > div:has(> #exportTreeBtn),
+    #constructorPage .table-toolbar > div:has(> #importTreeBtn) {
+        margin-left: 0 !important;
+    }
+
+    #constructorPage .matrix-wrapper {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        overflow: visible !important;
+    }
+
+    #constructorPage .matrix-wrapper > .hands-grid {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        grid-template-columns: repeat(13, minmax(0, 1fr));
+    }
+
+    #constructorPage .matrix-wrapper .hand-cell {
+        width: 100%;
+        height: auto;
+        min-width: 0;
+        min-height: 0;
+        aspect-ratio: 1;
+        font-size: clamp(8px, 2.6vw, 13px);
+        line-height: 1.1;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* На самых узких телефонах сохраняем отдельную и предсказуемую область
+   нажатия ячейки, не увеличивая общую ширину 13-колоночной матрицы. */
+@media (max-width: 360px) {
+    #gtoPage .matrix-wrapper .hand-cell,
+    #constructorPage .matrix-wrapper .hand-cell {
+        font-size: clamp(7px, 2.8vw, 10px);
+        border-radius: 3px;
+    }
+}
+
+/* ===== ЭТАП 4: МОБИЛЬНЫЕ ПРОФИЛИ И СЛАЙДЕРЫ ===== */
+@media (max-width: 849px) {
+    .profiles-panel,
+    .profiles-container,
+    .palette-section,
+    .palette-list,
+    .profiles-container > div {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .profiles-container {
+        overflow: hidden;
+    }
+
+    .profile-card {
+        width: 100%;
+        min-width: 0;
+        padding: 8px 0;
+    }
+
+    /* Профиль на мобильном помещается в одну компактную строку:
+       выбор | цветовые квадраты | шкала/ползунок | удаление. */
+    .profile-row {
+        display: grid;
+        grid-template-columns: 24px minmax(0, auto) minmax(80px, 1fr) 32px;
+        grid-template-areas: "radio chips slider delete";
+        align-items: center;
+        gap: 5px;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .profile-radio {
+        grid-area: radio;
+        width: 24px;
+        height: 24px;
+    }
+
+    .chips-container {
+        grid-area: chips;
+        min-width: 0;
+        width: auto;
+        max-width: 100%;
+        flex-wrap: nowrap;
+        gap: 4px;
+        overflow: hidden;
+    }
+
+    .multi-color-chip,
+    .multi-add-chip-btn,
+    .palette-color-box {
+        width: 28px;
+        height: 28px;
+    }
+
+    .multi-chip-delete {
+        width: 18px;
+        height: 18px;
+        font-size: 9px;
+    }
+
+    .slider-wrapper {
+        grid-area: slider;
+        width: 100%;
+        min-width: 0 !important;
+        max-width: none;
+        margin: 0 !important;
+        align-self: center !important;
+    }
+
+    .slider-track-container {
+        height: 36px;
+        width: calc(100% - 24px);
+        margin-inline: 12px;
+    }
+
+    .slider-thumb {
+        width: 24px;
+        height: 24px;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .slider-percent {
+        bottom: 22px;
+        font-size: 10px;
+    }
+
+    .delete-profile-btn {
+        grid-area: delete;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        font-size: 15px;
+    }
+
+    .palette-item {
+        width: 100%;
+        min-width: 0;
+        gap: 10px;
+        padding: 6px 0 12px;
+    }
+
+    .palette-name {
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+        min-height: 40px;
+        padding: 9px 0;
+    }
+
+    .remove-palette-btn {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+    }
+
+    .add-color-block,
+    .add-profile-block {
+        min-height: 42px;
+        padding: 8px 4px;
+    }
+}

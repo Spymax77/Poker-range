@@ -155,10 +155,43 @@ document.getElementById('authRegisterItem')?.addEventListener('click', function(
     closeAuthMenu();
     showAuthDialog('register');
 });
-document.getElementById('authLogoutItem')?.addEventListener('click', async function() {
+document.getElementById('authLogoutItem')?.addEventListener('click', function() {
     closeAuthMenu();
-    await App.auth.logout();
-    location.reload();
+
+    const logout = async function() {
+        await App.auth.logout();
+        location.reload();
+    };
+
+    const hasUnsavedChanges = App.state.hasUnsavedChanges
+        || (App.dirty && App.dirty.hasDirty());
+
+    if (!hasUnsavedChanges) {
+        logout();
+        return;
+    }
+
+    const node = getNode(App.state.currentNodeId);
+    const message = node
+        ? `Диапазон «${node.name}» был отредактирован. Сохранить изменения?`
+        : 'Сохранить изменения?';
+
+    App.modals.showSaveConfirmModal(message, async function() {
+        // Да — сохраняем перед выходом из аккаунта
+        const results = await flushPersist();
+        const saveSucceeded = !results || results.every(function(result) {
+            return result && result.success !== false;
+        });
+        if (!saveSucceeded) {
+            App.modals.showFloatingModal('Не удалось сохранить изменения');
+            return;
+        }
+        clearUnsaved();
+        await logout();
+    }, async function() {
+        // Нет — выходим без сохранения
+        await logout();
+    });
 });
 
 document.addEventListener('click', function(e) {
@@ -205,6 +238,18 @@ document.addEventListener('mousedown', App.paint.handlePaintStart);
 document.addEventListener('mousemove', App.paint.handlePaintMove);
 document.addEventListener('mouseup', App.paint.handlePaintEnd);
 
+// На touch-устройствах удерживаем расширенное дерево только на время работы
+// с каталогом. После касания матрицы или другой области оно снова становится
+// компактным, чтобы освободить место для рабочей области.
+document.addEventListener('pointerdown', function(e) {
+    if (e.pointerType !== 'touch') return;
+    const treePanel = e.target.closest?.('.tree-panel');
+    document.querySelectorAll('.tree-panel.tree-interacting').forEach(panel => {
+        if (panel !== treePanel) panel.classList.remove('tree-interacting');
+    });
+    if (treePanel) treePanel.classList.add('tree-interacting');
+});
+
 // ===== НАВИГАЦИЯ ПО ДЕРЕВУ КЛАВИШАМИ =====
 document.addEventListener('keydown', function(e) {
     if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -226,7 +271,7 @@ document.addEventListener('keydown', function(e) {
 // (markUnsaved / clearUnsaved вынесены в persistence.js)
 
 // ===== КНОПКА "СОХРАНИТЬ" =====
-document.getElementById('tableSaveBtn')?.addEventListener('click', function() {
+document.getElementById('tableSaveBtn')?.addEventListener('click', async function() {
     // В режиме анализа кнопки редактирования погашены классом
     // .toolbar-btn-disabled (pointer-events: none), но CSS не мешает
     // программному .click() (например, из userscript'а), поэтому дублируем
@@ -236,8 +281,15 @@ document.getElementById('tableSaveBtn')?.addEventListener('click', function() {
         App.modals.showFloatingModal('Нет активного диапазона для сохранения');
         return;
     }
-    flushPersist();
-    clearUnsaved();
+    const results = await flushPersist();
+    const saveSucceeded = !results || results.every(function(result) {
+        return result && result.success !== false;
+    });
+    if (saveSucceeded) {
+        clearUnsaved();
+    } else {
+        App.modals.showFloatingModal('Не удалось сохранить изменения');
+    }
 });
 
 // ===== КНОПКА "ОТМЕНИТЬ" =====
@@ -303,9 +355,16 @@ App.navigation.selectNode = function(nodeId) {
     ? `Диапазон «${node.name}» был отредактирован. Сохранить изменения?`
     : 'Сохранить изменения?';
 
-        App.modals.showSaveConfirmModal(message, function() {
+        App.modals.showSaveConfirmModal(message, async function() {
             // Да — сохраняем
-            flushPersist();
+            const results = await flushPersist();
+            const saveSucceeded = !results || results.every(function(result) {
+                return result && result.success !== false;
+            });
+            if (!saveSucceeded) {
+                App.modals.showFloatingModal('Не удалось сохранить изменения');
+                return;
+            }
             clearUnsaved();
             originalSelectNode(nodeId);
         }, async function() {
@@ -371,6 +430,53 @@ if (tabsMenuToggle && mainTabs) {
     });
 }
 
+// ===== МОБИЛЬНАЯ ПАНЕЛЬ ФИЛЬТРОВ GTO =====
+const gtoFilterToggle = document.getElementById('gtoFilterToggle');
+const gtoFilterBar = document.getElementById('gtoFilterBar');
+const mobileGtoFilterQuery = window.matchMedia('(max-width: 849px)');
+
+function updateMobileGtoFilterState() {
+    if (!gtoFilterToggle || !gtoFilterBar) return;
+
+    if (!mobileGtoFilterQuery.matches) {
+        gtoFilterBar.classList.remove('gto-filter-open');
+        gtoFilterToggle.setAttribute('aria-expanded', 'false');
+    }
+}
+
+if (gtoFilterToggle && gtoFilterBar) {
+    gtoFilterToggle.addEventListener('click', function() {
+        const isOpen = gtoFilterBar.classList.toggle('gto-filter-open');
+        gtoFilterToggle.setAttribute('aria-expanded', String(isOpen));
+    });
+
+    window.addEventListener('resize', updateMobileGtoFilterState);
+    updateMobileGtoFilterState();
+}
+
+// ===== АДАПТИВНОЕ ПОЛОЖЕНИЕ КНОПОК РЕЖИМОВ КОНСТРУКТОРА =====
+const constructorModeToolbar = document.querySelector('#constructorPage .matrix-mode-toolbar');
+const constructorMatrixRow = document.querySelector('#constructorPage .matrix-row');
+const constructorToolbarRight = document.querySelector('#constructorPage .toolbar-right');
+const mobileConstructorToolbarQuery = window.matchMedia('(max-width: 849px)');
+
+function updateConstructorModeToolbarPosition() {
+    if (!constructorModeToolbar || !constructorMatrixRow || !constructorToolbarRight) return;
+
+    if (mobileConstructorToolbarQuery.matches) {
+        if (constructorModeToolbar.parentElement !== constructorToolbarRight) {
+            constructorToolbarRight.appendChild(constructorModeToolbar);
+        }
+    } else if (constructorModeToolbar.parentElement !== constructorMatrixRow) {
+        constructorMatrixRow.insertBefore(constructorModeToolbar, constructorMatrixRow.firstElementChild);
+    }
+}
+
+if (constructorModeToolbar && constructorMatrixRow && constructorToolbarRight) {
+    window.addEventListener('resize', updateConstructorModeToolbarPosition);
+    updateConstructorModeToolbarPosition();
+}
+
 // ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
 document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.onclick = function() {
@@ -383,8 +489,16 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
                 ? `Диапазон «${node.name}» был отредактирован. Сохранить изменения?`
                 : 'Сохранить изменения?';
 
-            App.modals.showSaveConfirmModal(message, function() {
-                // Да — оставляем изменения в памяти
+            App.modals.showSaveConfirmModal(message, async function() {
+                // Да — сохраняем изменения перед переключением вкладки
+                const results = await flushPersist();
+                const saveSucceeded = !results || results.every(function(result) {
+                    return result && result.success !== false;
+                });
+                if (!saveSucceeded) {
+                    App.modals.showFloatingModal('Не удалось сохранить изменения');
+                    return;
+                }
                 clearUnsaved();
                 App.navigation.switchTab(page);
             }, async function() {

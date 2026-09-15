@@ -12,9 +12,16 @@ App.clipboard.duplicateRange = function(nodeId) {
             ? `Диапазон «${node.name}» был отредактирован. Сохранить изменения?`
             : 'Сохранить изменения?';
 
-        App.modals.showSaveConfirmModal(message, function() {
+        App.modals.showSaveConfirmModal(message, async function() {
             // ДА — сохраняем
-            persistAll();
+            const results = await flushPersist();
+            const saveSucceeded = !results || results.every(function(result) {
+                return result && result.success !== false;
+            });
+            if (!saveSucceeded) {
+                App.modals.showFloatingModal('Не удалось сохранить изменения');
+                return;
+            }
             clearUnsaved();
             App.clipboard.createCopyAndFinalize(original);
         }, async function() {

@@ -194,7 +194,7 @@ App.colors.deleteColor = function(nodeId, colorId) {
     );
     
     if (isUsed) {
-        App.modals.showFloatingModal('Данное действие используется в смеси. Сначала удалите смесь, использующую его.');
+        App.modals.showFloatingModal('Данное действие используется в мультицвете. Сначала удалите мультицвет, использующий его.');
         return false;
     }
     
@@ -432,9 +432,15 @@ App.colors.refreshMultiColorSliders = function(nodeId, colorId) {
         thumb.style.pointerEvents = 'auto';
         thumb.style.opacity = '1';
         
+        let suppressClick = false;
+
         // Клик по ползунку — выбор цвета для компонента
         thumb.onclick = (e) => {
             e.stopPropagation();
+            if (suppressClick) {
+                suppressClick = false;
+                return;
+            }
             if (!ref.editable) return;
             const simpleColorsList = App.colors.getSimpleColors(nodeId);
             if (simpleColorsList.length === 0) {
@@ -447,8 +453,10 @@ App.colors.refreshMultiColorSliders = function(nodeId, colorId) {
         // Перетаскивание ползунка (ВСЕГДА активное)
         if (ref.editable) {
             let dragging = false;
+            let moved = false;
             const onMove = (me) => {
                 if (!dragging) return;
+                moved = true;
                 const rect = sliderContainer.getBoundingClientRect();
                 let newP = Math.round((me.clientX - rect.left) / rect.width * 100);
                 newP = Math.min(100, Math.max(0, newP));
@@ -474,14 +482,29 @@ App.colors.refreshMultiColorSliders = function(nodeId, colorId) {
                 App.events.emit('data:changed');
                 App.events.emit('unsaved:mark');
             };
-            const up = () => { dragging = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', up); };
-            
-            thumb.onmousedown = (e) => {
-                e.preventDefault();
-                dragging = true;
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', up);
+            const up = (e) => {
+                if (!dragging) return;
+                dragging = false;
+                if (moved) suppressClick = true;
+                if (sliderContainer.hasPointerCapture?.(e.pointerId)) {
+                    sliderContainer.releasePointerCapture(e.pointerId);
+                }
+                sliderContainer.removeEventListener('pointermove', onMove);
+                sliderContainer.removeEventListener('pointerup', up);
+                sliderContainer.removeEventListener('pointercancel', up);
             };
+
+            thumb.addEventListener('pointerdown', (e) => {
+                if (e.button !== undefined && e.button !== 0) return;
+                e.preventDefault();
+                e.stopPropagation();
+                dragging = true;
+                moved = false;
+                sliderContainer.setPointerCapture?.(e.pointerId);
+                sliderContainer.addEventListener('pointermove', onMove);
+                sliderContainer.addEventListener('pointerup', up);
+                sliderContainer.addEventListener('pointercancel', up);
+            });
         }
         
         sliderContainer.appendChild(thumb);

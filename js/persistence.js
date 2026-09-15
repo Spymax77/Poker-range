@@ -19,6 +19,7 @@ function persistAllNow(skipTables) {
     var dirty = App.dirty._raw;
     var promises = [];
     var savedCount = 0;
+    var missingTableData = false;
 
     for (var mi = 0; mi < ['editor', 'gto'].length; mi++) {
         var mode = ['editor', 'gto'][mi];
@@ -65,6 +66,10 @@ function persistAllNow(skipTables) {
                         matrix: tableData
                     }));
                     savedCount++;
+                } else {
+                    // Нельзя подтверждать сохранение таблицы, если её данные
+                    // отсутствуют и запрос в storage не был отправлен.
+                    missingTableData = true;
                 }
             }
         }
@@ -81,17 +86,31 @@ function persistAllNow(skipTables) {
         promises.push(App.storage.saveMetadata(uiMetadata));
     }
 
-    // Очищаем dirty: если skipTables — оставляем таблицы грязными (ждут явного сохранения)
-    if (skipTables) {
-        for (var m = 0; m < ['editor', 'gto'].length; m++) {
-            var md = ['editor', 'gto'][m];
-            dirty.metadata[md] = false;
-            dirty.structure[md] = false;
+    // Очищаем dirty только после подтверждённого успешного сохранения.
+    // Storage API возвращает { success: false } при ошибке, поэтому проверяем
+    // не только отклонённые Promise, но и результаты запросов.
+    return Promise.all(promises).then(function(results) {
+        var saveFailed = results.some(function(result) {
+            return !result || result.success === false;
+        });
+
+        if (saveFailed || missingTableData) {
+            return results;
         }
-    } else {
-        App.dirty.clearDirty();
-    }
-    return Promise.all(promises);
+
+        // При skipTables таблицы ещё не отправлялись и должны остаться dirty.
+        if (skipTables) {
+            for (var m = 0; m < ['editor', 'gto'].length; m++) {
+                var md = ['editor', 'gto'][m];
+                dirty.metadata[md] = false;
+                dirty.structure[md] = false;
+            }
+        } else {
+            App.dirty.clearDirty();
+        }
+
+        return results;
+    });
 }
 
 function persistAll() {

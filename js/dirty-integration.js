@@ -222,16 +222,4 @@
         };
     }
 
-    // ===== ПАТЧ: persistAllNow — после сохранения сбрасываем dirty-флаги =====
-    if (typeof persistAllNow === 'function') {
-        var _origPersistAllNow = persistAllNow;
-        persistAllNow = function(skipTables) {
-            _origPersistAllNow(skipTables);
-            // Если skipTables — таблицы остаются грязными (ждут явного сохранения)
-            if (ensureDirty() && App.auth && App.auth.isLoggedIn() && !skipTables) {
-                App.dirty.clearDirty();
-            }
-        };
-    }
-
 })();

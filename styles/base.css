@@ -308,6 +308,20 @@ footer {
 @media (max-width: 974px) {
     .work-layout {
         flex-direction: column;
+        gap: 0;
+    }
+
+    .work-layout,
+    .left-area,
+    .right-area {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .right-area {
+        width: 492px;
+        padding-top: 0;
     }
 }
 
