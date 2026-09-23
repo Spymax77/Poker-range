@@ -10,7 +10,7 @@ export function renderGrid(containerId, nodeId, clickHandler) {
     const matrix = App.state.cellStorage[getTableId(nodeId)];
     gridDiv.innerHTML = "";
 
-     const profiles = App.colors.getColorsForNode(nodeId);
+    const profiles = App.colors.getColorsForNode(nodeId);
 	     // ===== ПОЛУЧАЕМ ВЫБРАННЫЙ КОМПОНЕНТ ДЛЯ ПОДДИАПАЗОНА =====
     const currentNode = getNode(nodeId);
     let selectedComponentIndex = null;
@@ -89,7 +89,7 @@ if (i === 9 && j === 0) {
 if (prof) {
     let gradStyle = App.colors.getGradientStyleFromColorForNode(nodeId, prof);
     if (gradStyle) {
-        originalGradient = gradStyle + "; color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 8px rgba(0, 0, 0, 0.3);";
+        originalGradient = gradStyle + "; color: #FFFFFF; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4), 0 0 3px rgba(0, 0, 0, 0.2);";
         cell.setAttribute("style", originalGradient);
         isColored = true;
     } else {

@@ -334,8 +334,8 @@ function restoreGtoStateSnapshot(snapshot) {
 // когда решение реально доступно.
 function loadGtoData(fileName, onSuccess, resetView) {
     if (!fileName) {
-        console.warn('⚠️ Имя файла не указано');
-        return Promise.reject(new Error('Имя файла не указано'));
+        console.warn('⚠️ ' + App.i18n.t('gto.fileNameMissing'));
+        return Promise.reject(new Error(App.i18n.t('gto.fileNameMissing')));
     }
 
     // Снимок нужен только для восстановления предыдущего дерева при ошибке.
@@ -437,7 +437,7 @@ function loadGtoData(fileName, onSuccess, resetView) {
         .catch(err => {
             console.error('❌ Ошибка загрузки GTO:', err);
             restoreGtoStateSnapshot(snapshot);
-            App.modals.showFloatingModal('В данный момент такое решение GTO недоступно');
+            App.modals.showFloatingModal(App.i18n.t('gto.notAvailable'));
             return false;
         });
 }
@@ -491,7 +491,7 @@ function loadGtoByFilters(overrides, onSuccess) {
                 // Ни точной комбинации, ни fallback не найдено — показываем сообщение.
                 const label = getFilterLabel(changedFilterName);
                 const optText = document.querySelector(`.gto-filter-options[data-filter="${changedFilterName}"] .opt[data-value="${changedValue}"]`)?.textContent.trim() || changedValue;
-                App.modals.showFloatingModal(`Решений для ${label} «${optText}» не найдено`);
+                App.modals.showFloatingModal(App.i18n.t('gto.noSolutionsFor', { label: label, value: optText }));
                 return;
             }
             // Совсем ничего не подошло (например, восстановленный лимит больше
@@ -500,7 +500,7 @@ function loadGtoByFilters(overrides, onSuccess) {
         }
 
         if (!entry) {
-            App.modals.showFloatingModal('В данный момент такое решение GTO недоступно');
+            App.modals.showFloatingModal(App.i18n.t('gto.notAvailable'));
             return;
         }
 
@@ -522,7 +522,7 @@ function loadGtoByFilters(overrides, onSuccess) {
     // Точная комбинация существует — собираем имя файла и загружаем.
     const fileName = buildGtoFileName(filters);
     if (!fileName) {
-        App.modals.showFloatingModal('В данный момент такое решение GTO недоступно');
+        App.modals.showFloatingModal(App.i18n.t('gto.notAvailable'));
         return;
     }
 
@@ -554,6 +554,11 @@ function loadDefaultGto() {
 
 // ===== СОХРАНИТЬ ФИЛЬТРЫ В ХРАНИЛИЩЕ =====
 function saveGtoFilters() {
+    // Фильтры GTO можно менять в гостевом режиме локально.
+    // Не вызываем storage.save(), чтобы не показывать сообщение
+    // о необходимости авторизации при обычной навигации по GTO.
+    if (!App.auth || !App.auth.isLoggedIn()) return;
+
     const filters = {};
     document.querySelectorAll('.gto-filter-options').forEach(group => {
         const active = group.querySelector('.opt.active');

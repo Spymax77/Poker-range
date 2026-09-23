@@ -17,7 +17,7 @@ App.paint.updateCellStyle = function(cell, pid) {
     // ✅ Правильно: используем существующую функцию
     let gradStyle = App.colors.getGradientStyleFromColorForNode(App.state.currentNodeId, prof);
     if (gradStyle) {
-        cell.setAttribute("style", gradStyle + "; color: #F0F0F0;");
+        cell.setAttribute("style", gradStyle + "; color: #FFFFFF; text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);");
     } else {
         cell.removeAttribute("style");
     }

@@ -20,6 +20,8 @@ App.tree.addChildNode = function(parentId) {
     // Собираем имена всех дочерних узлов
     const children = parent.childrenIds.map(id => getNode(id)).filter(n => n);
     const existingNames = children.map(n => n.name);
+    // ВНИМАНИЕ: дефолтные имена узлов (см. решение №8 в russian-text-inventory.md)
+    // намеренно не локализуются — вопрос отложен.
     const newName = App.tree.generateUniqueName('Новый элемент', existingNames);
     
     let newId = App.state.nextNodeId++;
@@ -36,18 +38,6 @@ App.tree.addChildNode = function(parentId) {
     persistAll();
     App.refresh.all();
     App.navigation.selectNode(newId);
-}
-
-App.tree.renameNode = function(nodeId) {
-    let node = getNode(nodeId);
-    if (!node) return;
-    let newName = prompt("Новое имя:", node.name);
-    if (newName && newName.trim()) {
-        node.name = newName.trim().slice(0, 35);
-    }
-    persistAll();
-    App.refresh.all();
-    if (App.state.currentNodeId === nodeId) App.grid.updateCurrentDisplay();
 }
 
 App.tree.moveNodeUp = function(nodeId) {
@@ -147,7 +137,7 @@ App.tree.deleteNode = function(nodeId) {
 
         // ПРАВИЛО 1: единственный диапазон во всём дереве
         if (rangesInFolder.length > 0 && rangesInFolder.length === allRangesInTree.length) {
-            App.modals.showFloatingModal("Эту папку удалить нельзя, так как в ней содержится единственный диапазон");
+            App.modals.showFloatingModal(App.i18n.t('tree.deleteFolderSingleRangeError'));
             return;
         }
 
@@ -161,7 +151,7 @@ App.tree.deleteNode = function(nodeId) {
 
         if (hasFilledRanges) {
             App.modals.showSaveConfirmModal(
-                "В данной папке есть заполненные диапазоны. Все равно удалить?",
+                App.i18n.t('tree.folderHasFilledRanges'),
                 function() {
                     // ДА — продолжаем удаление
                     proceedDelete(nodeId);
@@ -177,7 +167,7 @@ App.tree.deleteNode = function(nodeId) {
     // ===== СТАРАЯ ПРОВЕРКА ДЛЯ ДИАПАЗОНОВ =====
     const allRanges = App.state.nodes.filter(n => n.type === 'range' || n.type === 'subrange');
     if (allRanges.length <= 1 && (node.type === 'range' || node.type === 'subrange')) {
-        App.modals.showFloatingModal("Нельзя удалить единственный диапазон");
+        App.modals.showFloatingModal(App.i18n.t('tree.deleteSingleRangeError'));
         return;
     }
 	    // ===== ПРАВИЛО 3: проверка на заполненность диапазона =====
@@ -200,7 +190,7 @@ App.tree.deleteNode = function(nodeId) {
 
         if (isFilled) {
             App.modals.showSaveConfirmModal(
-                "Данный диапазон не пустой. Все равно удалить?",
+                App.i18n.t('tree.rangeNotEmptyConfirm'),
                 function() {
                     // ДА — продолжаем удаление
                     proceedDelete(nodeId);
@@ -462,6 +452,9 @@ App.tree.addRootNode = function() {
     // Собираем имена всех корневых узлов
     const rootNodes = App.state.nodes.filter(n => n.parentId === null);
     const existingNames = rootNodes.map(n => n.name);
+    // ВНИМАНИЕ: дефолтные имена узлов (см. решение №8 в russian-text-inventory.md)
+    // намеренно не локализуются — при создании узла в английском интерфейсе
+    // временно используется русское имя по умолчанию.
     const newName = App.tree.generateUniqueName('Новая папка', existingNames);
 
     let newId = App.state.nextNodeId++;
@@ -530,9 +523,14 @@ App.tree.createChildNode = function(parentId, type) {
                 
                 App.dirty.markStructureDirty();
                 App.dirty.markTableDirty(newId);
-                flushPersist();
                 App.refresh.all();
                 App.navigation.selectNode(newId);
+                if (App.auth && App.auth.isLoggedIn()) {
+                    flushPersist();
+                } else {
+                    markUnsaved();
+                    notifyGuestUnsavedChanges();
+                }
             }
             // ❌ Если отмена → НИЧЕГО НЕ ДЕЛАЕМ
         });
@@ -571,9 +569,14 @@ App.tree.createChildNode = function(parentId, type) {
     if (type === 'range') {
         App.dirty.markTableDirty(newId);
     }
-    flushPersist();
     App.refresh.all();
     App.navigation.selectNode(newId);
+    if (App.auth && App.auth.isLoggedIn()) {
+        flushPersist();
+    } else {
+        markUnsaved();
+        notifyGuestUnsavedChanges();
+    }
 }
 App.tree.renderTree = function(containerId, activeNodeId, editable, onSelectNode) {
     const container = document.getElementById(containerId);
@@ -855,7 +858,7 @@ menuBtn.innerHTML = `
 
       if (node.type === 'folder') {
     const addFolderBtn = document.createElement("button");
-    addFolderBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">Добавить папку</span>`;
+    addFolderBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">${App.i18n.t('menu.addFolder')}</span>`;
     addFolderBtn.onclick = (e) => {
         e.stopPropagation();
         App.tree.createChildNode(node.id, 'folder');
@@ -864,7 +867,7 @@ menuBtn.innerHTML = `
     popupMenu.appendChild(addFolderBtn);
 
     const addRangeBtn = document.createElement("button");
-    addRangeBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">Добавить диапазон</span>`;
+    addRangeBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">${App.i18n.t('menu.addRange')}</span>`;
     addRangeBtn.onclick = (e) => {
         e.stopPropagation();
         App.tree.createChildNode(node.id, 'range');
@@ -873,7 +876,7 @@ menuBtn.innerHTML = `
     popupMenu.appendChild(addRangeBtn);
 } else if (node.type === 'range' || node.type === 'subrange') {
     const addSubrangeBtn = document.createElement("button");
-    addSubrangeBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">Добавить поддиапазон</span>`;
+    addSubrangeBtn.innerHTML = `<span class="menu-icon">+</span><span class="menu-text">${App.i18n.t('menu.addSubrange')}</span>`;
     addSubrangeBtn.onclick = (e) => {
         e.stopPropagation();
         App.tree.createChildNode(node.id, 'subrange');
@@ -882,7 +885,7 @@ menuBtn.innerHTML = `
     popupMenu.appendChild(addSubrangeBtn);
 
     const duplicateBtn = document.createElement("button");
-    duplicateBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">Дублировать диапазон</span>`;
+    duplicateBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">${App.i18n.t('menu.duplicateRange')}</span>`;
     duplicateBtn.onclick = (e) => {
         e.stopPropagation();
         App.clipboard.duplicateRange(node.id);
@@ -895,7 +898,7 @@ menuBtn.innerHTML = `
 const copyBtn = document.createElement("button");
 copyBtn.innerHTML = `
     <span class="menu-icon"></span>
-    <span class="menu-text">Копировать диапазон</span>
+    <span class="menu-text">${App.i18n.t('menu.copyRange')}</span>
 `;
 copyBtn.onclick = (e) => {
     e.stopPropagation();
@@ -909,7 +912,7 @@ const pasteBtn = document.createElement("button");
 const hasData = App.clipboard.hasClipboardData();
 pasteBtn.innerHTML = `
     <span class="menu-icon"></span>
-    <span class="menu-text">Вставить диапазон</span>
+    <span class="menu-text">${App.i18n.t('menu.pasteRange')}</span>
 `;
 pasteBtn.onclick = (e) => {
     e.stopPropagation();
@@ -922,7 +925,7 @@ if (!hasData) {
     pasteBtn.style.opacity = '0.4';
     pasteBtn.style.cursor = 'default';
     pasteBtn.style.pointerEvents = 'none';
-    pasteBtn.title = 'Сначала скопируйте диапазон';
+    pasteBtn.title = App.i18n.t('clipboard.copyRangeFirst');
 } else {
     pasteBtn.style.opacity = '1';
     pasteBtn.style.cursor = 'pointer';
@@ -934,7 +937,7 @@ popupMenu.appendChild(pasteBtn);
 
 // ===== ОБЩИЕ ПУНКТЫ =====
 const renameBtn = document.createElement("button");
-renameBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">Переименовать</span>`;
+renameBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">${App.i18n.t('menu.rename')}</span>`;
 renameBtn.onclick = (e) => {
     e.stopPropagation();
     App.tree.startInlineRename(node.id);
@@ -943,7 +946,7 @@ renameBtn.onclick = (e) => {
 popupMenu.appendChild(renameBtn);
 
 const upBtn = document.createElement("button");
-upBtn.innerHTML = `<span class="menu-icon">↑</span><span class="menu-text">Вверх</span>`;
+upBtn.innerHTML = `<span class="menu-icon">↑</span><span class="menu-text">${App.i18n.t('menu.moveUp')}</span>`;
 upBtn.onclick = (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -953,7 +956,7 @@ upBtn.onclick = (e) => {
 popupMenu.appendChild(upBtn);
 
 const downBtn = document.createElement("button");
-downBtn.innerHTML = `<span class="menu-icon">↓</span><span class="menu-text">Вниз</span>`;
+downBtn.innerHTML = `<span class="menu-icon">↓</span><span class="menu-text">${App.i18n.t('menu.moveDown')}</span>`;
 downBtn.onclick = (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -963,7 +966,7 @@ downBtn.onclick = (e) => {
 popupMenu.appendChild(downBtn);
 
 const delBtn = document.createElement("button");
-delBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">Удалить</span>`;
+delBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">${App.i18n.t('menu.delete')}</span>`;
 delBtn.onclick = (e) => {
     e.stopPropagation();
     App.tree.deleteNode(node.id);

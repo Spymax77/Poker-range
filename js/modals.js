@@ -4,6 +4,38 @@
 
 // ===== ПЛАВАЮЩЕЕ МОДАЛЬНОЕ ОКНО (информационное, с кнопкой ОК) =====
 App.modals = App.modals || {};
+
+App.modals.closeAnimated = function(overlay, callback) {
+    if (!overlay || !overlay.isConnected) {
+        if (callback) callback();
+        return;
+    }
+
+    // Не запускаем закрытие повторно, если анимация уже идет.
+    if (overlay.classList.contains('closing')) return;
+
+    const modal = overlay.querySelector('.save-confirm-modal');
+    let finished = false;
+    // Страховка на случай, если animationend не сработает.
+    const fallbackTimer = setTimeout(finish, 300);
+
+    function finish() {
+        if (finished) return;
+        finished = true;
+        clearTimeout(fallbackTimer);
+        if (modal) modal.removeEventListener('animationend', onAnimationEnd);
+        overlay.remove();
+        if (callback) callback();
+    }
+
+    function onAnimationEnd(event) {
+        if (event.animationName === 'modalOut') finish();
+    }
+
+    if (modal) modal.addEventListener('animationend', onAnimationEnd);
+    overlay.classList.add('closing');
+};
+
 App.modals.showFloatingModal = function(message, callback) {
     if (!message) {
         console.warn('⚠️ showFloatingModal: не передан текст сообщения');
@@ -21,13 +53,13 @@ App.modals.showFloatingModal = function(message, callback) {
     modal.className = 'save-confirm-modal';
     modal.innerHTML = `
         <div class="save-confirm-header" id="modalHeader">
-            <span>Сообщение</span>
+            <span>${App.i18n.t('modal.messageTitle')}</span>
         </div>
         <div class="save-confirm-body">
             <p>${escapeHtml(message)}</p>
         </div>
         <div class="save-confirm-actions" style="justify-content: center;">
-            <button class="btn btn-confirm" id="floatingOkBtn">ОК</button>
+            <button class="btn btn-confirm" id="floatingOkBtn">${App.i18n.t('modal.ok')}</button>
         </div>
     `;
 
@@ -70,8 +102,7 @@ App.modals.showFloatingModal = function(message, callback) {
 
     // ===== КНОПКА ОК =====
     modal.querySelector('#floatingOkBtn').onclick = () => {
-        overlay.remove();
-        if (callback) callback();
+        App.modals.closeAnimated(overlay, callback);
     };
 }
 
@@ -92,14 +123,14 @@ App.modals.showSaveConfirmModal = function(message, onSave, onCancel) {
     modal.className = 'save-confirm-modal';
     modal.innerHTML = `
         <div class="save-confirm-header" id="saveConfirmHeader">
-            <span>Cообщение</span>
+            <span>${App.i18n.t('modal.messageTitle')}</span>
         </div>
         <div class="save-confirm-body">
             <p>${escapeHtml(message)}</p>
         </div>
         <div class="save-confirm-actions">
-            <button class="btn btn-cancel" id="saveConfirmNo">Нет</button>
-            <button class="btn btn-confirm" id="saveConfirmYes">Да</button>
+            <button class="btn btn-cancel" id="saveConfirmNo">${App.i18n.t('modal.no')}</button>
+            <button class="btn btn-confirm" id="saveConfirmYes">${App.i18n.t('modal.yes')}</button>
         </div>
     `;
 
@@ -142,48 +173,12 @@ App.modals.showSaveConfirmModal = function(message, onSave, onCancel) {
 
     // ===== КНОПКИ =====
     modal.querySelector('#saveConfirmYes').onclick = () => {
-        overlay.remove();
-        if (onSave) onSave();
+        App.modals.closeAnimated(overlay, onSave);
     };
 
     modal.querySelector('#saveConfirmNo').onclick = () => {
-        overlay.remove();
-        if (onCancel) onCancel();
+        App.modals.closeAnimated(overlay, onCancel);
     };
-}
-
-// ========== МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ (из HTML-шаблона) ==========
-App.modals.showConfirmModal = function(message, onConfirm) {
-    const modal = document.getElementById("confirmModal");
-    const msgSpan = document.getElementById("confirmMessage");
-    const yesBtn = document.getElementById("confirmYes");
-    const noBtn = document.getElementById("confirmNo");
-
-    if (!modal) {
-        console.error("Модальное окно не найдено в HTML");
-        return;
-    }
-
-    msgSpan.textContent = message;
-    modal.classList.add('active');
-
-    function cleanup() {
-        modal.classList.remove('active');
-        yesBtn.removeEventListener("click", handleYes);
-        noBtn.removeEventListener("click", handleNo);
-    }
-
-    function handleYes() {
-        cleanup();
-        onConfirm();
-    }
-
-    function handleNo() {
-        cleanup();
-    }
-
-    yesBtn.addEventListener("click", handleYes);
-    noBtn.addEventListener("click", handleNo);
 }
 
 // ===== ДИАЛОГ ВЫБОРА КОМПОНЕНТА (для поддиапазонов) =====
@@ -211,12 +206,12 @@ const components = colors.filter(c => c.type === 'simple' || (!c.type && c.color
        <div class="component-option" data-index="null">
     <div class="profile-radio" data-index="null"></div>
     <div class="color-swatch sum-all"></div>
-    <span class="color-name">Все цвета</span>
+    <span class="color-name">${App.i18n.t('modal.allColors')}</span>
 </div>
 `;
 
 for (const comp of components) {
-    const colorName = comp.name || 'Цвет';
+    const colorName = comp.name || App.i18n.t('modal.color');
     const colorHex = escapeHtml(comp.color || '#9C5479');
     
     listHtml += `
@@ -243,15 +238,15 @@ listHtml += `</div>`;
 
     modal.innerHTML = `
         <div class="save-confirm-header" id="componentDialogHeader" style="cursor: grab; display: flex; justify-content: space-between; align-items: center;">
-            <span>Добавить поддиапазон</span>
+            <span>${App.i18n.t('matrix.addSubrange')}</span>
             <button id="componentDialogClose" style="background: none; border: none; color: #8a848a; font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
         </div>
         <div class="save-confirm-body">
             ${listHtml}
         </div>
         <div class="save-confirm-actions" style="justify-content: flex-end;">
-            <button class="btn btn-cancel" id="componentDialogCancel">Отмена</button>
-            <button class="btn btn-confirm" id="componentDialogOk">ОК</button>
+            <button class="btn btn-cancel" id="componentDialogCancel">${App.i18n.t('modal.cancel')}</button>
+            <button class="btn btn-confirm" id="componentDialogOk">${App.i18n.t('modal.ok')}</button>
         </div>
     `;
 
@@ -295,8 +290,9 @@ listHtml += `</div>`;
 
     // ===== ОБРАБОТЧИКИ =====
     function closeDialog(selectedIndex) {
-        overlay.remove();
-        if (callback) callback(selectedIndex);
+        App.modals.closeAnimated(overlay, () => {
+            if (callback) callback(selectedIndex);
+        });
     }
 
     modal.querySelector('#componentDialogClose').addEventListener('click', () => closeDialog(-1));

@@ -137,15 +137,18 @@
         }
     };
 
-    window.App = {
-        state: stateProxy,
-        events: events,
-        get currentMode() { return currentMode; },
-        set currentMode(v) { currentMode = v; },
-        // Для прямого доступа к редактору (нужно для persistAll / loadFromStorage)
-        editor: editor,
-        gto: gto
-    };
+    const app = window.App || {};
+    app.state = stateProxy;
+    app.events = events;
+    Object.defineProperty(app, 'currentMode', {
+        configurable: true,
+        enumerable: true,
+        get() { return currentMode; },
+        set(v) { currentMode = v; }
+    });
+    app.editor = editor;
+    app.gto = gto;
+    window.App = app;
 })();
 
 // ============================================================

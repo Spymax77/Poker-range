@@ -55,7 +55,7 @@ App.navigation.renderGtoPage = function() {
         const titleWrapper = nameEl ? nameEl.closest('.range-title-wrapper') : null;
         if (nameEl && hasTable) {
             const node = getNodeFrom(App.gto, App.gto.currentNodeId);
-            nameEl.textContent = node ? node.name : "GTO диапазон";
+            nameEl.textContent = node ? node.name : App.i18n.t('gto.range');
         }
 
         // Легенда и action bar
@@ -63,9 +63,7 @@ App.navigation.renderGtoPage = function() {
         if (hasTable) {
             if (titleWrapper) titleWrapper.style.display = '';
             if (legendCol) legendCol.style.display = '';
-            App.stats.renderStatsTable(App.gto.currentNodeId, App.gto, 'gtoStatsContainer');
-            App.stats.renderActionLegend(App.gto.currentNodeId, App.gto, 'gtoActionLegend');
-            App.stats.renderActionBar(App.gto.currentNodeId, App.gto, 'gtoActionBar');
+            App.stats.renderBranchStats(App.gto.currentNodeId, App.gto, App.stats.CONTAINERS.gto);
         } else {
             if (titleWrapper) titleWrapper.style.display = 'none';
             if (legendCol) legendCol.style.display = 'none';
@@ -86,7 +84,7 @@ App.navigation.renderGtoPage = function() {
                     overlayBtn.id = 'gtoOverlayToggleBtn';
                     overlayBtn.className = 'matrix-btn';
                     overlayBtn.style.display = 'none';
-                    overlayBtn.dataset.tooltip = 'высота диапазона';
+                    overlayBtn.dataset.tooltip = App.i18n.t('matrix.rangeHeight');
                     overlayBtn.innerHTML = `
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
                             <rect x="2" y="2" width="20" height="20" rx="1" />
@@ -106,7 +104,7 @@ App.navigation.renderGtoPage = function() {
                                     <rect x="2" y="2" width="20" height="20" rx="1" />
                                     <rect x="2" y="12" width="20" height="10" fill="currentColor" stroke="none" rx="1" />
                                    </svg>`;
-                            overlayBtn.dataset.tooltip = isHidden ? 'полная высота' : 'высота диапазона';
+                            overlayBtn.dataset.tooltip = isHidden ? App.i18n.t('matrix.fullHeight') : App.i18n.t('matrix.rangeHeight');
                         }
                     });
                 }
@@ -143,7 +141,12 @@ App.navigation.selectGtoNode = function(nodeId) {
     if (node && node.parentId !== null) {
         App.gto.expandedNodes.add(node.parentId);
     }
-    if (App.dirty) App.dirty.markMetadataDirty('gto');
+    // Выбор узла — это навигация, а не изменение данных аккаунта. В гостевом
+    // режиме не помечаем его dirty: иначе после последующего входа гостевой
+    // экран GTO может перезаписать сохранённую вкладку пользователя.
+    if (App.auth && App.auth.isLoggedIn() && App.dirty) {
+        App.dirty.markMetadataDirty('gto');
+    }
     persistAll();
     App.navigation.renderGtoPage();
     App.tree.scrollNodeIntoView(nodeId);

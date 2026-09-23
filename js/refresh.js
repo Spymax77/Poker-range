@@ -110,11 +110,9 @@ App.refresh.all = function() {
 App.refresh.allGrids = function() {
     if (document.getElementById("constructorPage").classList.contains("active-page") && App.state.currentNodeId) {
         App.grid.updateCurrentDisplay();
-    } else if (document.getElementById("gtoPage").classList.contains("active-page") && App.state.currentNodeId) {
-        App.grid.renderGrid("gtoGrid", App.state.currentNodeId, null);
-        App.stats.renderStatsTable(App.gto.currentNodeId, App.gto, 'gtoStatsContainer');
-        App.stats.renderActionLegend(App.gto.currentNodeId, App.gto, 'gtoActionLegend');
-        App.stats.renderActionBar(App.gto.currentNodeId, App.gto, 'gtoActionBar');
+    } else if (document.getElementById("gtoPage").classList.contains("active-page") && App.gto.currentNodeId) {
+        App.grid.renderGrid("gtoGrid", App.gto.currentNodeId, null);
+        App.stats.renderBranchStats(App.gto.currentNodeId, App.gto, App.stats.CONTAINERS.gto);
     } else if (document.getElementById("workPage").classList.contains("active-page") && App.state.workDisplayNodeId) {
         App.work.updateGrid();
     }

@@ -1,74 +1,72 @@
 // ===== backup-manager.js =====
 (function() {
 
-    let backupContainer = null;
-    const mobileBackupQuery = window.matchMedia('(max-width: 849px)');
-
     function createBackupButtons() {
-        const toolbar = document.querySelector('#constructorPage .table-toolbar');
-        if (!toolbar) return;
+        const exportButton = document.getElementById('exportTreeMenuBtn');
+        const importButton = document.getElementById('importTreeMenuBtn');
+        if (!exportButton || !importButton || exportButton.dataset.bound === 'true') return;
 
-        const constructorPage = document.getElementById('constructorPage');
-        const isConstructor = constructorPage?.classList.contains('active-page');
-        const toolbarRight = toolbar.querySelector('.toolbar-right');
-        const target = mobileBackupQuery.matches ? toolbarRight : toolbar;
+        exportButton.addEventListener('click', function() {
+            closeAuthMenu();
+            exportTree();
+        });
+        importButton.addEventListener('click', function() {
+            closeAuthMenu();
+            importTree();
+        });
+        exportButton.dataset.bound = 'true';
+        importButton.dataset.bound = 'true';
+    }
 
-        if (!isConstructor || !target) {
-            if (backupContainer && !isConstructor) {
-                backupContainer.remove();
-                backupContainer = null;
-            }
-            return;
+    // АРХИТЕКТУРНОЕ ПРАВИЛО ДЛЯ БУДУЩИХ ПОЛЕЙ УЗЛА:
+    // Не добавляйте новое обычное поле отдельно в serializeNode,
+    // serializeGtoNode, createNodeFromImport и createEditorNodeFromData.
+    // Все дополнительные поля должны проходить через общие функции
+    // serializeNodeFields() и importNodeFields(). Это единая точка расширения
+    // для экспорта редактора, экспорта GTO, импорта JSON и GTO -> редактор.
+    //
+    // Сейчас четыре функции выше остаются сценарийными обёртками, потому что
+    // работают с разными ветками и разной логикой цветов/матриц. Если позже
+    // потребуется полностью объединить их в serialize/create с параметром
+    // branch, это можно сделать отдельно, не меняя правило для новых полей.
+    //
+    // Поля, влияющие на внутренние ID, parent/children, colors или cells,
+    // нельзя переносить как обычные: для них нужна специальная обработка.
+    // Общий набор служебных полей формата резервной копии:
+    const NODE_FORMAT_FIELDS = new Set([
+        'id', 'parentId', 'childrenIds', 'children',
+        'name', 'type', 'selectedComponentIndex',
+        'colors', 'cells'
+    ]);
+
+    function cloneSerializableValue(value) {
+        if (value === undefined || typeof value === 'function') return undefined;
+        try {
+            return JSON.parse(JSON.stringify(value));
+        } catch (error) {
+            console.warn('⚠️ Дополнительное поле узла пропущено:', error);
+            return undefined;
         }
+    }
 
-        // Повторные вызовы приходят от MutationObserver и переключения вкладок.
-        // Если контейнер уже на месте, не пересоздаём кнопки и обработчики.
-        const existingContainer = document.querySelector('#constructorPage .backup-tree-actions');
-        if (existingContainer) {
-            backupContainer = existingContainer;
-            if (existingContainer.parentElement !== target) {
-                target.appendChild(existingContainer);
-            }
-            existingContainer.style.marginLeft = mobileBackupQuery.matches ? '0' : 'auto';
-            return;
-        }
+    function serializeNodeFields(node) {
+        const fields = {};
+        Object.keys(node).forEach(function(key) {
+            if (NODE_FORMAT_FIELDS.has(key)) return;
+            const value = cloneSerializableValue(node[key]);
+            if (value !== undefined) fields[key] = value;
+        });
+        return fields;
+    }
 
-        if (backupContainer) {
-            backupContainer.remove();
-            backupContainer = null;
-        }
-
-        const container = document.createElement('div');
-        container.className = 'backup-tree-actions';
-        container.style.marginLeft = mobileBackupQuery.matches ? '0' : 'auto';
-        container.style.display = 'flex';
-        container.style.gap = '6px';
-        container.style.alignItems = 'center';
-
-        container.innerHTML = `
-            <button class="toolbar-btn" id="exportTreeBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                <span>Экспорт</span>
-            </button>
-            <button class="toolbar-btn" id="importTreeBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                <span>Импорт</span>
-            </button>
-        `;
-
-        target.appendChild(container);
-        backupContainer = container;
-
-        document.getElementById('exportTreeBtn').addEventListener('click', exportTree);
-        document.getElementById('importTreeBtn').addEventListener('click', importTree);
+    function importNodeFields(importedNode) {
+        const fields = {};
+        Object.keys(importedNode).forEach(function(key) {
+            if (NODE_FORMAT_FIELDS.has(key)) return;
+            const value = cloneSerializableValue(importedNode[key]);
+            if (value !== undefined) fields[key] = value;
+        });
+        return fields;
     }
 
     // ===== ЭКСПОРТ ДЕРЕВА С ЦВЕТАМИ И МАТРИЦЕЙ =====
@@ -76,7 +74,7 @@
         const rootNodes = App.state.nodes.filter(n => n.parentId === null);
         
         if (rootNodes.length === 0) {
-            App.modals.showFloatingModal('Нет данных для экспорта');
+            App.modals.showFloatingModal(App.i18n.t('backup.noDataToExport'));
             return;
         }
 
@@ -85,6 +83,7 @@
                 name: node.name,
                 type: node.type
             };
+            Object.assign(result, serializeNodeFields(node));
                         // ===== СОХРАНЯЕМ ВЫБРАННЫЙ ЦВЕТ ДЛЯ ПОДДИАПАЗОНА =====
             if (node.type === 'subrange' && node.selectedComponentIndex !== undefined) {
                 result.selectedComponentIndex = node.selectedComponentIndex;
@@ -224,7 +223,7 @@
                     const data = JSON.parse(ev.target.result);
                     
                     if (!isValidTreeStructure(data)) {
-                        App.modals.showFloatingModal('Неверный формат файла. Импорт отменён.');
+                        App.modals.showFloatingModal(App.i18n.t('backup.invalidFormat'));
                         return;
                     }
 
@@ -242,6 +241,7 @@
     type: type,
     selectedComponentIndex: importedNode.selectedComponentIndex !== undefined ? importedNode.selectedComponentIndex : null
 };
+                        Object.assign(newNode, importNodeFields(importedNode));
                         App.state.nodes.push(newNode);
                         App.state.nodeIndex.set(newNode.id, newNode);
                         
@@ -367,15 +367,33 @@
                     for (const rootNode of data) {
                         createNodeFromImport(rootNode, null);
                     }
-                    
-                    persistAll();
+
+                    // Импорт создаёт не только узлы, но и таблицы диапазонов.
+                    // Отмечаем все импортированные таблицы и сохраняем их сразу:
+                    // отложенный persistAll() сохраняет только структуру
+                    // (skipTables=true), из-за чего после перезагрузки матрицы
+                    // импортированных узлов могли быть пустыми.
+                    if (App.dirty) {
+                        App.dirty.markStructureDirty();
+                        for (const node of App.state.nodes.slice(oldNodesCount)) {
+                            if (node.type === 'range' || node.type === 'subrange') {
+                                App.dirty.markTableDirty(node.id);
+                            }
+                        }
+                    }
+
+                    if (typeof flushPersist === 'function') {
+                        flushPersist();
+                    } else {
+                        persistAll();
+                    }
                     App.refresh.all();
                     
                     const importedCount = App.state.nodes.length - oldNodesCount;
-                    App.modals.showFloatingModal(`✅ Импортировано ${importedCount} узлов с цветами и матрицей`);
+                    App.modals.showFloatingModal('✅ ' + App.i18n.t('backup.imported', { count: importedCount }));
                     
                 } catch(err) {
-                    App.modals.showFloatingModal('❌ Ошибка импорта: ' + err.message);
+                    App.modals.showFloatingModal('❌ ' + App.i18n.t('backup.importError', { error: err.message }));
                     console.error(err);
                 }
             };
@@ -391,6 +409,7 @@
             name: node.name,
             type: node.type
         };
+        Object.assign(result, serializeNodeFields(node));
 
         if (node.type === 'subrange' && node.selectedComponentIndex !== undefined && node.selectedComponentIndex !== null) {
             result.selectedComponentIndex = node.selectedComponentIndex;
@@ -473,6 +492,7 @@
             type: type,
             selectedComponentIndex: importedNode.selectedComponentIndex !== undefined ? importedNode.selectedComponentIndex : null
         };
+        Object.assign(newNode, importNodeFields(importedNode));
         App.editor.nodes.push(newNode);
         App.editor.nodeIndex.set(newNode.id, newNode);
 
@@ -594,8 +614,8 @@
         const rootNodes = App.gto.nodes.filter(n => n.parentId === null);
 
         if (rootNodes.length === 0) {
-            console.warn('⚠️ Нет данных GTO для добавления');
-            App.modals.showFloatingModal('Нет данных GTO для добавления');
+            console.warn('⚠️ ' + App.i18n.t('backup.noGtoData'));
+            App.modals.showFloatingModal(App.i18n.t('backup.noGtoData'));
             return;
         }
 
@@ -631,7 +651,7 @@
             persistAll();
         }
 
-        App.modals.showFloatingModal(`✅ Добавлено ${addedCount} узлов в редактор`);
+        App.modals.showFloatingModal(App.i18n.t('backup.gtoAdded', { count: addedCount }));
     }
 
     function initGtoAddToEditorButton() {
@@ -655,8 +675,6 @@
         });
     }
 
-    mobileBackupQuery.addEventListener?.('change', createBackupButtons);
-
     // ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -667,12 +685,10 @@
     // ===== ЗАПУСК =====
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
-            createBackupButtons();
             initGtoAddToEditorButton();
             createBackupButtons();
         });
     } else {
-        createBackupButtons();
         initGtoAddToEditorButton();
         createBackupButtons();
     }

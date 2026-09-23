@@ -121,7 +121,7 @@ App.importManager.groupByFrequency = function(parsedData) {
 // ===== ПРИМЕНЕНИЕ ИМПОРТА К МАТРИЦЕ =====
 App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
     if (!nodeId || !text || colorId === null) {
-        App.modals.showFloatingModal('Ошибка: нет диапазона, текста или цвета');
+        App.modals.showFloatingModal(App.i18n.t('import.errorNoData'));
         return;
     }
 
@@ -144,7 +144,7 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
     const parsed = App.importManager.parseHandsWithFrequencies(text);
     
     if (parsed.length === 0) {
-        App.modals.showFloatingModal('Не найдено ни одной руки для импорта');
+        App.modals.showFloatingModal(App.i18n.t('import.noHandsFound'));
         return;
     }
 
@@ -209,25 +209,20 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
                     }
 
                 if (currentPid === null) {
-    // Если процент >= 99, создаём простой цвет вместо мультицвета
-    if (percent >= 99) {
-        finalColorId = colorId;
-    } else {
-        const cacheKey = 'sub_' + normalizedFreq;
-        if (!multiColorMap[cacheKey]) {
-            const newId = App.colors.createMultiColor(
-                nodeId,
-                'Смесь',
-                [{ colorId: colorId, share: percent }],
-                [percent]
-            );
-            multiColorMap[cacheKey] = newId;
-            finalColorId = newId;
-        } else {
-            finalColorId = multiColorMap[cacheKey];
-        }
-    }
-}
+                    const cacheKey = 'sub_' + normalizedFreq;
+                    if (!multiColorMap[cacheKey]) {
+                        const newId = App.colors.createMultiColor(
+                            nodeId,
+                            'Смесь',
+                            [{ colorId: colorId, share: percent }],
+                            [percent]
+                        );
+                        multiColorMap[cacheKey] = newId;
+                        finalColorId = newId;
+                    } else {
+                        finalColorId = multiColorMap[cacheKey];
+                    }
+                }
 				 
 				 else {
     // Ячейка не пустая — добавляем второй/последующий цвет с нормированным процентом
@@ -256,23 +251,18 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
                     continue;
                 }
 
-             if (!multiColorMap[freqKey]) {
-    // Если процент = 99, создаём простой цвет вместо мультицвета
-    if (percent >= 99) {
-        targetColorId = colorId;
-    } else {
-        const newId = App.colors.createMultiColor(
-            nodeId,
-            'Смесь',
-            [{ colorId: colorId, share: percent }],
-            [percent]
-        );
-        multiColorMap[freqKey] = newId;
-        targetColorId = newId;
-    }
-} else {
-    targetColorId = multiColorMap[freqKey];
-}
+                if (!multiColorMap[freqKey]) {
+                    const newId = App.colors.createMultiColor(
+                        nodeId,
+                        'Смесь',
+                        [{ colorId: colorId, share: percent }],
+                        [percent]
+                    );
+                    multiColorMap[freqKey] = newId;
+                    targetColorId = newId;
+                } else {
+                    targetColorId = multiColorMap[freqKey];
+                }
             }
 
             for (const hand of hands) {
@@ -334,7 +324,7 @@ App.importManager.createImportWindow = function() {
 
     modal.innerHTML = `
         <div class="save-confirm-header" id="importHeader" style="cursor: grab; display: flex; justify-content: space-between; align-items: center;">
-            <span>Импортировать диапазон</span>
+            <span>${App.i18n.t('import.title')}</span>
             <button id="importCloseBtn" style="background: none; border: none; color: #8a848a; font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
         </div>
         <div class="save-confirm-body" style="margin-bottom: 18px;">
@@ -345,12 +335,12 @@ App.importManager.createImportWindow = function() {
                         <div id="importColorBox1" style="width: 36px; height: 36px; border-radius: 4px; border: 1px solid #3d3f46; background: #9C5479;"></div>
                         <span id="importColorName1" style="color: #e5eaf0; font-size: 16px;">action</span>
                     </div>
-                    <span style="color: #8a848a; font-size: 14px;">Цвет 1</span>
+                    <span style="color: #8a848a; font-size: 14px;">${App.i18n.t('import.color1')}</span>
                 </div>
-                <textarea id="importTextarea1" class="import-textarea" style="height: 150px; width: 100%;" placeholder="Вставьте руки для первого цвета..."></textarea>
+                <textarea id="importTextarea1" class="import-textarea" style="height: 150px; width: 100%;" placeholder="${App.i18n.t('import.placeholder1')}"></textarea>
                 <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px; padding-left: 4px;">
                     <input type="checkbox" id="importOverwriteCheck">
-                    <label for="importOverwriteCheck" style="color: #a9afb5; font-size: 15px; cursor: pointer;">Перезаписать текущий диапазон</label>
+                    <label for="importOverwriteCheck" style="color: #a9afb5; font-size: 15px; cursor: pointer;">${App.i18n.t('import.overwrite')}</label>
                 </div>
             </div>
 
@@ -361,15 +351,15 @@ App.importManager.createImportWindow = function() {
                         <div id="importColorBox2" style="width: 36px; height: 36px; border-radius: 4px; border: 1px solid #3d3f46; background: #79A65A;"></div>
                         <span id="importColorName2" style="color: #e5eaf0; font-size: 16px;">call</span>
                     </div>
-                    <span style="color: #8a848a; font-size: 14px;">Цвет 2 (опционально)</span>
+                    <span style="color: #8a848a; font-size: 14px;">${App.i18n.t('import.color2')}</span>
                 </div>
-                <textarea id="importTextarea2" class="import-textarea" style="height: 150px; width: 100%;" placeholder="Вставьте руки для второго цвета (оставьте пустым, если не нужно)..."></textarea>
+                <textarea id="importTextarea2" class="import-textarea" style="height: 150px; width: 100%;" placeholder="${App.i18n.t('import.placeholder2')}"></textarea>
             </div>
         </div>
         <div class="save-confirm-actions" style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px; border-top: 1px solid #3d3f46; padding-top: 16px;">
             <div style="display: flex; align-items: center; gap: 12px; justify-content: flex-end;">
-                <button class="btn btn-cancel" id="importCancelBtn" style="width: 135px;">Отмена</button>
-                <button class="btn btn-confirm" id="importApplyBtn" style="width: 135px;">Импортировать</button>
+                <button class="btn btn-cancel" id="importCancelBtn" style="width: 135px;">${App.i18n.t('import.cancel')}</button>
+                <button class="btn btn-confirm" id="importApplyBtn" style="width: 135px;">${App.i18n.t('import.apply')}</button>
             </div>
         </div>
     `;
@@ -435,13 +425,13 @@ App.importManager.handleImportHotkeys = async function(e) {
     try {
         const clipboardText = await navigator.clipboard.readText();
         if (!clipboardText) {
-            App.modals.showFloatingModal('Буфер обмена пуст');
+            App.modals.showFloatingModal(App.i18n.t('import.clipboardEmpty'));
             return;
         }
         textarea.value = clipboardText;
     } catch (err) {
         console.warn('Не удалось прочитать буфер обмена:', err);
-        App.modals.showFloatingModal('❌ Не удалось прочитать буфер обмена. Разрешите доступ к буферу обмена в браузере.');
+        App.modals.showFloatingModal('❌ ' + App.i18n.t('import.clipboardReadError'));
     }
 }
 
@@ -477,7 +467,7 @@ App.importManager.showImportWindow = function() {
 
     // Проверяем, есть ли цвета в палитре
     if (simpleColors.length === 0) {
-        App.modals.showFloatingModal('❌ Сначала создайте хотя бы один цвет в палитре');
+        App.modals.showFloatingModal('❌ ' + App.i18n.t('import.createColorFirst'));
         App.state.importWindowInstance.remove();
         App.state.importWindowInstance = null;
         return;
@@ -505,14 +495,17 @@ App.importManager.showImportWindow = function() {
 
     // ===== ЗАКРЫТИЕ ОКНА =====
     function closeWindow() {
+        if (closeWindow.isClosing) return;
+        closeWindow.isClosing = true;
         if (window._importCheckInterval) {
             clearInterval(window._importCheckInterval);
             window._importCheckInterval = null;
         }
         document.removeEventListener('keydown', App.importManager.handleImportHotkeys);
-        if (App.state.importWindowInstance) {
-            App.state.importWindowInstance.remove();
-            App.state.importWindowInstance = null;
+        const importOverlay = App.state.importWindowInstance;
+        App.state.importWindowInstance = null;
+        if (importOverlay) {
+            App.modals.closeAnimated(importOverlay);
         }
         const popup = document.querySelector('.color-picker-popup');
         if (popup) popup.remove();
@@ -535,7 +528,7 @@ App.importManager.showImportWindow = function() {
         const text2 = document.getElementById('importTextarea2').value.trim();
 
         if (!text1 && !text2) {
-            App.modals.showFloatingModal('Вставьте данные хотя бы в одно поле');
+            App.modals.showFloatingModal(App.i18n.t('import.fillOneField'));
             return;
         }
 
@@ -588,7 +581,7 @@ App.importManager.showColorPickerForImport = function(index, anchor) {
 
         const label = document.createElement('span');
         label.className = 'picker-label';
-        label.textContent = color.name || 'Без имени';
+        label.textContent = color.name || App.i18n.t('modal.noColorName');
 
         opt.appendChild(swatch);
         opt.appendChild(label);

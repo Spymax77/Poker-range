@@ -15,23 +15,34 @@ const slotElements = {
 
 App.events.on('storage:loading', function() {
     const status = document.getElementById('saveStatus');
-    if (status) { status.textContent = 'Загрузка...'; status.className = 'save-status saving'; }
+    if (status) { status.textContent = App.i18n.t('status.loading'); status.className = 'save-status saving'; }
 });
 App.events.on('storage:saving', function() {
     const status = document.getElementById('saveStatus');
-    if (status) { status.textContent = 'Сохранение...'; status.className = 'save-status saving'; }
+    if (status) { status.textContent = App.i18n.t('status.saving'); status.className = 'save-status saving'; }
 });
 App.events.on('storage:saved', function() {
     const status = document.getElementById('saveStatus');
-    if (status) { status.textContent = 'Синхронизировано'; status.className = 'save-status saved'; }
+    if (status) { status.textContent = App.i18n.t('status.synced'); status.className = 'save-status saved'; }
 });
 App.events.on('storage:ready', function() {
     const status = document.getElementById('saveStatus');
-    if (status) { status.textContent = 'Синхронизировано'; status.className = 'save-status saved'; }
+    if (status) { status.textContent = App.i18n.t('status.synced'); status.className = 'save-status saved'; }
 });
 App.events.on('storage:error', function() {
     const status = document.getElementById('saveStatus');
-    if (status) { status.textContent = 'Ошибка синхронизации'; status.className = 'save-status error'; }
+    if (status) { status.textContent = App.i18n.t('status.error'); status.className = 'save-status error'; }
+});
+
+document.addEventListener('languagechange', function () {
+    const status = document.getElementById('saveStatus');
+    if (status && status.classList.contains('saving')) {
+        status.textContent = App.i18n.t('status.saving');
+    } else if (status && status.classList.contains('saved')) {
+        status.textContent = App.i18n.t('status.synced');
+    } else if (status && status.classList.contains('error')) {
+        status.textContent = App.i18n.t('status.error');
+    }
 });
 
 function showAuthDialog(mode) {
@@ -48,40 +59,41 @@ function showAuthDialog(mode) {
     let formHtml;
     if (isForgot) {
         formHtml = `
-            <h2>Восстановление пароля</h2>
-            <p class="auth-dialog-hint">Введите email, указанный при регистрации.</p>
+            <h2>${App.i18n.t('auth.forgotTitle')}</h2>
+            <p class="auth-dialog-hint">${App.i18n.t('auth.forgotHint')}</p>
             <form id="authDialogForm">
-                <label>Email<input name="email" type="email" required autocomplete="email"></label>
+                <label>${App.i18n.t('auth.email')}<input name="email" type="email" required autocomplete="email"></label>
                 <div class="auth-dialog-error" id="authDialogError"></div>
-                <button class="auth-submit" type="submit">Отправить ссылку</button>
+                <button class="auth-submit" type="submit">${App.i18n.t('auth.sendLink')}</button>
             </form>
-            <button type="button" class="auth-link" data-auth-mode="login">Вернуться ко входу</button>`;
+            <button type="button" class="auth-link" data-auth-mode="login">${App.i18n.t('auth.backToLogin')}</button>`;
     } else if (isRegister) {
         formHtml = `
-            <h2>Регистрация</h2>
+            <h2>${App.i18n.t('auth.registerTitle')}</h2>
             <form id="authDialogForm">
-                <label>Логин<input name="login" required minlength="3" maxlength="32" autocomplete="username"></label>
-                <label>Email<input name="email" type="email" required autocomplete="email"></label>
-                <label>Пароль<input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
-                <label>Повтор пароля<input name="passwordConfirm" type="password" required minlength="8" autocomplete="new-password"></label>
+                <label>${App.i18n.t('auth.loginLabel')}<input name="login" required minlength="3" maxlength="32" autocomplete="username"></label>
+                <label>${App.i18n.t('auth.email')}<input name="email" type="email" required autocomplete="email"></label>
+                <label>${App.i18n.t('auth.passwordLabel')}<input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+                <label>${App.i18n.t('auth.passwordConfirmLabel')}<input name="passwordConfirm" type="password" required minlength="8" autocomplete="new-password"></label>
                 <div class="auth-dialog-error" id="authDialogError"></div>
-                <button class="auth-submit" type="submit">Зарегистрироваться</button>
+                <button class="auth-submit" type="submit">${App.i18n.t('auth.registerSubmit')}</button>
             </form>
-            <button type="button" class="auth-link" data-auth-mode="login">Уже есть аккаунт? Войти</button>`;
+            <button type="button" class="auth-link" data-auth-mode="login">${App.i18n.t('auth.haveAccount')}</button>`;
     } else {
         formHtml = `
-            <h2>Вход</h2>
+            <h2>${App.i18n.t('auth.loginTitle')}</h2>
             <form id="authDialogForm">
-                <label>Логин<input name="login" required autocomplete="username"></label>
-                <label>Пароль<input name="password" type="password" required autocomplete="current-password"></label>
+                <label>${App.i18n.t('auth.loginLabel')}<input name="login" required autocomplete="username"></label>
+                <label>${App.i18n.t('auth.passwordLabel')}<input name="password" type="password" required autocomplete="current-password"></label>
                 <div class="auth-dialog-error" id="authDialogError"></div>
-                <button class="auth-submit" type="submit">Войти</button>
+                <button class="auth-submit" type="submit">${App.i18n.t('auth.loginSubmit')}</button>
             </form>
-            <button type="button" class="auth-link" data-auth-mode="forgot">Забыли пароль?</button>
-            <button type="button" class="auth-link" data-auth-mode="register">Регистрация</button>`;
+            <button type="button" class="auth-link" data-auth-mode="forgot">${App.i18n.t('auth.forgotLink')}</button>
+            <button type="button" class="auth-link" data-auth-mode="register">${App.i18n.t('auth.register')}</button>`;
     }
 
-    modal.innerHTML = '<button type="button" class="auth-dialog-close" aria-label="Закрыть">&times;</button>' + formHtml;
+    modal.innerHTML = '<button type="button" class="auth-dialog-close" aria-label="' + App.i18n.t('auth.close') + '">&times;</button>' + formHtml;
+
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
     modal.querySelector('.auth-dialog-close').addEventListener('click', function() { overlay.remove(); });
@@ -106,9 +118,9 @@ function showAuthDialog(mode) {
         submit.disabled = false;
         if (result && result.success) {
             overlay.remove();
-            if (isForgot) App.modals.showFloatingModal(result.message || 'Если такой email зарегистрирован, письмо отправлено.');
+            if (isForgot) App.modals.showFloatingModal(result.message || App.i18n.t('auth.forgotSent'));
         } else {
-            errorElement.textContent = (result && (result.error || result.message)) || 'Не удалось выполнить операцию';
+            errorElement.textContent = (result && (result.error || result.message)) || App.i18n.t('auth.operationFailed');
         }
     });
 }
@@ -117,7 +129,10 @@ function closeAuthMenu() {
     const dropdown = document.getElementById('authDropdown');
     const btn = document.getElementById('authAvatarBtn');
     if (dropdown) dropdown.classList.remove('open');
-    if (btn) btn.setAttribute('aria-expanded', 'false');
+    if (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+        btn.classList.remove('menu-open');
+    }
 }
 
 function updateAuthUi(user) {
@@ -125,15 +140,26 @@ function updateAuthUi(user) {
     const loginItem = document.getElementById('authLoginItem');
     const registerItem = document.getElementById('authRegisterItem');
     const logoutItem = document.getElementById('authLogoutItem');
+    const userEmail = document.getElementById('authUserEmail');
+    const configDivider = document.getElementById('authConfigDivider');
+    const importTreeItem = document.getElementById('importTreeMenuBtn');
+    const exportTreeItem = document.getElementById('exportTreeMenuBtn');
     const avatarBtn = document.getElementById('authAvatarBtn');
     const loggedIn = !!user;
     if (userName) {
-        userName.textContent = user ? user.login : '';
-        userName.hidden = !loggedIn;
+        userName.textContent = '';
+        userName.hidden = true;
     }
     if (loginItem) loginItem.hidden = loggedIn;
     if (registerItem) registerItem.hidden = loggedIn;
     if (logoutItem) logoutItem.hidden = !loggedIn;
+    if (userEmail) {
+        userEmail.textContent = user ? user.email : '';
+        userEmail.hidden = !loggedIn;
+    }
+    if (configDivider) configDivider.hidden = !loggedIn;
+    if (importTreeItem) importTreeItem.hidden = !loggedIn;
+    if (exportTreeItem) exportTreeItem.hidden = !loggedIn;
     if (avatarBtn) avatarBtn.classList.toggle('logged-in', loggedIn);
 }
 
@@ -144,6 +170,7 @@ if (authAvatarBtn && authDropdown) {
         const willOpen = !authDropdown.classList.contains('open');
         authDropdown.classList.toggle('open', willOpen);
         authAvatarBtn.setAttribute('aria-expanded', String(willOpen));
+        authAvatarBtn.classList.toggle('menu-open', willOpen);
     });
 }
 
@@ -173,8 +200,8 @@ document.getElementById('authLogoutItem')?.addEventListener('click', function() 
 
     const node = getNode(App.state.currentNodeId);
     const message = node
-        ? `Диапазон «${node.name}» был отредактирован. Сохранить изменения?`
-        : 'Сохранить изменения?';
+        ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
+        : App.i18n.t('range.saveChangesQuestion');
 
     App.modals.showSaveConfirmModal(message, async function() {
         // Да — сохраняем перед выходом из аккаунта
@@ -183,7 +210,7 @@ document.getElementById('authLogoutItem')?.addEventListener('click', function() 
             return result && result.success !== false;
         });
         if (!saveSucceeded) {
-            App.modals.showFloatingModal('Не удалось сохранить изменения');
+            App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
             return;
         }
         clearUnsaved();
@@ -203,6 +230,10 @@ let initialLoadDone = false;
 
 async function reloadAllData() {
     try {
+        // После входа гостевая сессия не переносится в аккаунт: загружаем
+        // только состояние, сохранённое для авторизованного пользователя.
+        if (App.dirty) App.dirty.clearDirty();
+        clearUnsaved();
         App.storage.clearCache();
         await App.storage.initialize();
         const activeTab = await loadFromStorage();
@@ -221,14 +252,14 @@ App.events.on('auth:changed', function(user) {
     updateAuthUi(user);
     if (!initialLoadDone) return;
     if (user) {
-        var flushPromise = (App.dirty && App.dirty.hasDirty()) ? flushPersist() : Promise.resolve();
-        flushPromise.then(function() {
-            reloadAllData();
-        });
+        // Гостевые изменения никогда не переносятся в аккаунт и не
+        // сохраняются при входе. Сначала отбрасываем их из памяти, затем
+        // загружаем авторитетное состояние пользователя с сервера.
+        reloadAllData();
     }
 });
 App.events.on('auth:required', function() {
-    App.modals.showFloatingModal('Чтобы сохранить изменения, войдите или зарегистрируйтесь', function() {
+    App.modals.showFloatingModal(App.i18n.t('auth.requireAuthToSave'), function() {
         showAuthDialog('login');
     });
 });
@@ -278,7 +309,7 @@ document.getElementById('tableSaveBtn')?.addEventListener('click', async functio
     // проверку в обработчике.
     if (App.state.analysisMode) return;
     if (!App.state.currentNodeId) {
-        App.modals.showFloatingModal('Нет активного диапазона для сохранения');
+        App.modals.showFloatingModal(App.i18n.t('range.noActiveSave'));
         return;
     }
     const results = await flushPersist();
@@ -288,23 +319,55 @@ document.getElementById('tableSaveBtn')?.addEventListener('click', async functio
     if (saveSucceeded) {
         clearUnsaved();
     } else {
-        App.modals.showFloatingModal('Не удалось сохранить изменения');
+        App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
     }
 });
+
+// ===== ДОПОЛНИТЕЛЬНОЕ МЕНЮ МАТРИЦЫ =====
+const tableMoreBtn = document.getElementById('tableMoreBtn');
+const tableMoreMenu = document.getElementById('tableMoreMenu');
+if (tableMoreBtn && tableMoreMenu) {
+    tableMoreBtn.addEventListener('click', function(e) {
+        if (App.state.analysisMode) return;
+        e.stopPropagation();
+        const isOpen = tableMoreMenu.classList.toggle('open');
+        tableMoreBtn.setAttribute('aria-expanded', String(isOpen));
+    });
+
+    document.getElementById('removeUnusedColorsBtn')?.addEventListener('click', function() {
+        tableMoreMenu.classList.remove('open');
+        tableMoreBtn.setAttribute('aria-expanded', 'false');
+        if (App.state.analysisMode || !App.state.currentNodeId) return;
+
+        const result = App.colors.removeUnusedColors(App.state.currentNodeId);
+        App.modals.showFloatingModal(
+            result.removed > 0
+                ? App.i18n.t('colors.removedUnused', { count: result.removed })
+                : App.i18n.t('colors.noUnusedFound')
+        );
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!tableMoreMenu.contains(e.target) && !tableMoreBtn.contains(e.target)) {
+            tableMoreMenu.classList.remove('open');
+            tableMoreBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
 
 // ===== КНОПКА "ОТМЕНИТЬ" =====
 document.getElementById('tableUndoBtn')?.addEventListener('click', function() {
     if (App.state.analysisMode) return;
     if (!App.state.hasUnsavedChanges) return;
     if (!App.state.currentNodeId) {
-        App.modals.showFloatingModal('Нет активного диапазона');
+        App.modals.showFloatingModal(App.i18n.t('range.noActive'));
         return;
     }
 
     const node = getNode(App.state.currentNodeId);
     const message = node
-        ? `Отменить все изменения в диапазоне «${node.name}»?`
-        : 'Отменить все изменения в текущем диапазоне?';
+        ? App.i18n.t('range.undoChangesNamedQuestion', { name: node.name })
+        : App.i18n.t('range.undoChangesQuestion');
 
     App.modals.showSaveConfirmModal(message, async function() {
         // Да — отменяем
@@ -320,7 +383,7 @@ document.getElementById('tableUndoBtn')?.addEventListener('click', function() {
 document.getElementById('tableCopyBtn')?.addEventListener('click', function() {
     if (App.state.analysisMode) return;
     if (!App.state.currentNodeId) {
-        App.modals.showFloatingModal('Нет активного диапазона для копирования');
+        App.modals.showFloatingModal(App.i18n.t('range.noActiveCopy'));
         return;
     }
     App.clipboard.copyRange(App.state.currentNodeId);
@@ -330,7 +393,7 @@ document.getElementById('tableCopyBtn')?.addEventListener('click', function() {
 document.getElementById('tablePasteBtn')?.addEventListener('click', function() {
     if (App.state.analysisMode) return;
     if (!App.state.currentNodeId) {
-        App.modals.showFloatingModal('Нет активного диапазона для вставки');
+        App.modals.showFloatingModal(App.i18n.t('range.noActivePaste'));
         return;
     }
     App.clipboard.pasteRange(App.state.currentNodeId);
@@ -352,8 +415,16 @@ App.navigation.selectNode = function(nodeId) {
     if (App.state.hasUnsavedChanges) {
         const node = getNode(App.state.currentNodeId);
         const message = node
-    ? `Диапазон «${node.name}» был отредактирован. Сохранить изменения?`
-    : 'Сохранить изменения?';
+    ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
+    : App.i18n.t('range.saveChangesQuestion');
+
+        // В гостевом режиме изменения живут в памяти. Не показываем диалог
+        // сохранения и не вызываем loadFromStorage(): загрузка гостевого
+        // состояния могла затереть раскрашенную матрицу.
+        if (!App.auth || !App.auth.isLoggedIn()) {
+            originalSelectNode(nodeId);
+            return;
+        }
 
         App.modals.showSaveConfirmModal(message, async function() {
             // Да — сохраняем
@@ -362,7 +433,7 @@ App.navigation.selectNode = function(nodeId) {
                 return result && result.success !== false;
             });
             if (!saveSucceeded) {
-                App.modals.showFloatingModal('Не удалось сохранить изменения');
+                App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
                 return;
             }
             clearUnsaved();
@@ -401,7 +472,7 @@ function updateMobileTabsState() {
     if (!mobileTabsMenuQuery.matches && tabsMenuToggle) {
         mainTabs.classList.remove('tabs-menu-open');
         tabsMenuToggle.setAttribute('aria-expanded', 'false');
-        tabsMenuToggle.setAttribute('aria-label', 'Открыть меню вкладок');
+        tabsMenuToggle.setAttribute('aria-label', App.i18n.t('tabs.openMenu'));
     }
 }
 
@@ -411,7 +482,7 @@ if (tabsToggle && mainTabs) {
         tabsToggle.setAttribute('aria-expanded', String(isOpen));
         tabsToggle.setAttribute(
             'aria-label',
-            isOpen ? 'Скрыть панель вкладок' : 'Показать панель вкладок'
+            isOpen ? App.i18n.t('tabs.showPanelHide') : App.i18n.t('tabs.showPanel')
         );
     });
 
@@ -425,7 +496,7 @@ if (tabsMenuToggle && mainTabs) {
         tabsMenuToggle.setAttribute('aria-expanded', String(isOpen));
         tabsMenuToggle.setAttribute(
             'aria-label',
-            isOpen ? 'Закрыть меню вкладок' : 'Открыть меню вкладок'
+            isOpen ? App.i18n.t('tabs.openMenuClose') : App.i18n.t('tabs.openMenu')
         );
     });
 }
@@ -483,11 +554,11 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
         const page = this.getAttribute("data-page");
 
         // ===== ПРОВЕРКА ПРИ ПЕРЕКЛЮЧЕНИИ НА ПРОСМОТР =====
-        if (page === "work" && App.state.hasUnsavedChanges) {
+        if (page === "work" && App.state.hasUnsavedChanges && App.auth && App.auth.isLoggedIn()) {
             const node = getNode(App.state.currentNodeId);
             const message = node
-                ? `Диапазон «${node.name}» был отредактирован. Сохранить изменения?`
-                : 'Сохранить изменения?';
+                ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
+                : App.i18n.t('range.saveChangesQuestion');
 
             App.modals.showSaveConfirmModal(message, async function() {
                 // Да — сохраняем изменения перед переключением вкладки
@@ -496,7 +567,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
                     return result && result.success !== false;
                 });
                 if (!saveSucceeded) {
-                    App.modals.showFloatingModal('Не удалось сохранить изменения');
+                    App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
                     return;
                 }
                 clearUnsaved();
@@ -538,7 +609,12 @@ document.getElementById('treeAddRangeBtn')?.addEventListener('click', () => {
     App.grid.ensureTable(newId);
     App.dirty.markStructureDirty();
     App.dirty.markTableDirty(newId);
-    flushPersist();
+    if (App.auth && App.auth.isLoggedIn()) {
+        flushPersist();
+    } else {
+        markUnsaved();
+        notifyGuestUnsavedChanges();
+    }
     App.refresh.all();
     App.navigation.selectNode(newId);
 });
@@ -549,7 +625,7 @@ document.getElementById('treeRenameBtn')?.addEventListener('click', () => {
         if (node) {
             App.tree.startInlineRename(App.state.currentNodeId);
         } else {
-            App.modals.showFloatingModal("Нет активного узла для переименования");
+            App.modals.showFloatingModal(App.i18n.t('tree.noActiveNodeToRename'));
         }
     }
 });
@@ -657,8 +733,8 @@ document.getElementById('tableClearBtn')?.addEventListener('click', () => {
 
     const node = getNode(App.state.currentNodeId);
     const message = node
-        ? `Очистить всю таблицу диапазона «${node.name}»?`
-        : 'Очистить всю таблицу?';
+        ? App.i18n.t('range.clearTableNamedQuestion', { name: node.name })
+        : App.i18n.t('range.clearTableQuestion');
 
 App.modals.showSaveConfirmModal(message, () => {
     const tid = getTableId(App.state.currentNodeId);

@@ -90,7 +90,7 @@ App.colors.getPositions = function(color) {
 App.colors.getGradientStyle = function(colors, positions) {
     if (colors.length === 1) {
         let fillPercent = positions[0];
-        return `background: linear-gradient(to right, ${colors[0]} 0%, ${colors[0]} ${fillPercent}%, #313338 ${fillPercent}%, #313338 100%); background-size: 100% 100%; background-repeat: no-repeat;`;
+        return `background: linear-gradient(to right, ${colors[0]} 0%, ${colors[0]} ${fillPercent}%, var(--cell-empty-bg) ${fillPercent}%, var(--cell-empty-bg) 100%); background-size: 100% 100%; background-repeat: no-repeat;`;
     }
     let stops = [];
     let prev = 0;
@@ -101,7 +101,7 @@ App.colors.getGradientStyle = function(colors, positions) {
     }
     let lastPos = positions[positions.length - 1];
     if (lastPos < 100) {
-        stops.push(`#3d3d3d ${lastPos}%, #3d3d3d 100%`);
+        stops.push(`var(--cell-empty-bg) ${lastPos}%, var(--cell-empty-bg) 100%`);
     }
     return `background: linear-gradient(to right, ${stops.join(', ')}); background-size: 100% 100%; background-repeat: no-repeat;`;
 }
@@ -194,7 +194,7 @@ App.colors.deleteColor = function(nodeId, colorId) {
     );
     
     if (isUsed) {
-        App.modals.showFloatingModal('Данное действие используется в мультицвете. Сначала удалите мультицвет, использующий его.');
+        App.modals.showFloatingModal(App.i18n.t('colors.usedInMultiDeleteFirst'));
         return false;
     }
     
@@ -202,7 +202,7 @@ App.colors.deleteColor = function(nodeId, colorId) {
     const isUsedInMatrix = App.colors.isColorUsedInMatrix(nodeId, colorId);
     if (isUsedInMatrix) {
         App.modals.showSaveConfirmModal(
-            'Данное действие используется в матрице. Все равно удалить?',
+            App.i18n.t('colors.usedInMatrixConfirm'),
             function() {
                 App.colors.proceedDeleteColor(nodeId, tableId, colorId);
             },
@@ -257,6 +257,65 @@ App.colors.isColorUsedInMatrix = function(nodeId, colorId) {
     }
     return false;
 }
+
+// Удаляет из текущего узла цвета, которые не используются матрицей.
+// Мультицвет считается используемым только при наличии ссылки на него
+// в ячейке. Простые цвета дополнительно сохраняются, если на них ссылается
+// оставшийся используемый мультицвет.
+App.colors.removeUnusedColors = function(nodeId) {
+    const tableId = getTableId(nodeId);
+    const colors = App.state.colorsPerNode[tableId] || [];
+    const matrix = App.state.cellStorage[tableId];
+    if (!matrix || colors.length === 0) return { removed: 0 };
+
+    const usedInMatrix = new Set();
+    for (let row = 0; row < 13; row++) {
+        for (let col = 0; col < 13; col++) {
+            const colorId = matrix[row]?.[col];
+            if (colorId !== null && colorId !== undefined) usedInMatrix.add(colorId);
+        }
+    }
+
+    const usedMultiColors = colors.filter(color =>
+        color.type === 'multi' && usedInMatrix.has(color.id)
+    );
+    const usedSimpleColors = new Set(
+        colors
+            .filter(color => color.type !== 'multi' && usedInMatrix.has(color.id))
+            .map(color => color.id)
+    );
+
+    for (const multiColor of usedMultiColors) {
+        for (const component of multiColor.components || []) {
+            usedSimpleColors.add(component.colorId);
+        }
+    }
+
+    const keptColors = colors.filter(color =>
+        color.type === 'multi'
+            ? usedInMatrix.has(color.id)
+            : usedSimpleColors.has(color.id)
+    );
+    const removed = colors.length - keptColors.length;
+    if (removed === 0) return { removed: 0 };
+
+    App.state.colorsPerNode[tableId] = keptColors;
+    const activeId = App.colors.getActiveForNode(nodeId);
+    if (!keptColors.some(color => color.id === activeId)) {
+        const firstSimple = keptColors.find(color => color.type !== 'multi');
+        App.colors.setActiveForNode(nodeId, firstSimple ? firstSimple.id : null);
+    }
+
+    App.colors.renderAllColors(nodeId, true);
+    App.events.emit('data:changed');
+    App.events.emit('unsaved:mark');
+    if (App.dirty) {
+        App.dirty.markStructureDirty();
+        App.dirty.markTableDirty(nodeId);
+    }
+    if (typeof flushPersist === 'function') flushPersist();
+    return { removed: removed };
+};
 
 // ============================================================
 // РЕНДЕРИНГ (ОБЪЕДИНЁННЫЙ)
@@ -342,7 +401,7 @@ App.colors.renderSimpleColor = function(nodeId, color, activeId, editable, index
     nameInput.type = "text";
     nameInput.className = "palette-name";
     nameInput.value = color.name;
-    nameInput.placeholder = "Название действия...";
+    nameInput.placeholder = App.i18n.t('colors.actionNamePlaceholder');
     nameInput.onchange = (e) => {
         let nn = e.target.value.trim();
         if (nn) {
@@ -355,7 +414,11 @@ App.colors.renderSimpleColor = function(nodeId, color, activeId, editable, index
     
     // Кнопка удаления
     const removeBtn = document.createElement("button");
-    removeBtn.innerHTML = "✕";
+    removeBtn.innerHTML = `
+        <svg class="delete-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6L18 18M18 6L6 18" />
+        </svg>
+    `;
     removeBtn.className = "remove-palette-btn";
     if (editable) {
         removeBtn.onclick = () => {
@@ -422,6 +485,12 @@ App.colors.refreshMultiColorSliders = function(nodeId, colorId) {
         const thumb = document.createElement("div");
         thumb.className = "slider-thumb";
         thumb.style.left = `${positions[i]}%`;
+
+        const componentColor = simpleColors.find(c => c.id === color.components[i].colorId);
+        const thumbDot = document.createElement("span");
+        thumbDot.className = "slider-thumb-dot";
+        thumbDot.style.backgroundColor = componentColor ? componentColor.color : '#4a4a50';
+        thumb.appendChild(thumbDot);
         
         const percentLabel = document.createElement("span");
         percentLabel.className = "slider-percent";
@@ -444,7 +513,7 @@ App.colors.refreshMultiColorSliders = function(nodeId, colorId) {
             if (!ref.editable) return;
             const simpleColorsList = App.colors.getSimpleColors(nodeId);
             if (simpleColorsList.length === 0) {
-                alert("Сначала создайте простое действие!");
+                alert(App.i18n.t('colors.createActionFirst'));
                 return;
             }
             App.colors.showColorPickerForMulti(nodeId, thumb, color, i, ref.editable);
@@ -670,7 +739,7 @@ chip.title = name;
                 e.stopPropagation();
                 const simpleColorsList = App.colors.getSimpleColors(nodeId);
                 if (simpleColorsList.length === 0) {
-                    App.modals.showFloatingModal("Сначала создайте простое действие!");
+                    App.modals.showFloatingModal(App.i18n.t('colors.createActionFirst'));
                     return;
                 }
                 App.colors.showColorPickerForMulti(nodeId, chip, color, i, editable);
@@ -683,8 +752,12 @@ chip.title = name;
         if (i > 0 && editable) {
             const delBtn = document.createElement("button");
 delBtn.className = "multi-chip-delete";   // ← только класс
-delBtn.innerHTML = "✕";
-delBtn.title = "Удалить цвет";
+delBtn.innerHTML = `
+    <svg class="delete-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6L18 18M18 6L6 18" />
+    </svg>
+`;
+delBtn.title = App.i18n.t('colors.deleteColorTitle');
             
             delBtn.onclick = (e) => {
                 e.stopPropagation();
@@ -715,7 +788,8 @@ color.boundaries = newBoundaries;
         const addBtn = document.createElement("button");
         addBtn.className = "multi-add-chip-btn";
 		addBtn.textContent = "+";
-        addBtn.title = "Добавить цвет";
+        addBtn.dataset.i18nTooltip = 'colors.addColorTitle';
+        addBtn.dataset.tooltip = App.i18n.t('colors.addColorTitle');
         
         addBtn.onmouseenter = () => {
             addBtn.style.borderColor = "#d0d0d8";
@@ -730,7 +804,7 @@ addBtn.onclick = (e) => {
     e.stopPropagation();
     const simpleColorsList = App.colors.getSimpleColors(nodeId);
     if (simpleColorsList.length === 0) {
-        App.modals.showFloatingModal("Сначала создайте простое действие!");
+        App.modals.showFloatingModal(App.i18n.t('colors.createActionFirst'));
         return;
     }
     App.colors.showColorPickerForMultiAdd(nodeId, addBtn, color, editable);
@@ -773,7 +847,11 @@ row.appendChild(sliderWrap);
     
     // === 6. КНОПКА УДАЛЕНИЯ ВСЕГО ПРОФИЛЯ ===
     const del = document.createElement("button");
-    del.innerHTML = "✕";
+    del.innerHTML = `
+        <svg class="delete-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6L18 18M18 6L6 18" />
+        </svg>
+    `;
     del.className = "delete-profile-btn";
     del.style.flexShrink = "0";
     if (editable) {
@@ -918,7 +996,7 @@ App.colors.addPaletteColor = function() {
     // Создаём новое простое действие через пикер
     App.ui.openColorPicker(null, function(newHex) {
         if (App.state.currentNodeId && newHex) {
-            const name = prompt("Введите название действия:", "Новое действие");
+            const name = prompt(App.i18n.t('colors.newActionPrompt'), App.i18n.t('colors.newActionDefault'));
             if (name !== null && name.trim() !== '') {
                 App.colors.createSimpleColor(App.state.currentNodeId, name.trim(), newHex);
                 App.colors.renderAllColors(App.state.currentNodeId, true);
@@ -934,7 +1012,7 @@ App.colors.createNewProfile = function() {
     
     const simpleColors = App.colors.getSimpleColors(App.state.currentNodeId);
     if (simpleColors.length === 0) {
-        App.modals.showFloatingModal("Сначала создайте хотя бы одно простое действие!");
+        App.modals.showFloatingModal(App.i18n.t('colors.createOneActionFirst'));
         return;
     }
     

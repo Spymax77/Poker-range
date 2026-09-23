@@ -320,8 +320,8 @@ App.dragDrop.showMoveConfirm = function(sourceId, targetId) {
     const target = getNode(targetId);
     if (!source || !target) return;
 
-    const typeName = source.type === 'folder' ? 'папку' : 'диапазон';
-    const targetTypeName = target.type === 'folder' ? 'папку' : 'диапазон';
+    const typeName = source.type === 'folder' ? App.i18n.t('move.folder') : App.i18n.t('move.range');
+    const targetTypeName = target.type === 'folder' ? App.i18n.t('move.folder') : App.i18n.t('move.range');
 
     // Удаляем старый popup, если есть
     const oldPopup = document.querySelector('.move-popup-overlay');
@@ -334,12 +334,16 @@ App.dragDrop.showMoveConfirm = function(sourceId, targetId) {
     popup.className = 'move-popup';
     popup.innerHTML = `
         <div class="move-popup-question">
-            Переместить ${typeName} <strong>«${escapeHtml(source.name)}»</strong><br>
-            в ${targetTypeName} <strong>«${escapeHtml(target.name)}»</strong>?
+            ${App.i18n.t('move.confirm', {
+                typeName: typeName,
+                sourceName: escapeHtml(source.name),
+                targetTypeName: targetTypeName,
+                targetName: escapeHtml(target.name)
+            })}
         </div>
         <div class="move-popup-actions">
-            <button class="btn btn-cancel" id="moveCancelBtn">Нет</button>
-            <button class="btn btn-confirm" id="moveConfirmBtn">Да</button>
+            <button class="btn btn-cancel" id="moveCancelBtn">${App.i18n.t('modal.no')}</button>
+            <button class="btn btn-confirm" id="moveConfirmBtn">${App.i18n.t('modal.yes')}</button>
         </div>
     `;
 

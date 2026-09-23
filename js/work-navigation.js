@@ -247,7 +247,7 @@ link.appendChild(dotLink);
                             for (let kid of kids) {
                                 if (kid.type === 'folder') {
                                     const subBtn = document.createElement("button");
-                                    subBtn.className = "folder-btn folder-btn-" + child.id;
+                                    subBtn.className = "folder-btn folder-btn-" + kid.id;
                                     subBtn.innerText = kid.name;
                                     subBtn.onclick = (function(k, idx) {
                                         return function() {
@@ -265,7 +265,7 @@ link.appendChild(dotLink);
                                     subLevelDiv.appendChild(subBtn);
                                 } else if (kid.type === 'subrange') {
                                     const subLink = document.createElement("span");
-                                    subLink.className = "range-link range-link-" + child.id;
+                                    subLink.className = "range-link range-link-" + kid.id;
                                     subLink.innerText = kid.name;
                                     if (App.work.isNodeInPath(kid.id)) {
                                         subLink.classList.add("active");
@@ -302,7 +302,7 @@ link.appendChild(dotLink);
     if (!App.state.workDisplayNodeId) {
         const gridDiv = document.getElementById("workGrid");
         if (gridDiv) {
-            gridDiv.innerHTML = "<div style='padding:20px; color: var(--text-muted);'>Выберите диапазон</div>";
+            gridDiv.innerHTML = "<div style='padding:20px; color: var(--text-muted);'>" + App.i18n.t('work.selectRange') + "</div>";
         }
     }
 
@@ -313,10 +313,10 @@ App.work.updateGrid = function() {
         
     App.grid.renderGrid("workGrid", App.state.workDisplayNodeId, null);
     App.comments.renderComments(App.state.workDisplayNodeId);
-    App.stats.renderStatsTable(
+    App.stats.renderBranchStats(
         App.state.workDisplayNodeId,
         App.editor,
-        'workStatsContainer'
+        App.stats.CONTAINERS.work
     );
 }
 
@@ -386,7 +386,7 @@ if (App.state.workDisplayNodeId) {
             styleBtn = document.createElement('button');
             styleBtn.id = 'styleEditToggle';
             styleBtn.className = 'icon-btn matrix-btn';
-            styleBtn.dataset.tooltip = 'Редактировать стили кнопок';
+            styleBtn.dataset.tooltip = App.i18n.t('matrix.editStyles');
             styleBtn.innerHTML = `
                 <svg width="20" height="20" viewBox="0 0 32 32" fill="none" stroke="#8a848a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21.2,15l6.7-6.7c1-1,1.2-2.5,0.5-3.7c-1-1.5-3.2-1.7-4.4-0.4L17.2,11l0,0c-1.1-1.1-2.9-1.1-4,0l-0.7,0.7l8.1,8.1l0.7-0.7C22.4,17.9,22.4,16.1,21.2,15L21.2,15z"/>
@@ -416,7 +416,7 @@ if (App.state.workDisplayNodeId) {
             iconBtn = document.createElement('button');
             iconBtn.id = 'workCommentsToggleBtn';
             iconBtn.className = 'comments-toggle-btn matrix-btn';
-            iconBtn.dataset.tooltip = 'Комментарии';
+            iconBtn.dataset.tooltip = App.i18n.t('matrix.comments');
             iconBtn.innerHTML = `
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
                     <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 3v-5.1a7.5 7.5 0 0 1-1.5-4.4A7.5 7.5 0 0 1 10 5h2.5A7.5 7.5 0 0 1 20 11.5Z"/>
@@ -445,7 +445,7 @@ if (App.state.workDisplayNodeId) {
                 overlayBtn = document.createElement('button');
                 overlayBtn.id = 'workOverlayToggleBtn';
                 overlayBtn.className = 'comments-toggle-btn matrix-btn';
-                overlayBtn.dataset.tooltip = 'высота диапазона';
+                overlayBtn.dataset.tooltip = App.i18n.t('matrix.rangeHeight');
                 overlayBtn.innerHTML = `
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
                         <rect x="2" y="2" width="20" height="20" rx="1" />
@@ -465,7 +465,7 @@ if (App.state.workDisplayNodeId) {
                                 <rect x="2" y="2" width="20" height="20" rx="1" />
                                 <rect x="2" y="12" width="20" height="10" fill="currentColor" stroke="none" rx="1" />
                                </svg>`;
-                        overlayBtn.dataset.tooltip = isHidden ? 'полная высота' : 'высота диапазона';
+                        overlayBtn.dataset.tooltip = isHidden ? App.i18n.t('matrix.fullHeight') : App.i18n.t('matrix.rangeHeight');
                     }
                 });
             }
@@ -481,7 +481,7 @@ if (App.state.workDisplayNodeId) {
             statsToggleBtn = document.createElement('button');
             statsToggleBtn.id = 'workStatsToggleBtn';
             statsToggleBtn.className = 'matrix-btn';
-            statsToggleBtn.dataset.tooltip = '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0434\u0435\u0442\u0430\u043b\u044c\u043d\u0443\u044e \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443';
+            statsToggleBtn.dataset.tooltip = App.i18n.t('matrix.showDetails');
             statsToggleBtn.innerHTML = `
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
                     <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
@@ -496,8 +496,8 @@ if (App.state.workDisplayNodeId) {
                 const isVisible = statsContainer.classList.toggle('details-visible');
                 statsToggleBtn.classList.toggle('active', isVisible);
                 statsToggleBtn.dataset.tooltip = isVisible
-                    ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0434\u0435\u0442\u0430\u043b\u044c\u043d\u0443\u044e \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443'
-                    : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0434\u0435\u0442\u0430\u043b\u044c\u043d\u0443\u044e \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443';
+                    ? App.i18n.t('matrix.hideDetails')
+                    : App.i18n.t('matrix.showDetails');
             });
         }
     }
@@ -524,7 +524,7 @@ if (App.state.workDisplayNodeId) {
         
         const textarea = document.createElement('textarea');
         textarea.id = 'workCommentsTextarea';
-        textarea.placeholder = 'Комментарий к диапазону...';
+        textarea.placeholder = App.i18n.t('matrix.commentPlaceholder');
         textarea.maxLength = 2000;
         textarea.style.width = '100%';
         textarea.style.height = '100px';

@@ -28,15 +28,6 @@
         document.addEventListener('DOMContentLoaded', patchGridSetCellProfile, { once: true });
     }
 
-    // ===== ПАТЧ: renameNode (tree.js) — переименование узла =====
-    if (typeof App.tree.renameNode === 'function') {
-        var _origRenameNode = App.tree.renameNode;
-        App.tree.renameNode = function(nodeId) {
-            _origRenameNode(nodeId);
-            if (ensureDirty()) App.dirty.markStructureDirty();
-        };
-    }
-
     // ===== ПАТЧ: moveNodeUp (tree.js) — перемещение вверх =====
     if (typeof App.tree.moveNodeUp === 'function') {
         var _origMoveNodeUp = App.tree.moveNodeUp;
@@ -82,30 +73,6 @@
         };
     }
 
-    // ===== ПАТЧ: createChildNode (tree.js) — создание диапазона/папки/поддиапазона =====
-    if (typeof App.tree.createChildNode === 'function') {
-        var _origCreateChildNode = App.tree.createChildNode;
-        App.tree.createChildNode = function(parentId, type) {
-            _origCreateChildNode(parentId, type);
-            if (ensureDirty()) {
-                App.dirty.markStructureDirty();
-                // Для диапазонов и поддиапазонов — помечаем таблицу как dirty
-                // (для subrange узел создаётся асинхронно в колбэке, поэтому
-                //  ищем новый узел в childrenIds родителя)
-                if (type === 'range' || type === 'subrange') {
-                    var parent = getNode(parentId);
-                    if (parent && parent.childrenIds.length > 0) {
-                        var newId = parent.childrenIds[parent.childrenIds.length - 1];
-                        var newNode = getNode(newId);
-                        if (newNode && (newNode.type === 'range' || newNode.type === 'subrange')) {
-                            App.dirty.markTableDirty(newId);
-                        }
-                    }
-                }
-            }
-        };
-    }
-
     // ===== ПАТЧ: finishInlineRename (tree.js) — завершение инлайн-переименования =====
     if (typeof App.tree.finishInlineRename === 'function') {
         var _origFinishInlineRename = App.tree.finishInlineRename;
@@ -120,7 +87,12 @@
         var _origSelectNode = App.navigation.selectNode;
         App.navigation.selectNode = function(nodeId) {
             _origSelectNode(nodeId);
-            if (ensureDirty()) App.dirty.markMetadataDirty();
+            // Выбор узла меняет только текущий экран. В гостевом режиме не
+            // переносим это навигационное состояние в серверные данные при
+            // последующем входе в аккаунт.
+            if (ensureDirty() && App.auth && App.auth.isLoggedIn()) {
+                App.dirty.markMetadataDirty();
+            }
         };
     }
 
@@ -199,26 +171,6 @@
         App.dragDrop.moveNodeWithChildren = function(sourceId, targetId) {
             _origMoveNodeWithChildren(sourceId, targetId);
             if (ensureDirty()) App.dirty.markStructureDirty();
-        };
-    }
-
-    // ===== ПАТЧ: createCopyAndFinalize (clipboard.js) — дублирование диапазона =====
-    if (typeof App.clipboard.createCopyAndFinalize === 'function') {
-        var _origCreateCopyAndFinalize = App.clipboard.createCopyAndFinalize;
-        App.clipboard.createCopyAndFinalize = function(original) {
-            // Запоминаем количество узлов до создания копии
-            var nodesBefore = App.state.nodes.length;
-            _origCreateCopyAndFinalize(original);
-            if (ensureDirty()) {
-                App.dirty.markStructureDirty();
-                // Находим новый узел (последний добавленный)
-                if (App.state.nodes.length > nodesBefore) {
-                    var newNode = App.state.nodes[App.state.nodes.length - 1];
-                    if (newNode && (newNode.type === 'range' || newNode.type === 'subrange')) {
-                        App.dirty.markTableDirty(newNode.id);
-                    }
-                }
-            }
         };
     }
 

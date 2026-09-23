@@ -5,7 +5,8 @@ const CONSTRUCTOR_EDIT_BUTTON_IDS = [
     'tableClearBtn',
     'tableCopyBtn',
     'tablePasteBtn',
-    'importRangeBtn'
+    'importRangeBtn',
+    'tableMoreBtn'
 ];
 
 export function updateConstructorToolbarState() {
@@ -36,6 +37,12 @@ export function refreshConstructorAnalysisMode() {
     // после перезагрузки страницы (F5) и при возврате на вкладку конструктора —
     // единственный источник истины теперь App.state.analysisMode.
     const isAnalysis = !!App.state.analysisMode;
+    // Как и GTO, редактор работает с собственной веткой данных. Не смешиваем
+    // App.editor.currentNodeId с Proxy App.state.currentNodeId в одном рендере:
+    // это гарантирует, что матрица, статистика и превью относятся к одному
+    // диапазону/поддиапазону.
+    const branch = App.editor;
+    const currentNodeId = branch.currentNodeId;
     document.getElementById('constructorPage')?.classList.toggle('analysis-mode', isAnalysis);
     document.getElementById('editorModeBtn')?.classList.toggle('active', !isAnalysis);
     document.getElementById('analysisModeBtn')?.classList.toggle('active', isAnalysis);
@@ -45,13 +52,16 @@ export function refreshConstructorAnalysisMode() {
     App.grid.updateConstructorToolbarState();
 
     if (isAnalysis) {
-        App.stats.renderActionLegend(App.editor.currentNodeId, App.editor, 'constructorActionLegend');
-        App.stats.renderActionBar(App.editor.currentNodeId, App.editor, 'constructorActionBar');
-        App.grid.showDefaultMatrixPreview('constructorGrid', App.state.currentNodeId);
+        App.stats.renderBranchStats(
+            currentNodeId,
+            branch,
+            App.stats.CONTAINERS.editorAnalysis
+        );
+        App.grid.showDefaultMatrixPreview('constructorGrid', currentNodeId);
     } else {
-        const legendEl = document.getElementById("constructorActionLegend");
+        const legendEl = document.getElementById(App.stats.CONTAINERS.editorAnalysis.legend);
         if (legendEl) legendEl.innerHTML = '';
-        const barEl = document.getElementById("constructorActionBar");
+        const barEl = document.getElementById(App.stats.CONTAINERS.editorAnalysis.bar);
         if (barEl) barEl.style.background = '';
         App.grid.hideCellPreview('constructorCellPreview');
         App.grid.unpinConstructorCell();
@@ -59,22 +69,25 @@ export function refreshConstructorAnalysisMode() {
 }
 
 export function updateCurrentDisplay() {
-    if (!App.state.currentNodeId) return;
-    let total = App.stats.countTotalCombos(App.state.currentNodeId, App.editor);
+    const branch = App.editor;
+    const currentNodeId = branch.currentNodeId;
+    if (!currentNodeId) return;
 	  // ===== ОБНОВЛЯЕМ НАЗВАНИЕ ДИАПАЗОНА =====
     const nameEl = document.getElementById("currentRangeName");
     if (nameEl) {
-        const node = getNode(App.state.currentNodeId);
+        const node = branch.nodeIndex.get(currentNodeId) || null;
         if (node) {
             nameEl.textContent = node.name;
         }
     }
 
-    App.grid.renderGrid("constructorGrid", App.state.currentNodeId, null);
+    App.grid.renderGrid("constructorGrid", currentNodeId, null);
     
     App.grid.refreshConstructorAnalysisMode();
 
-    App.stats.renderStatsTable(App.state.currentNodeId, App.editor, 'constructorStatsContainer');
+    App.stats.renderBranchStats(currentNodeId, branch, {
+        stats: App.stats.CONTAINERS.editor.stats
+    });
     
     // ===== ИКОНКА КОММЕНТАРИЕВ (ФИКСИРОВАННАЯ) =====
 // Вставляем иконку в тот же контейнер, где матрица
@@ -86,7 +99,7 @@ if (App.currentMode !== 'gto') {
         iconBtn = document.createElement('button');
         iconBtn.id = 'commentsToggleBtn';
         iconBtn.className = 'comments-toggle-btn matrix-btn';
-        iconBtn.dataset.tooltip = '\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0438';
+        iconBtn.dataset.tooltip = App.i18n.t('matrix.comments');
         iconBtn.style.position = 'absolute';
         iconBtn.style.bottom = '-32px';
         iconBtn.style.left = '0px';
@@ -127,7 +140,7 @@ if (App.currentMode !== 'gto') {
                 overlayBtn = document.createElement('button');
                 overlayBtn.id = 'constructorOverlayToggleBtn';
                 overlayBtn.className = 'matrix-btn';
-                overlayBtn.dataset.tooltip = '\u0412\u044b\u0441\u043e\u0442\u0430 \u0434\u0438\u0430\u043f\u0430\u0437\u043e\u043d\u0430';
+                overlayBtn.dataset.tooltip = App.i18n.t('matrix.rangeHeight');
                 overlayBtn.innerHTML = `
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
                         <rect x="2" y="2" width="20" height="20" rx="1" />
@@ -147,7 +160,7 @@ if (App.currentMode !== 'gto') {
                                 <rect x="2" y="2" width="20" height="20" rx="1" />
                                 <rect x="2" y="12" width="20" height="10" fill="currentColor" stroke="none" rx="1" />
                                </svg>`;
-                        overlayBtn.dataset.tooltip = isHidden ? '\u041f\u043e\u043b\u043d\u0430\u044f \u0432\u044b\u0441\u043e\u0442\u0430' : '\u0412\u044b\u0441\u043e\u0442\u0430 \u0434\u0438\u0430\u043f\u0430\u0437\u043e\u043d\u0430';
+                        overlayBtn.dataset.tooltip = isHidden ? App.i18n.t('matrix.fullHeight') : App.i18n.t('matrix.rangeHeight');
                     }
                 });
             }
@@ -179,7 +192,7 @@ if (!commentsWrapper) {
     
     const textarea = document.createElement('textarea');
     textarea.id = 'commentsTextarea';
-    textarea.placeholder = '\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043a \u0434\u0438\u0430\u043f\u0430\u0437\u043e\u043d\u0443...';
+    textarea.placeholder = App.i18n.t('matrix.commentPlaceholder');
     textarea.maxLength = 2000;
     textarea.style.width = '100%';
     textarea.style.height = '100px';

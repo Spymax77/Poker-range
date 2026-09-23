@@ -41,11 +41,11 @@ App.styles.createPopup = function() {
     stylePopup.className = 'style-popup';
     stylePopup.id = 'stylePopup';
     stylePopup.innerHTML = `
-    <div class="style-popup-title" id="popupTitle">Редактировать стили</div>
+    <div class="style-popup-title" id="popupTitle">${App.i18n.t('styles.editTitle')}</div>
     <div class="style-popup-row">
         <div class="style-color-box" id="popupBgColor"></div>
-        <span class="style-label">Цвет фона</span>
-        <button type="button" class="style-reset-btn" id="resetBgColor" data-tooltip="Сбросить на значение по умолчанию">
+        <span class="style-label">${App.i18n.t('styles.bgColor')}</span>
+        <button type="button" class="style-reset-btn" id="resetBgColor" data-tooltip="${App.i18n.t('styles.resetDefault')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
                 <path d="M3 3v5h5" />
@@ -54,8 +54,8 @@ App.styles.createPopup = function() {
     </div>
     <div class="style-popup-row">
         <div class="style-color-box" id="popupTextColor"></div>
-        <span class="style-label">Цвет текста</span>
-        <button type="button" class="style-reset-btn" id="resetTextColor" data-tooltip="Сбросить на значение по умолчанию">
+        <span class="style-label">${App.i18n.t('styles.textColor')}</span>
+        <button type="button" class="style-reset-btn" id="resetTextColor" data-tooltip="${App.i18n.t('styles.resetDefault')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
                 <path d="M3 3v5h5" />
@@ -63,8 +63,8 @@ App.styles.createPopup = function() {
         </button>
     </div>
     <div class="style-popup-actions">
-        <button class="btn-cancel" id="popupCancel">Отменить</button>
-        <button class="btn-save" id="popupSave">Сохранить</button>
+        <button class="btn-cancel" id="popupCancel">${App.i18n.t('styles.cancel')}</button>
+        <button class="btn-save" id="popupSave">${App.i18n.t('styles.save')}</button>
     </div>
 `;
 
@@ -179,7 +179,7 @@ if (bgRow) {
 }
     const title = document.getElementById('popupTitle');
     if (title) {
-        title.textContent = isRange ? 'Редактировать стили диапазона' : 'Редактировать стили папки';
+        title.textContent = isRange ? App.i18n.t('styles.editRangeTitle') : App.i18n.t('styles.editFolderTitle');
     }
     const bgColor = button.style.borderColor;
     const bgBox = document.getElementById('popupBgColor');

@@ -1,6 +1,29 @@
 // ===== stats.js -- combos and color statistics =====
 App.stats = App.stats || {};
 
+// Центральная конфигурация DOM-контейнеров статистики.
+// Имена элементов задаются в одном месте, а renderBranchStats
+// используется для любой ветки данных (editor/GTO).
+App.stats.CONTAINERS = {
+    editor: {
+        stats: 'constructorStatsContainer',
+        legend: 'constructorActionLegend',
+        bar: 'constructorActionBar'
+    },
+    editorAnalysis: {
+        legend: 'constructorActionLegend',
+        bar: 'constructorActionBar'
+    },
+    gto: {
+        stats: 'gtoStatsContainer',
+        legend: 'gtoActionLegend',
+        bar: 'gtoActionBar'
+    },
+    work: {
+        stats: 'workStatsContainer'
+    }
+};
+
 App.stats.getCellAvailabilityPercent = function(nodeId, i, j, recursive = true, branch = null) {
     const data = branch || App.state;
     const nodes = data.nodes || [];
@@ -190,16 +213,33 @@ App.stats.renderStatsTable = function(nodeId, branch, containerId) {
     const element = document.getElementById(containerId);
     if (!element || !nodeId) return;
     const stats = App.stats.computeColorStats(nodeId, branch);
-    if (!stats) { element.innerHTML = '<div class="stats-empty">Нет данных</div>'; return; }
+    if (!stats) { element.innerHTML = `<div class="stats-empty">${App.i18n.t('stats.noData')}</div>`; return; }
     const { sorted, totalCombosSum, totalPercent, foldCombos } = stats;
     const percentages = App.stats.getRoundedRangePercentages(stats);
     const comboValues = App.stats.getDisplayedComboValues(stats);
     let html = `<div class="stats-table stats-table--total"><div class="stats-row stats-row--total--prim"><div class="stats-cell stats-cell--empty"></div><div class="stats-cell stats-cell--percent--prim">${totalPercent.toFixed(1)}%</div><div class="stats-cell stats-cell--combos--prim">(${App.stats.formatCombos(totalCombosSum)}/1326)</div></div></div>`;
-    html += '<div class="stats-table stats-table--details"><div class="stats-row stats-row--header"><div class="stats-cell stats-cell--header">Цвет</div><div class="stats-cell stats-cell--header">Действие</div><div class="stats-cell stats-cell--header">Combos</div><div class="stats-cell stats-cell--header">% of range</div><div class="stats-cell stats-cell--header">% of total</div></div>';
+    html += `<div class="stats-table stats-table--details"><div class="stats-row stats-row--header"><div class="stats-cell stats-cell--header">${App.i18n.t('stats.color')}</div><div class="stats-cell stats-cell--header">${App.i18n.t('stats.action')}</div><div class="stats-cell stats-cell--header">Combos</div><div class="stats-cell stats-cell--header">% of range</div><div class="stats-cell stats-cell--header">% of total</div></div>`;
     sorted.forEach(([key, data], index) => { html += `<div class="stats-row"><div class="stats-cell stats-cell--color"><span class="stats-color" style="background-color: ${escapeHtml(data.color)};"></span></div><div class="stats-cell stats-cell--name">${escapeHtml(data.name)}</div><div class="stats-cell stats-cell--combos">${App.stats.formatCombos(comboValues[index])}</div><div class="stats-cell stats-cell--percent">${percentages[index].toFixed(1)}%</div><div class="stats-cell stats-cell--percent">${(data.combos / 1326 * 100).toFixed(1)}%</div></div>`; });
     const foldIndex = sorted.length;
     html += `<div class="stats-row"><div class="stats-cell stats-cell--color"><span class="stats-color stats-color--fold"></span></div><div class="stats-cell stats-cell--name">Fold</div><div class="stats-cell stats-cell--combos">${App.stats.formatCombos(comboValues[foldIndex])}</div><div class="stats-cell stats-cell--percent">${(percentages[foldIndex] || 0).toFixed(1)}%</div><div class="stats-cell stats-cell--percent">${(foldCombos / 1326 * 100).toFixed(1)}%</div></div></div>`;
     element.innerHTML = html;
+};
+
+// Универсальный рендер статистики для любой ветки данных (editor/GTO).
+// Каждый контейнер необязателен: просмотр использует только stats,
+// а режим анализа конструктора — legend и bar.
+App.stats.renderBranchStats = function(nodeId, branch, containers) {
+    if (!containers) return;
+
+    if (containers.stats) {
+        App.stats.renderStatsTable(nodeId, branch, containers.stats);
+    }
+    if (containers.legend) {
+        App.stats.renderActionLegend(nodeId, branch, containers.legend);
+    }
+    if (containers.bar) {
+        App.stats.renderActionBar(nodeId, branch, containers.bar);
+    }
 };
 
 App.stats.renderActionLegend = function(nodeId, branch, containerId) {
@@ -211,7 +251,7 @@ App.stats.renderActionLegend = function(nodeId, branch, containerId) {
     const { sorted, foldCombos } = stats;
     const comboValues = App.stats.getDisplayedComboValues(stats);
     const blocks = sorted.map(([, data]) => ({ color: data.color, name: data.name, combos: data.combos }));
-    if (foldCombos > 0) blocks.push({ color: '#313338', name: 'Fold', combos: foldCombos, isFold: true });
+    if (foldCombos > 0) blocks.push({ color: 'var(--cell-empty-bg)', name: 'Fold', combos: foldCombos, isFold: true });
     const percentages = App.stats.getRoundedRangePercentages(stats);
     blocks.forEach((block, index) => {
         const div = document.createElement('div');
@@ -234,13 +274,25 @@ App.stats.renderActionBar = function(nodeId, branch, containerId) {
     const { sorted, foldCombos, totalCombosSum } = stats;
     const base = totalCombosSum + foldCombos;
     const blocks = sorted.map(([, data]) => ({ color: data.color, combos: data.combos }));
-    if (foldCombos > 0) blocks.push({ color: '#313338', combos: foldCombos });
+    if (foldCombos > 0) blocks.push({ color: 'var(--cell-empty-bg)', combos: foldCombos });
     if (!blocks.length || base <= 0) { element.style.background = ''; return; }
     let previous = 0;
     const stops = [];
     blocks.forEach(block => { const position = Math.round((previous + block.combos / base * 100) * 10) / 10; stops.push(`${block.color} ${previous}%, ${block.color} ${position}%`); previous = position; });
     element.style.background = `linear-gradient(to right, ${stops.join(', ')})`;
 };
+
+// Перерисовываем уже открытые таблицы статистики после смены языка.
+document.addEventListener('languagechange', function () {
+    const constructorPage = document.getElementById('constructorPage');
+    const gtoPage = document.getElementById('gtoPage');
+    if (constructorPage && constructorPage.classList.contains('active-page') && App.state.currentNodeId) {
+        App.stats.renderBranchStats(App.state.currentNodeId, App.state, App.stats.CONTAINERS.editor);
+    }
+    if (gtoPage && gtoPage.classList.contains('active-page') && App.gto.currentNodeId) {
+        App.stats.renderBranchStats(App.gto.currentNodeId, App.gto, App.stats.CONTAINERS.gto);
+    }
+});
 
 App.stats.formatCombos = function(combos) {
     const rounded = Math.round(combos * 10) / 10;

@@ -118,11 +118,11 @@ export function showCellPreview(cell, row, col, branch, previewContainerId) {
     const actions = [];
     
     if (pid === null) {
-        actions.push({ name: 'Fold', combos: adjustedCombos, color: '#313338' });
+        actions.push({ name: 'Fold', combos: adjustedCombos, color: 'var(--cell-empty-bg)' });
     } else {
         const prof = colors.find(p => p.id === pid);
         if (!prof) {
-            actions.push({ name: 'Fold', combos: adjustedCombos, color: '#313338' });
+            actions.push({ name: 'Fold', combos: adjustedCombos, color: 'var(--cell-empty-bg)' });
         } else {
             let components = [];
             let boundaries = [];
@@ -150,7 +150,7 @@ export function showCellPreview(cell, row, col, branch, previewContainerId) {
             
             if (prev < 100) {
                 const foldShare = (100 - prev) / 100;
-                actions.push({ name: 'Fold', combos: adjustedCombos * foldShare, color: '#313338' });
+                actions.push({ name: 'Fold', combos: adjustedCombos * foldShare, color: 'var(--cell-empty-bg)' });
             }
         }
     }

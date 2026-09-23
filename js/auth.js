@@ -7,7 +7,6 @@ App.auth = App.auth || {};
     const API_URL = 'https://pfrange.ru/api/auth-api.php';
 
     let currentUser = null;   // { id, login, email } | null
-    let sessionChecked = false;
 
     async function request(action, method, body) {
         const opts = {
@@ -24,13 +23,24 @@ App.auth = App.auth || {};
         try {
             response = await fetch(url, opts);
         } catch (e) {
-            return { success: false, error: 'Не удалось связаться с сервером' };
+            return { success: false, error: App.i18n.t('auth.networkError') };
         }
         let json;
         try {
             json = await response.json();
         } catch (e) {
-            return { success: false, error: 'Сервер вернул некорректный ответ' };
+            return { success: false, error: App.i18n.t('auth.badResponse') };
+        }
+        // Клиент переводит код ответа через словарь локализации (см.
+        // russian-text-inventory.md, решение №9). Серверный текст используется
+        // только как запасной вариант для нераспознанных кодов.
+        if (json && json.code) {
+            if (json.success === false && json.error !== undefined) {
+                json.error = App.i18n.translateApiCode(json.code, json.error);
+            }
+            if (json.message !== undefined) {
+                json.message = App.i18n.translateApiCode(json.code, json.message);
+            }
         }
         return json;
     }
@@ -38,7 +48,6 @@ App.auth = App.auth || {};
     // ===== ПРОВЕРКА ТЕКУЩЕЙ СЕССИИ (при старте приложения) =====
     App.auth.checkSession = async function() {
         const result = await request('me', 'GET');
-        sessionChecked = true;
         currentUser = (result && result.success && result.user) ? result.user : null;
         App.events.emit('auth:changed', currentUser);
         return currentUser;
@@ -50,10 +59,6 @@ App.auth = App.auth || {};
 
     App.auth.getCurrentUser = function() {
         return currentUser;
-    };
-
-    App.auth.isSessionChecked = function() {
-        return sessionChecked;
     };
 
     // ===== РЕГИСТРАЦИЯ =====
@@ -91,7 +96,10 @@ App.auth = App.auth || {};
 
     // ===== ВОССТАНОВЛЕНИЕ ПАРОЛЯ =====
     App.auth.forgotPassword = async function(email) {
-        return request('forgot_password', 'POST', { email: email });
+        return request('forgot_password', 'POST', {
+            email: email,
+            lang: App.i18n.getLanguage(),
+        });
     };
 
     App.auth.resetPassword = async function(token, password, passwordConfirm) {

@@ -26,6 +26,7 @@
   let lastPresetHex = '#9b5378';
   let editColorId = null;
   let editCallback = null;
+  let pickerRenderFrame = null;
 
   const defaultColors = [
     '#9b5378', '#79a65a', '#e55656', '#db9713',
@@ -266,8 +267,6 @@ if (editColorId !== null) {
             l = 50;
         }
             lastPresetHex = editColorId;
-            buildPresets();
-            updateUI(true);
         } catch(e) {
             // Если цвет не распарсился — оставляем как есть
         }
@@ -287,8 +286,6 @@ if (editColorId !== null) {
             });
             activeIndex = nearestIdx;
             lastPresetHex = color.color;
-            buildPresets();
-            updateUI(true);
         }
     }
 }
@@ -298,8 +295,6 @@ if (editColorId !== null) {
         lastPresetHex = init.hex;
         h = hsl.h; s = hsl.s; l = hsl.l;
         activeIndex = 0;
-        buildPresets();
-        updateUI(true);
     }
 
     const btn = document.getElementById('addPaletteColorBtn');
@@ -307,13 +302,6 @@ if (editColorId !== null) {
 
     picker.classList.add('open');
     picker.style.display = 'block';
-	// Закрытие по клику вне пикера
-document.addEventListener('click', function closeOnOutside(e) {
-    if (!picker.contains(e.target)) {
-        closePicker();
-        document.removeEventListener('click', closeOnOutside);
-    }
-});
 
     if (anchorRect) {
         let left = anchorRect.right + 10;
@@ -343,9 +331,31 @@ document.addEventListener('click', function closeOnOutside(e) {
         picker.style.left = '50%';
         picker.style.transform = 'translate(-50%, -50%)';
     }
+
+    if (pickerRenderFrame !== null) {
+        cancelAnimationFrame(pickerRenderFrame);
+    }
+    pickerRenderFrame = requestAnimationFrame(function() {
+        pickerRenderFrame = null;
+        buildPresets();
+        updateUI(true);
+
+        // Подключаем после текущего клика, чтобы исходное нажатие кнопки
+        // открытия не считалось кликом вне пикера.
+        document.addEventListener('click', function closeOnOutside(e) {
+            if (!picker.contains(e.target)) {
+                closePicker();
+                document.removeEventListener('click', closeOnOutside);
+            }
+        });
+    });
 }
 
   function closePicker() {
+    if (pickerRenderFrame !== null) {
+      cancelAnimationFrame(pickerRenderFrame);
+      pickerRenderFrame = null;
+    }
     picker.classList.remove('open');
     picker.style.display = 'none';
   }
@@ -421,8 +431,6 @@ okBtn.addEventListener('click', function() {
 
 App.ui = App.ui || {};
 App.ui.openColorPicker = function(colorId, callback, anchorRect) {
-    setTimeout(function() {
-        openPicker(colorId, callback, anchorRect);
-    }, 100);
+    openPicker(colorId, callback, anchorRect);
 };
 })();

@@ -653,24 +653,8 @@
         z-index: auto;
     }
 
-    #constructorPage .toolbar-right .backup-tree-actions {
-        margin-left: 0 !important;
-        flex: 0 0 auto;
-        gap: 2px !important;
-    }
-
-    /* На телефоне импорт/экспорт показываются только иконками, чтобы toolbar
-       помещался в одну строку. */
-    #constructorPage .table-toolbar #importRangeBtn .toolbar-btn-label,
-    #constructorPage .table-toolbar #exportTreeBtn span,
-    #constructorPage .table-toolbar #importTreeBtn span,
-    #constructorPage .table-toolbar .backup-tree-actions span {
+    #constructorPage .table-toolbar #importRangeBtn .toolbar-btn-label {
         display: none;
-    }
-
-    #constructorPage .table-toolbar > div:has(> #exportTreeBtn),
-    #constructorPage .table-toolbar > div:has(> #importTreeBtn) {
-        margin-left: 0 !important;
     }
 
     #constructorPage .matrix-wrapper {
@@ -803,6 +787,7 @@
 
     .delete-profile-btn {
         grid-area: delete;
+        top: 11px;
         width: 32px;
         height: 32px;
         min-width: 32px;

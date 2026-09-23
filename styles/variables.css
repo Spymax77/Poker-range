@@ -1,5 +1,5 @@
 :root {
-    --bg-page: #181a1c;
+    --bg-page: #121212;
     --bg-card: #38373d;
     --bg-side: #24262b;
     --bg-button: #2c2f36;
@@ -11,6 +11,7 @@
     --text-muted: #6c7a91;
     --cell-bg: #1f2128;
     --cell-hover: #2c2f3a;
+    --cell-empty-bg: #313338;
     --tree-hover: rgba(255,255,255,0.05);
     --scroll-thumb: #3f4a60;
     --scroll-track: #1b212c;

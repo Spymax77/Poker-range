@@ -9,8 +9,8 @@ App.clipboard.duplicateRange = function(nodeId) {
     if (App.state.hasUnsavedChanges) {
         const node = getNode(App.state.currentNodeId);
         const message = node
-            ? `Диапазон «${node.name}» был отредактирован. Сохранить изменения?`
-            : 'Сохранить изменения?';
+            ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
+            : App.i18n.t('range.saveChangesQuestion');
 
         App.modals.showSaveConfirmModal(message, async function() {
             // ДА — сохраняем
@@ -19,7 +19,7 @@ App.clipboard.duplicateRange = function(nodeId) {
                 return result && result.success !== false;
             });
             if (!saveSucceeded) {
-                App.modals.showFloatingModal('Не удалось сохранить изменения');
+                App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
                 return;
             }
             clearUnsaved();
@@ -142,26 +142,30 @@ App.clipboard.createCopyAndFinalize = function(original) {
     }
 
     // ===== 4. Сохраняем и активируем =====
-    persistAll();
+    // Дублирование создаёт новую таблицу, поэтому её нужно пометить dirty
+    // ДО сохранения. Обычный persistAll() отложен на 2 секунды и работает в
+    // режиме skipTables=true — в результате структура узла сохранялась, а
+    // матрица нового диапазона могла не попасть на сервер до перезагрузки.
+    if (App.dirty) {
+        App.dirty.markStructureDirty();
+        App.dirty.markTableDirty(newId);
+    }
+    flushPersist();
     App.refresh.all();
     App.navigation.selectNode(newId);
     App.grid.updateCurrentDisplay();
 
-    const newNodeFinal = getNode(newId);
-    if (newNodeFinal) {
-        
-    }
 }
 // ===== КОПИРОВАНИЕ ДИАПАЗОНА В БУФЕР =====
 App.clipboard.copyRange = function(nodeId) {
     const node = getNode(nodeId);
     if (!node) {
-        App.modals.showFloatingModal('Диапазон не найден');
+        App.modals.showFloatingModal(App.i18n.t('clipboard.rangeNotFound'));
         return;
     }
 
     if (node.type !== 'range' && node.type !== 'subrange') {
-        App.modals.showFloatingModal('Можно копировать только диапазоны');
+        App.modals.showFloatingModal(App.i18n.t('clipboard.copyRangesOnly'));
         return;
     }
 
@@ -200,18 +204,18 @@ App.clipboard.copyRange = function(nodeId) {
 // ===== ВСТАВКА ДИАПАЗОНА ИЗ БУФЕРА =====
 App.clipboard.pasteRange = function(nodeId) {
     if (!App.state.clipboardRangeData) {
-        App.modals.showFloatingModal('Нет скопированного диапазона');
+        App.modals.showFloatingModal(App.i18n.t('clipboard.noCopiedRange'));
         return;
     }
 
     const targetNode = getNode(nodeId);
     if (!targetNode) {
-        App.modals.showFloatingModal('Целевой диапазон не найден');
+        App.modals.showFloatingModal(App.i18n.t('clipboard.targetNotFound'));
         return;
     }
 
     if (targetNode.type !== 'range' && targetNode.type !== 'subrange') {
-        App.modals.showFloatingModal('Вставлять можно только в диапазоны');
+        App.modals.showFloatingModal(App.i18n.t('clipboard.pasteRangesOnly'));
         return;
     }
 
@@ -235,7 +239,7 @@ App.clipboard.pasteRange = function(nodeId) {
     // Если диапазон не пустой — показываем подтверждение
     if (!isTargetEmpty) {
         App.modals.showSaveConfirmModal(
-            `Диапазон «${targetNode.name}» не пустой. Вставить новые данные?`,
+            App.i18n.t('clipboard.pasteOverwriteConfirm', { name: targetNode.name }),
             function() {
                 // ДА — выполняем вставку
                 App.clipboard.executePaste(nodeId);
@@ -337,7 +341,6 @@ App.clipboard.executePaste = function(nodeId) {
     App.grid.updateCurrentDisplay();
     markUnsaved();
 
-    const targetName = getNode(nodeId)?.name || 'диапазон';
      App.state.clipboardRangeData = null;
      App.clipboard.updatePasteButtonState();
 }
@@ -365,5 +368,5 @@ App.clipboard.updatePasteButtonState = function() {
 
     const hasData = App.clipboard.hasClipboardData();
     pasteBtn.classList.toggle('toolbar-btn-disabled', !hasData);
-    pasteBtn.title = hasData ? 'Вставить диапазон' : 'Сначала скопируйте диапазон';
+    pasteBtn.title = hasData ? App.i18n.t('editor.pasteRange') : App.i18n.t('clipboard.copyRangeFirst');
 }

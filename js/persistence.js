@@ -18,7 +18,6 @@ function persistAllNow(skipTables) {
 
     var dirty = App.dirty._raw;
     var promises = [];
-    var savedCount = 0;
     var missingTableData = false;
 
     for (var mi = 0; mi < ['editor', 'gto'].length; mi++) {
@@ -35,7 +34,6 @@ function persistAllNow(skipTables) {
                 workDisplayNodeId: branch.workDisplayNodeId
             };
             promises.push(App.storage.saveRaw('poker_range_metadata_' + mode, JSON.stringify(metadata)));
-            savedCount++;
         }
 
         // Сохраняем структуру
@@ -49,7 +47,6 @@ function persistAllNow(skipTables) {
                 commentsPerNode: branch.commentsPerNode
             };
             promises.push(App.storage.saveRaw('poker_range_structure_' + mode, JSON.stringify(structure)));
-            savedCount++;
         }
 
         // Сохраняем изменённые таблицы ТОЛЬКО если это явное сохранение (не по таймеру)
@@ -65,7 +62,6 @@ function persistAllNow(skipTables) {
                         mode: mode,
                         matrix: tableData
                     }));
-                    savedCount++;
                 } else {
                     // Нельзя подтверждать сохранение таблицы, если её данные
                     // отсутствуют и запрос в storage не был отправлен.
@@ -114,6 +110,12 @@ function persistAllNow(skipTables) {
 }
 
 function persistAll() {
+    // Гостевые изменения остаются только в памяти текущей страницы и никогда
+    // не отправляются на сервер. При входе гостевое состояние сбрасывается,
+    // после чего загружается состояние авторизованного пользователя.
+    if (!App.auth || !App.auth.isLoggedIn()) {
+        return;
+    }
     if (persistTimer) clearTimeout(persistTimer);
     persistTimer = setTimeout(function() {
         persistTimer = null;
@@ -140,12 +142,35 @@ function persistActiveTab(activeTab) {
 }
 
 // ===== V2: Загрузка разделённых данных =====
+function resetBranchBeforeLoad(branch) {
+    branch.nodes = [];
+    branch.nodeIndex = new Map();
+    branch.nextNodeId = 1;
+    branch.currentNodeId = null;
+    branch.selectedNodeId = null;
+    branch.workLevels = [{ parentNodeId: null, levelIndex: 0 }];
+    branch.workDisplayNodeId = null;
+    branch.cellStorage = {};
+    branch.expandedNodes = new Set();
+    branch.colorsPerNode = {};
+    branch.activePerNode = {};
+    branch.nextColorId = 1;
+    branch.profileRefs = new Map();
+    branch.activePopup = null;
+    branch.commentsPerNode = {};
+}
+
 async function loadFromStorageV2() {
     var uiMetadata = App.storage.loadMetadata() || {};
 
     for (var mi = 0; mi < ['editor', 'gto'].length; mi++) {
         var mode = ['editor', 'gto'][mi];
         var branch = mode === 'editor' ? App.editor : App.gto;
+
+        // Серверное состояние является единственным источником данных при
+        // загрузке. Это также отбрасывает все изменения гостевой сессии,
+        // которые оставались только в памяти браузера.
+        resetBranchBeforeLoad(branch);
 
         // Загружаем структуру
         var structure = App.storage.loadStructure(mode);
@@ -227,6 +252,11 @@ function markUnsaved() {
 function clearUnsaved() {
     App.state.hasUnsavedChanges = false;
     if (App.grid && App.grid.updateConstructorToolbarState) App.grid.updateConstructorToolbarState();
+}
+
+function notifyGuestUnsavedChanges() {
+    if (App.auth && App.auth.isLoggedIn()) return;
+    App.modals.showFloatingModal(App.i18n.t('auth.guestUnsaved'));
 }
 
 // ===== ПОДПИСКИ НА СОБЫТИЯ PERSISTENCE =====
