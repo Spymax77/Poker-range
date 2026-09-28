@@ -1,0 +1,509 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+html, body {
+    background: var(--bg-page);
+    font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 14px;
+    height: 100%;
+    overflow: hidden;
+     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+	
+	
+	
+.app-card {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 20px;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+	background: #454545;
+}
+::-webkit-scrollbar-track {
+    background: var(--scroll-track);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    border-radius: 4px;
+}
+
+
+.page {
+    display: none;
+}
+
+.page.active-page {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Для работы и GTO overflow:hidden, в конструкторе — visible, чтобы не обрезать тултипы */
+#gtoPage.active-page {
+    overflow: hidden;
+}
+#workPage.active-page {
+    overflow-y: auto;
+}
+#constructorPage.active-page {
+    overflow: visible;
+}
+
+.three-columns {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 30px;
+    flex: 1 1 0%;
+    min-height: 0;         /* ← БЛОК НЕ РАСТЁТ ВЫШЕ ЭКРАНА */
+    align-items: stretch;
+}
+
+
+.tree-panel {
+    width: 350px;
+    min-width: 350px;
+    max-width: 700px;
+    flex: 0 0 auto;  
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    
+}
+
+
+
+.tree-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 1px;
+    height: 100%;
+    cursor: col-resize;
+    background-color: #454545;
+    z-index: 10;
+    transition: width 0.2s ease, background-color 0.2s ease;
+}
+
+.tree-resize-handle:hover,
+.tree-resize-handle.active {
+    width: 4px;
+    background-color: #5a5a5a;
+}
+
+
+
+.profiles-panel {
+    flex: 1 1 0;
+    width: auto;
+    min-height: 0;
+    padding: 30px 10px;
+    border-radius: var(--radius-lg);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ===== GTO: ПАНЕЛЬ ПРОФИЛЕЙ СКРЫТА =====
+   В разделе GTO цвета/мультицвета приходят из загруженного JSON
+   и используются только для закраски матрицы — редактировать их
+   через панель профилей нельзя, поэтому сама панель не выводится. */
+#gtoPage .profiles-panel {
+    display: none;
+}
+
+.work-single-panel {
+    flex: 1;
+    border-radius: var(--radius-lg);
+    padding: 5px 20px;
+    
+}
+
+/* Общие стили для таблиц */
+/* ===== МАТРИЦА — СТАБИЛЬНАЯ ВЕРСИЯ ===== */
+.hands-grid {
+    display: grid;
+    grid-template-columns: repeat(13, 36px);
+    gap: 2px;
+    width: auto;
+    margin: 0;
+}
+
+.hand-cell {
+	position: relative;
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+    padding: 2px;
+    background: var(--cell-empty-bg);
+    color: #6c6c6c;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-sizing: border-box;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+/* ===== ЗАЛИВКА ЯЧЕЙКИ ПЛОСКИМИ ЦВЕТОВЫМИ СЛОЯМИ (вместо linear-gradient) =====
+   Мульти-профиль рисуется сегментами с плоским background-color: любой браузер
+   (включая Samsung Internet с его тёмной темой) отрисовывает плоские цвета
+   одинаково, поэтому заливка профиля 100% и мультицвета выглядит единообразно.
+   Слой ниже текста (z-index 2) и оверлея поддиапазонов (z-index 1). */
+.cell-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    z-index: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+}
+.cell-fill-segment {
+    height: 100%;
+    flex: 0 0 auto;
+}
+
+
+
+#workGrid .hand-cell {
+    cursor: default;
+}
+
+#workGrid .hand-cell:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    cursor: default !important;
+}
+
+/* ===== GTO: МАТРИЦА НЕДОСТУПНА ДЛЯ РЕДАКТИРОВАНИЯ ===== */
+#gtoGrid .hand-cell {
+    cursor: default;
+}
+
+/* Легкое затемнение ячейки при наведении (GTO), текст не затемняем —
+   у него z-index: 2, у затемняющего слоя z-index: 1, поэтому оно
+   перекрывает только фон/градиент ячейки. */
+#gtoGrid .hand-cell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0);
+    z-index: 1;
+    pointer-events: none;
+    transition: background-color 0.15s ease;
+}
+
+#gtoGrid .hand-cell:hover::after {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* ===== GTO: ЯЧЕЙКА, ЗАКРЕПЛЁННАЯ ДЛЯ ПОСТОЯННОЙ ДЕМОНСТРАЦИИ gtoCellPreview =====
+   Ставится по клику (см. toggleGtoCellPin в js/modules/grid/grid-preview.js). Обводка поверх ::after
+   затемнения, чтобы выделение было видно и без наведения мышью. */
+#gtoGrid .hand-cell.gto-cell-pinned,
+#constructorGrid .hand-cell.gto-cell-pinned {
+    box-shadow: 0 0 0 2px #D4AF37, 0 2px 4px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+
+#gtoGrid .hand-cell.gto-cell-pinned::after,
+#constructorGrid .hand-cell.gto-cell-pinned::after {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* Тот же эффект для конструктора в режиме анализа. Отдельным правилом, потому что
+   базовое прозрачное #constructorPage.analysis-mode #constructorGrid .hand-cell::after
+   (ниже) специфичнее (2 id + 2 класса против 1 id + 2 классов) и иначе перебивает
+   затемнение — рамка оставалась, а затемнение снималось при отводе мыши. */
+#constructorPage.analysis-mode #constructorGrid .hand-cell.gto-cell-pinned::after {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* ===== КОНСТРУКТОР: РЕЖИМ АНАЛИЗА — ячейки ведут себя как в GTO (только просмотр) =====
+   В обычном режиме .hand-cell в конструкторе не имеет затемняющего ::after слоя
+   (он используется для превью закраски при рисовании). В режиме анализа рисование
+   отключено (см. handlePaintStart/handlePaintMove в paint.js), поэтому включаем
+   тот же затемняющий слой при наведении, что и у #gtoGrid. */
+#constructorPage.analysis-mode #constructorGrid .hand-cell {
+    cursor: default;
+}
+
+#constructorPage.analysis-mode #constructorGrid .hand-cell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0);
+    z-index: 1;
+    pointer-events: none;
+    transition: background-color 0.15s ease;
+}
+
+#constructorPage.analysis-mode #constructorGrid .hand-cell:hover::after {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+
+
+/* Работа — как конструктор */
+#workTableWrapper {
+    display: inline-block;
+    width: auto;
+}
+
+
+
+.rng-widget {
+    background: var(--bg-button);
+    cursor: pointer;
+    position: relative;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 2px 10px;
+    border-radius: 40px;
+    font-family: monospace;
+    backdrop-filter: blur(4px);
+    border: 1px solid var(--border-light);
+}
+
+.rng-widget:hover {
+    background: #3d3d3d;
+    transform: scale(1.02);
+}
+
+.rng-widget[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    white-space: nowrap;
+    background: #2d2f34;
+    color: #e5eaf0;
+    font-size: 12px;
+    font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+    font-weight: 400;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #4a4e5a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .12s ease, transform .18s ease;
+    transform: scale3d(.3, .3, 1);
+    transform-origin: 0 0;
+}
+
+.rng-widget[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+}
+
+footer {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    padding-top: 16px;
+    border-top: 1px solid var(--border-light);
+}
+
+
+
+/* ========== НОВЫЕ СТИЛИ ДЛЯ РЕЖИМА РАБОТЫ ========== */
+.work-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.left-area {
+    display: block;
+    width: auto;
+    position: relative;
+}
+
+.right-area {
+    display: block;
+    min-width: 500px;
+    max-width: 1000px;
+    padding-top: 14px;
+    width: auto;
+    box-sizing: border-box;
+}
+
+@media (max-width: 974px) {
+    .work-layout {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .work-layout,
+    .left-area,
+    .right-area {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .right-area {
+        width: 492px;
+        padding-top: 0;
+    }
+}
+
+
+
+
+
+#workStatsFooter {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 16px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+    font-size: 13px;
+}
+
+#workStatsContainer {
+    display: contents;
+}
+
+#workStatsContainer .stats-table--total {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    width: max-content;
+    justify-self: end;
+    margin-top: 0;
+}
+
+#workStatsFooter > #rngNumber {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end;
+}
+
+#workStatsContainer .stats-table--details {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: none;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+#workStatsContainer.details-visible .stats-table--details {
+    display: flex;
+    flex-direction: column;
+}
+
+
+
+
+.folder-btn {
+    display: inline-block;
+    padding: 5px;
+    background: #3d3d3d;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    outline: none;
+	min-width: 60px;
+	 position: relative;
+}
+
+.folder-btn:hover {
+    background: #494949;
+}
+
+.folder-btn.active {
+    background: transparent !important;
+}
+
+.folder-btn.active:hover {
+    background: #2d2d2d;
+    
+}
+.range-link {
+    display: inline-block;
+    padding: 6px;
+    color: #aaaaaa;          /* неактивная — тёмно-серая */
+    text-decoration: underline;
+    text-underline-offset: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+	position: relative;
+}
+
+.range-link:hover {
+    color: #bbbbbb;   
+    background: #3d3d3d;       /* при наведении — чуть светлее */
+}
+
+.range-link.active {
+    color: #dedede;       
+    font-weight: 700;
+}
+
+.range-link.active:hover {
+    color: #dedede;          /* активная при наведении — остаётся белой */
+    background: #3d3d3d;
+}
+
+#workRangeTitle {
+    font-size: 14px;
+    color: #D4AF37;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+#workRangeTitle .breadcrumb-arrow {
+    display: inline-block;
+    font-size: 12px;
+    margin: 0 6px;
+    color: #D4AF37;
+    vertical-align: middle;
+    line-height: 1;
+    position: relative;
+    top: -1px;
+}
+
+	
+	
+	
+

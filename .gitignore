@@ -1,0 +1,7 @@
+api/
+tests/
+gto/
+*.out
+.clinerules
+cline_mcp_settings.json
+yandex_*.html

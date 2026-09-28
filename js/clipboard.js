@@ -1,0 +1,378 @@
+// ===== clipboard.js -- extracted from all.js (copy/paste/duplicate range) =====
+// ===== ДУБЛИРОВАНИЕ ДИАПАЗОНА =====
+App.clipboard = App.clipboard || {};
+App.clipboard.duplicateRange = function(nodeId) {
+    const original = getNode(nodeId);
+    if (!original) return;
+
+    // ===== 1. ПРОВЕРКА НА НЕСОХРАНЁННЫЕ ИЗМЕНЕНИЯ =====
+    if (App.state.hasUnsavedChanges) {
+        const node = getNode(App.state.currentNodeId);
+        const message = node
+            ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
+            : App.i18n.t('range.saveChangesQuestion');
+
+        App.modals.showSaveConfirmModal(message, async function() {
+            // ДА — сохраняем
+            const results = await flushPersist();
+            const saveSucceeded = !results || results.every(function(result) {
+                return result && result.success !== false;
+            });
+            if (!saveSucceeded) {
+                App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
+                return;
+            }
+            clearUnsaved();
+            App.clipboard.createCopyAndFinalize(original);
+        }, async function() {
+            // НЕТ — откатываем
+            await loadFromStorage();
+            App.refresh.all();
+            App.grid.updateCurrentDisplay();
+            clearUnsaved();
+            App.clipboard.createCopyAndFinalize(original);
+        });
+        return;
+    }
+
+    // ===== 2. ЕСЛИ ИЗМЕНЕНИЙ НЕТ — СОЗДАЁМ КОПИЮ =====
+    App.clipboard.createCopyAndFinalize(original);
+}
+
+// ===== СОЗДАНИЕ КОПИИ ДИАПАЗОНА =====
+App.clipboard.createCopyAndFinalize = function(original) {
+    // ===== 1. Генерируем уникальное имя =====
+    const parent = getNode(original.parentId);
+    let siblings = [];
+    if (parent) {
+        siblings = parent.childrenIds.map(id => getNode(id)).filter(n => n);
+    } else {
+        siblings = App.state.nodes.filter(n => n.parentId === null);
+    }
+
+    const existingNames = siblings.filter(n => n.type === 'range').map(n => n.name);
+    let newName = `${original.name} - дубль`;
+    let counter = 2;
+    while (existingNames.includes(newName)) {
+        newName = `${original.name} - дубль (${counter})`;
+        counter++;
+    }
+
+    // ===== 2. Создаём новый узел =====
+    const newId = App.state.nextNodeId++;
+    const newNode = {
+    id: newId,
+    name: newName,
+    parentId: original.parentId,
+    childrenIds: [],
+    type: original.type   // ← сохраняем исходный тип ('range' или 'subrange')
+};
+    addNode(newNode);
+
+    if (parent) {
+        parent.childrenIds.push(newId);
+    }
+
+    // ===== 3. Копируем данные =====
+    const sourceId = getTableId(original.id);
+    const targetId = getTableId(newId);
+
+    // 3.1 Копируем матрицу
+    const originalTable = App.state.cellStorage[sourceId];
+    App.grid.ensureTable(newId);
+    const newTable = App.state.cellStorage[targetId];
+
+    // 3.2 Копируем все цвета (и простые, и мульти) с созданием colorMap
+    const sourceColors = App.colors.getColorsForNode(original.id);
+    const targetColors = [];
+    const colorMap = {};
+
+    for (const color of sourceColors) {
+        const newColorId = App.state.nextColorId++;
+        const newColor = {
+            id: newColorId,
+            name: color.name,
+            type: color.type
+        };
+
+        if (color.type === 'simple' || (!color.type && color.color)) {
+            newColor.color = color.color;
+        } else if (color.type === 'multi' || color.components) {
+            newColor.components = color.components ? color.components.map(comp => ({
+                colorId: comp.colorId, // пока старый ID, обновим позже
+                share: comp.share
+            })) : [];
+            newColor.boundaries = color.boundaries ? [...color.boundaries] : [];
+        }
+
+        targetColors.push(newColor);
+        colorMap[color.id] = newColorId;
+    }
+
+    // 3.3 Обновляем ссылки в components у мультицветов
+    for (const color of targetColors) {
+        if (color.type === 'multi' && color.components) {
+            color.components = color.components.map(comp => ({
+                colorId: colorMap[comp.colorId] || comp.colorId,
+                share: comp.share
+            }));
+        }
+    }
+
+    App.state.colorsPerNode[targetId] = targetColors;
+
+    // 3.4 Копируем активный элемент
+    const activeId = App.colors.getActiveForNode(original.id);
+    if (activeId && colorMap[activeId]) {
+        App.state.activePerNode[targetId] = colorMap[activeId];
+    }
+
+    // 3.5 Копируем матрицу с обновлёнными ID
+    if (originalTable) {
+        for (let i = 0; i < 13; i++) {
+            for (let j = 0; j < 13; j++) {
+                const oldPid = originalTable[i][j];
+                if (oldPid !== null && oldPid !== undefined) {
+                    newTable[i][j] = colorMap[oldPid] || oldPid;
+                } else {
+                    newTable[i][j] = null;
+                }
+            }
+        }
+    }
+
+    // ===== 4. Сохраняем и активируем =====
+    // Дублирование создаёт новую таблицу, поэтому её нужно пометить dirty
+    // ДО сохранения. Обычный persistAll() отложен на 2 секунды и работает в
+    // режиме skipTables=true — в результате структура узла сохранялась, а
+    // матрица нового диапазона могла не попасть на сервер до перезагрузки.
+    if (App.dirty) {
+        App.dirty.markStructureDirty();
+        App.dirty.markColorsDirty();
+        App.dirty.markTableDirty(newId);
+    }
+    flushPersist();
+    App.refresh.all();
+    App.navigation.selectNode(newId);
+    App.grid.updateCurrentDisplay();
+
+}
+// ===== КОПИРОВАНИЕ ДИАПАЗОНА В БУФЕР =====
+App.clipboard.copyRange = function(nodeId) {
+    const node = getNode(nodeId);
+    if (!node) {
+        App.modals.showFloatingModal(App.i18n.t('clipboard.rangeNotFound'));
+        return;
+    }
+
+    if (node.type !== 'range' && node.type !== 'subrange') {
+        App.modals.showFloatingModal(App.i18n.t('clipboard.copyRangesOnly'));
+        return;
+    }
+
+    const tableId = getTableId(nodeId);
+    
+    // Копируем матрицу (глубокое копирование)
+    const matrix = App.state.cellStorage[tableId];
+    let copiedMatrix = null;
+    if (matrix) {
+        copiedMatrix = matrix.map(row => [...row]);
+    }
+
+    // Копируем цвета (профили)
+    const colors = App.state.colorsPerNode[tableId] || [];
+    const copiedColors = JSON.parse(JSON.stringify(colors));
+
+    // Копируем активный цвет
+    const activeId = App.state.activePerNode[tableId] || null;
+
+    // Сохраняем в буфер
+    App.state.clipboardRangeData = {
+        matrix: copiedMatrix,
+        colors: copiedColors,
+        activeId: activeId,
+        sourceNodeId: nodeId,
+        sourceName: node.name
+    };
+
+    
+    
+    // Обновляем меню (активируем кнопку "Вставить")
+    App.clipboard.updatePasteButtonState();
+	App.refresh.all();
+}
+
+// ===== ВСТАВКА ДИАПАЗОНА ИЗ БУФЕРА =====
+App.clipboard.pasteRange = function(nodeId) {
+    if (!App.state.clipboardRangeData) {
+        App.modals.showFloatingModal(App.i18n.t('clipboard.noCopiedRange'));
+        return;
+    }
+
+    const targetNode = getNode(nodeId);
+    if (!targetNode) {
+        App.modals.showFloatingModal(App.i18n.t('clipboard.targetNotFound'));
+        return;
+    }
+
+    if (targetNode.type !== 'range' && targetNode.type !== 'subrange') {
+        App.modals.showFloatingModal(App.i18n.t('clipboard.pasteRangesOnly'));
+        return;
+    }
+
+    const targetTableId = getTableId(nodeId);
+    
+    // Проверяем, пустой ли целевой диапазон
+    const targetMatrix = App.state.cellStorage[targetTableId];
+    let isTargetEmpty = true;
+    if (targetMatrix) {
+        for (let i = 0; i < 13; i++) {
+            for (let j = 0; j < 13; j++) {
+                if (targetMatrix[i][j] !== null) {
+                    isTargetEmpty = false;
+                    break;
+                }
+            }
+            if (!isTargetEmpty) break;
+        }
+    }
+
+    // Если диапазон не пустой — показываем подтверждение
+    if (!isTargetEmpty) {
+        App.modals.showSaveConfirmModal(
+            App.i18n.t('clipboard.pasteOverwriteConfirm', { name: targetNode.name }),
+            function() {
+                // ДА — выполняем вставку
+                App.clipboard.executePaste(nodeId);
+            },
+            function() {
+                // НЕТ — ничего не делаем
+            }
+        );
+        return;
+    }
+
+    // Если пустой — сразу вставляем
+    App.clipboard.executePaste(nodeId);
+}
+
+// ===== ВЫПОЛНЕНИЕ ВСТАВКИ =====
+App.clipboard.executePaste = function(nodeId) {
+    if (!App.state.clipboardRangeData) return;
+
+    const targetTableId = getTableId(nodeId);
+    
+    // 1. Копируем цвета с новыми ID и создаем colorMap
+    const sourceColors = App.state.clipboardRangeData.colors || [];
+    const newColors = [];
+    const colorMap = {};
+
+    for (const color of sourceColors) {
+        const newId = App.state.nextColorId++;
+        const newColor = {
+            id: newId,
+            name: color.name,
+            type: color.type
+        };
+
+        if (color.type === 'simple' || (!color.type && color.color)) {
+            newColor.color = color.color;
+        } else if (color.type === 'multi' || color.components) {
+            newColor.components = color.components ? color.components.map(comp => ({
+                colorId: comp.colorId,
+                share: comp.share
+            })) : [];
+            newColor.boundaries = color.boundaries ? [...color.boundaries] : [];
+        }
+
+        newColors.push(newColor);
+        colorMap[color.id] = newId;  // ← запоминаем соответствие старый ID → новый ID
+    }
+
+    // 2. Обновляем ссылки в компонентах мультицветов
+    for (const color of newColors) {
+        if (color.type === 'multi' && color.components) {
+            color.components = color.components.map(comp => ({
+                colorId: colorMap[comp.colorId] || comp.colorId,
+                share: comp.share
+            }));
+        }
+    }
+
+    // 3. Сохраняем новые цвета
+    App.state.colorsPerNode[targetTableId] = newColors;
+
+    // 4. Вставляем матрицу с ОБНОВЛЕННЫМИ ID (через colorMap)
+    App.grid.ensureTable(nodeId);
+    const targetMatrix = App.state.cellStorage[targetTableId];
+    
+    if (App.state.clipboardRangeData.matrix) {
+        for (let i = 0; i < 13; i++) {
+            for (let j = 0; j < 13; j++) {
+                const oldId = App.state.clipboardRangeData.matrix[i]?.[j];
+                if (oldId !== null && oldId !== undefined) {
+                    // ✅ ЗАМЕНЯЕМ СТАРЫЙ ID НА НОВЫЙ
+                    targetMatrix[i][j] = colorMap[oldId] || null;
+                } else {
+                    targetMatrix[i][j] = null;
+                }
+            }
+        }
+    }
+
+    // 5. Восстанавливаем активный цвет
+    if (App.state.clipboardRangeData.activeId && colorMap[App.state.clipboardRangeData.activeId]) {
+        App.state.activePerNode[targetTableId] = colorMap[App.state.clipboardRangeData.activeId];
+    } else {
+        // Если активного нет или он не найден — устанавливаем первый цвет
+        const firstColor = newColors.find(c => c.type === 'simple' || (!c.type && c.color));
+        if (firstColor) {
+            App.state.activePerNode[targetTableId] = firstColor.id;
+        }
+    }
+
+    // 6. Сохраняем данные и делаем диапазон активным
+    
+    
+    // 👇 ДЕЛАЕМ ДИАПАЗОН АКТИВНЫМ
+    App.navigation.selectNode(nodeId);
+    
+    // 7. Обновляем интерфейс
+    App.refresh.all();
+    App.grid.updateCurrentDisplay();
+    markUnsaved();
+
+    // Диапазон вставлен — отмечаем таблицу узла грязной для сохранения
+    if (App.dirty && nodeId) {
+        App.dirty.markTableDirty(nodeId);
+    }
+
+     App.state.clipboardRangeData = null;
+     App.clipboard.updatePasteButtonState();
+}
+
+// ===== ПРОВЕРКА, ЕСТЬ ЛИ ДАННЫЕ В БУФЕРЕ =====
+App.clipboard.hasClipboardData = function() {
+    return App.state.clipboardRangeData !== null;
+}
+// ===== ОБНОВЛЕНИЕ СОСТОЯНИЯ КНОПКИ "ВСТАВИТЬ" =====
+// Гашение вынесено в класс .toolbar-btn-disabled (styles/components.css), тем же
+// классом гасятся остальные кнопки редактирования в режиме анализа конструктора
+// (см. updateConstructorToolbarState в grid.js).
+App.clipboard.updatePasteButtonState = function() {
+    const pasteBtn = document.getElementById('tablePasteBtn');
+    if (!pasteBtn) return;
+
+    // В режиме анализа конструктора вставка запрещена наравне с остальными
+    // кнопками редактирования, поэтому режим проверяем раньше буфера обмена:
+    // иначе copyRange() / refreshAll() снова "зажгли" бы кнопку.
+    if (App.state.analysisMode) {
+        pasteBtn.classList.add('toolbar-btn-disabled');
+        pasteBtn.title = '';
+        return;
+    }
+
+    const hasData = App.clipboard.hasClipboardData();
+    pasteBtn.classList.toggle('toolbar-btn-disabled', !hasData);
+    pasteBtn.title = hasData ? App.i18n.t('editor.pasteRange') : App.i18n.t('clipboard.copyRangeFirst');
+}

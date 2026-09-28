@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Политика конфиденциальности - PFRangeTool</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <style>
+        html,
+        body {
+            margin: 0;
+            background: #121212;
+            color: #a9afb5;
+        }
+    </style>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/cookie-consent.css">
+</head>
+<body class="privacy-page">
+    <main class="privacy-document">
+        <header class="privacy-header">
+            <h1 data-privacy-title="ru">Политика конфиденциальности</h1>
+            <h1 data-privacy-title="en" hidden>Privacy Policy</h1>
+            <div class="language-switcher" role="group" aria-label="Язык" data-privacy-language-label>
+                <span class="language-label">Язык</span>
+                <button class="language-btn active" type="button" data-language="ru" aria-pressed="true">RU</button>
+                <button class="language-btn" type="button" data-language="en" aria-pressed="false">EN</button>
+            </div>
+        </header>
+
+        <section data-language-content="ru" lang="ru">
+            <p>Эта страница объясняет, какие технические данные может обрабатывать PFRangeTool и как используется ваше согласие на загрузку аналитики.</p>
+
+            <h2>Яндекс.Метрика</h2>
+            <p>Яндекс.Метрика используется для анализа посещаемости и улучшения сервиса. Она не загружается и не отправляет данные до тех пор, пока вы не нажмёте кнопку «Принять» в баннере cookie. Вы можете добровольно отказаться от аналитики, нажав «Отказаться».</p>
+
+            <h2>Сохранение выбора</h2>
+            <p>Ваш выбор сохраняется в локальном хранилище браузера (<code>localStorage</code>) на этом сайте как «Принять» или «Отказаться». Сохраняется только техническое значение выбора. Вы можете удалить его в настройках браузера, после чего баннер появится снова.</p>
+
+            <h2>Локальное хранение данных приложения</h2>
+            <p>Настройки интерфейса и выбранный язык могут сохраняться в локальном хранилище браузера, чтобы сервис мог восстановить их при следующем посещении.</p>
+
+            <h2>Изменения политики</h2>
+            <p>Если порядок обработки технических данных изменится, информация на этой странице будет обновлена.</p>
+
+            <p><button class="privacy-close" type="button" data-privacy-close="ru">Закрыть</button></p>
+        </section>
+
+        <section data-language-content="en" lang="en" hidden>
+            <p>This page explains what technical data PFRangeTool may process and how your consent to analytics is used.</p>
+
+            <h2>Yandex.Metrica</h2>
+            <p>Yandex.Metrica is used to analyze visits and improve the service. It is not loaded and does not send data until you click “Accept” in the cookie banner. You can voluntarily decline analytics by clicking “Decline”.</p>
+
+            <h2>Storing your choice</h2>
+            <p>Your choice is stored in this website’s browser storage (<code>localStorage</code>) as “Accept” or “Decline”. Only the technical value of your choice is stored. You can remove it in your browser settings; the banner will then appear again.</p>
+
+            <h2>Local application data</h2>
+            <p>Interface settings and your selected language may be stored in your browser’s local storage so the service can restore them on your next visit.</p>
+
+            <h2>Changes to this policy</h2>
+            <p>If the way technical data is processed changes, the information on this page will be updated.</p>
+
+            <p><button class="privacy-close" type="button" data-privacy-close="en">Close</button></p>
+        </section>
+    </main>
+    <script>
+        (function () {
+            'use strict';
+
+            var storageKey = 'pfrangetool-language';
+            var title = {
+                ru: 'Политика конфиденциальности - PFRangeTool',
+                en: 'Privacy Policy - PFRangeTool'
+            };
+            var languageLabel = {
+                ru: 'Язык',
+                en: 'Language'
+            };
+
+            function detectLanguage() {
+                try {
+                    var saved = window.localStorage.getItem(storageKey);
+                    if (saved === 'ru' || saved === 'en') return saved;
+                } catch (error) {
+                    // Используем язык браузера, если localStorage недоступен.
+                }
+                return (navigator.language || '').toLowerCase().indexOf('ru') === 0 ? 'ru' : 'en';
+            }
+
+            function setLanguage(language) {
+                if (language !== 'ru' && language !== 'en') return;
+
+                document.documentElement.lang = language;
+                document.title = title[language];
+                document.querySelectorAll('[data-privacy-title]').forEach(function (element) {
+                    element.hidden = element.dataset.privacyTitle !== language;
+                });
+                document.querySelectorAll('[data-language-content]').forEach(function (element) {
+                    element.hidden = element.dataset.languageContent !== language;
+                });
+                document.querySelector('[data-privacy-language-label]').setAttribute('aria-label', languageLabel[language]);
+                document.querySelector('.language-label').textContent = languageLabel[language];
+                document.querySelectorAll('[data-language]').forEach(function (button) {
+                    var isActive = button.dataset.language === language;
+                    button.classList.toggle('active', isActive);
+                    button.setAttribute('aria-pressed', String(isActive));
+                });
+
+                try {
+                    window.localStorage.setItem(storageKey, language);
+                } catch (error) {
+                    // Текущий язык всё равно применяется на этой странице.
+                }
+            }
+
+            function closePrivacyPage() {
+                window.close();
+            }
+
+            setLanguage(detectLanguage());
+            document.querySelectorAll('[data-language]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    setLanguage(button.dataset.language);
+                });
+            });
+            document.querySelectorAll('[data-privacy-close]').forEach(function (button) {
+                button.addEventListener('click', closePrivacyPage);
+            });
+        })();
+    </script>
+</body>
+</html>
