@@ -707,15 +707,16 @@ App.colors.showColorPickerForMultiAdd = function(nodeId, anchor, color, editable
         if (App.dirty && App.dirty.markColorsDirtyExplicit) App.dirty.markColorsDirtyExplicit();
     });
 };
-App.colors.renderMultiColor = function(nodeId, color, activeId, editable) {
+// Карточка мультипрофиля: корневой контейнер
+App.colors.createMultiColorCard = function(color) {
     const card = document.createElement("div");
     card.className = "profile-card";
     card.dataset.colorId = color.id;
-    
-    const row = document.createElement("div");
-    row.className = "profile-row";
-    
-    // === 1. РАДИО-КНОПКА ===
+    return card;
+}
+
+// === 1. РАДИО-КНОПКА ===
+App.colors.createMultiColorRadio = function(nodeId, color, activeId, editable) {
     const radio = document.createElement("div");
     radio.className = `profile-radio ${activeId === color.id ? 'active' : ''}`;
     if (editable) {
@@ -727,143 +728,147 @@ App.colors.renderMultiColor = function(nodeId, color, activeId, editable) {
     } else {
         radio.style.opacity = "0.5";
     }
-    row.appendChild(radio);
-    
-    // === 2. КВАДРАТЫ С ЦВЕТАМИ ===
-    const chipsContainer = document.createElement("div");
-	chipsContainer.className = "chips-container";
-    
-    const simpleColors = App.colors.getSimpleColors(nodeId);
-    
-    for (let i = 0; i < color.components.length; i++) {
-        const comp = color.components[i];
-        const compColor = simpleColors.find(c => c.id === comp.colorId);
-        const hex = compColor ? compColor.color : '#4a4a50';
-        const name = compColor ? compColor.name : '?';
-        
-        const wrapper = document.createElement("div");
-        wrapper.style.position = "relative";
-        wrapper.style.display = "inline-flex";
-        wrapper.style.alignItems = "center";
-        
-        const chip = document.createElement("div");
-chip.className = "multi-color-chip";  // ← класс вместо инлайн-стилей
-chip.style.backgroundColor = hex;     // ← динамический цвет (оставляем)
-chip.title = name;
-        
-        if (editable) {
-            chip.onclick = (e) => {
-                e.stopPropagation();
-                const simpleColorsList = App.colors.getSimpleColors(nodeId);
-                if (simpleColorsList.length === 0) {
-                    App.modals.showFloatingModal(App.i18n.t('colors.createActionFirst'));
-                    return;
-                }
-                App.colors.showColorPickerForMulti(nodeId, chip, color, i, editable);
-            };
-        }
-        
-        wrapper.appendChild(chip);
-        
-        // Крестик удаления (если цветов > 1)
-        if (i > 0 && editable) {
-            const delBtn = document.createElement("button");
-delBtn.className = "multi-chip-delete";   // ← только класс
-delBtn.innerHTML = `
+    return radio;
+}
+
+// === 2. КВАДРАТ С ЦВЕТОМ (один компонент смеси) ===
+// wrapper: цветной квадрат + крестик удаления (если компонентов > 1)
+App.colors.createMultiColorChipWrapper = function(nodeId, color, comp, i, simpleColors, editable) {
+    const compColor = simpleColors.find(c => c.id === comp.colorId);
+    const hex = compColor ? compColor.color : '#4a4a50';
+    const name = compColor ? compColor.name : '?';
+
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "relative";
+    wrapper.style.display = "inline-flex";
+    wrapper.style.alignItems = "center";
+
+    const chip = document.createElement("div");
+    chip.className = "multi-color-chip";  // ← класс вместо инлайн-стилей
+    chip.style.backgroundColor = hex;     // ← динамический цвет (оставляем)
+    chip.title = name;
+
+    if (editable) {
+        chip.onclick = (e) => {
+            e.stopPropagation();
+            const simpleColorsList = App.colors.getSimpleColors(nodeId);
+            if (simpleColorsList.length === 0) {
+                App.modals.showFloatingModal(App.i18n.t('colors.createActionFirst'));
+                return;
+            }
+            App.colors.showColorPickerForMulti(nodeId, chip, color, i, editable);
+        };
+    }
+
+    wrapper.appendChild(chip);
+
+    // Крестик удаления (если цветов > 1)
+    if (i > 0 && editable) {
+        const delBtn = document.createElement("button");
+        delBtn.className = "multi-chip-delete";   // ← только класс
+        delBtn.innerHTML = `
     <svg class="delete-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
         <path d="M6 6L18 18M18 6L6 18" />
     </svg>
 `;
-delBtn.title = App.i18n.t('colors.deleteColorTitle');
-            
-            delBtn.onclick = (e) => {
-                e.stopPropagation();
-                if (color.components.length <= 1) return;
-                color.components.splice(i, 1);
-                color.boundaries.splice(i, 1);
-				// Пересчитываем boundaries из оставшихся share
-let sum = 0;
-const newBoundaries = [];
-for (const comp of color.components) {
-    sum += comp.share || 0;
-    newBoundaries.push(sum);
+        delBtn.title = App.i18n.t('colors.deleteColorTitle');
+
+        delBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (color.components.length <= 1) return;
+            color.components.splice(i, 1);
+            color.boundaries.splice(i, 1);
+            // Пересчитываем boundaries из оставшихся share
+            let sum = 0;
+            const newBoundaries = [];
+            for (const comp of color.components) {
+                sum += comp.share || 0;
+                newBoundaries.push(sum);
+            }
+            color.boundaries = newBoundaries;
+            App.colors.renderAllColors(nodeId, true);
+            App.events.emit('data:changed');
+            App.events.emit('unsaved:mark');
+            if (App.dirty && App.dirty.markColorsDirtyExplicit) App.dirty.markColorsDirtyExplicit();
+        };
+
+        wrapper.appendChild(delBtn);
+    }
+
+    return wrapper;
 }
-color.boundaries = newBoundaries;
-                App.colors.renderAllColors(nodeId, true);
-                App.events.emit('data:changed');
-                App.events.emit('unsaved:mark');
-                if (App.dirty && App.dirty.markColorsDirtyExplicit) App.dirty.markColorsDirtyExplicit();
-            };
-            
-            wrapper.appendChild(delBtn);
+
+// === 3. КНОПКА ДОБАВЛЕНИЯ ЦВЕТА (квадрат с плюсом) ===
+// Возвращает null, если кнопка не нужна (не editable или уже 3 компонента)
+App.colors.createMultiColorAddBtn = function(nodeId, color, editable) {
+    if (!editable || color.components.length >= 3) return null;
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "multi-add-chip-btn";
+    addBtn.textContent = "+";
+    addBtn.dataset.i18nTooltip = 'colors.addColorTitle';
+    addBtn.dataset.tooltip = App.i18n.t('colors.addColorTitle');
+
+    addBtn.onmouseenter = () => {
+        addBtn.style.borderColor = "#d0d0d8";
+        addBtn.style.color = "#d0d0d8";
+    };
+    addBtn.onmouseleave = () => {
+        addBtn.style.borderColor = "#8a848a";
+        addBtn.style.color = "#8a848a";
+    };
+
+    addBtn.onclick = (e) => {
+        e.stopPropagation();
+        const simpleColorsList = App.colors.getSimpleColors(nodeId);
+        if (simpleColorsList.length === 0) {
+            App.modals.showFloatingModal(App.i18n.t('colors.createActionFirst'));
+            return;
         }
-        
-        chipsContainer.appendChild(wrapper);
-    }
-    
-    // === 3. КНОПКА ДОБАВЛЕНИЯ ЦВЕТА (квадрат с плюсом) ===
-    if (editable && color.components.length < 3) {
-        const addBtn = document.createElement("button");
-        addBtn.className = "multi-add-chip-btn";
-		addBtn.textContent = "+";
-        addBtn.dataset.i18nTooltip = 'colors.addColorTitle';
-        addBtn.dataset.tooltip = App.i18n.t('colors.addColorTitle');
-        
-        addBtn.onmouseenter = () => {
-            addBtn.style.borderColor = "#d0d0d8";
-            addBtn.style.color = "#d0d0d8";
-        };
-        addBtn.onmouseleave = () => {
-            addBtn.style.borderColor = "#8a848a";
-            addBtn.style.color = "#8a848a";
-        };
-        
-addBtn.onclick = (e) => {
-    e.stopPropagation();
-    const simpleColorsList = App.colors.getSimpleColors(nodeId);
-    if (simpleColorsList.length === 0) {
-        App.modals.showFloatingModal(App.i18n.t('colors.createActionFirst'));
-        return;
-    }
-    App.colors.showColorPickerForMultiAdd(nodeId, addBtn, color, editable);
-};
-        
-        chipsContainer.appendChild(addBtn);
-    }
-    
-    row.appendChild(chipsContainer);
-    
+        App.colors.showColorPickerForMultiAdd(nodeId, addBtn, color, editable);
+    };
+
+    return addBtn;
+}
+
 // === 4. НАЗВАНИЕ (на уровне нижнего края квадратов) ===
-const nameSpan = document.createElement("span");
-nameSpan.className = "multi-profile-name";
-nameSpan.textContent = App.colors.generateNameForColor(nodeId, color);
-// Название над строкой
-const nameWrapper = document.createElement("div");
-nameWrapper.style.display = "flex";
-nameWrapper.style.justifyContent = "center";
-nameWrapper.style.width = "100%";
-nameWrapper.style.marginBottom = "4px";
-nameWrapper.appendChild(nameSpan);
-card.appendChild(nameWrapper);
-    
+App.colors.createMultiColorNameWrapper = function(nodeId, color) {
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "multi-profile-name";
+    nameSpan.textContent = App.colors.generateNameForColor(nodeId, color);
+    // Название над строкой
+    const nameWrapper = document.createElement("div");
+    nameWrapper.style.display = "flex";
+    nameWrapper.style.justifyContent = "center";
+    nameWrapper.style.width = "100%";
+    nameWrapper.style.marginBottom = "4px";
+    nameWrapper.appendChild(nameSpan);
+    return nameWrapper;
+}
+
 // === 5. СЛАЙДЕРЫ (на уровне нижнего края квадратов) ===
-const sliderWrap = document.createElement("div");
-sliderWrap.className = "slider-wrapper";
-sliderWrap.style.flex = "1";
-sliderWrap.style.minWidth = "100px";
-sliderWrap.style.margin = "0 4px";
-sliderWrap.style.alignSelf = "flex-end";  // ← прижимаем к нижнему краю
+// Возвращает { sliderWrap, sliderCont }: sliderCont нужен для profileRefs
+App.colors.createMultiColorSliderWrap = function() {
+    const sliderWrap = document.createElement("div");
+    sliderWrap.className = "slider-wrapper";
+    sliderWrap.style.flex = "1";
+    sliderWrap.style.minWidth = "100px";
+    sliderWrap.style.margin = "0 4px";
+    sliderWrap.style.alignSelf = "flex-end";  // ← прижимаем к нижнему краю
 
-const sliderCont = document.createElement("div");
-sliderCont.className = "slider-track-container";
+    const sliderCont = document.createElement("div");
+    sliderCont.className = "slider-track-container";
 
-const track = document.createElement("div");
-track.className = "slider-track";
-sliderCont.appendChild(track);
-sliderWrap.appendChild(sliderCont);
-row.appendChild(sliderWrap);
-    
-    // === 6. КНОПКА УДАЛЕНИЯ ВСЕГО ПРОФИЛЯ ===
+    const track = document.createElement("div");
+    track.className = "slider-track";
+    sliderCont.appendChild(track);
+    sliderWrap.appendChild(sliderCont);
+
+    return { sliderWrap: sliderWrap, sliderCont: sliderCont };
+}
+
+// === 6. КНОПКА УДАЛЕНИЯ ВСЕГО ПРОФИЛЯ ===
+App.colors.createMultiColorDeleteBtn = function(nodeId, color, editable) {
     const del = document.createElement("button");
     del.innerHTML = `
         <svg class="delete-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -879,23 +884,66 @@ row.appendChild(sliderWrap);
     } else {
         del.style.visibility = "hidden";
     }
-    row.appendChild(del);
-    
-    card.appendChild(row);
-    
-App.state.profileRefs.set(color.id, {
-    rowDiv: row,
-    sliderContainer: sliderCont,
-    chipsContainer: chipsContainer,
-    radioSpan: radio,
-    editable: editable
-});
-    
-    App.colors.refreshMultiColorSliders(nodeId, color.id);
-    
-    return card;
+    return del;
 }
 
+// Регистрация ссылок на DOM-элементы карточки (используются обновлением слайдеров)
+App.colors.registerMultiColorProfileRefs = function(color, refs) {
+    App.state.profileRefs.set(color.id, refs);
+}
+
+App.colors.renderMultiColor = function(nodeId, color, activeId, editable) {
+    const card = App.colors.createMultiColorCard(color);
+
+    const row = document.createElement("div");
+    row.className = "profile-row";
+
+    // === 1. РАДИО-КНОПКА ===
+    const radio = App.colors.createMultiColorRadio(nodeId, color, activeId, editable);
+    row.appendChild(radio);
+
+    // === 2. КВАДРАТЫ С ЦВЕТАМИ ===
+    const chipsContainer = document.createElement("div");
+    chipsContainer.className = "chips-container";
+
+    const simpleColors = App.colors.getSimpleColors(nodeId);
+
+    for (let i = 0; i < color.components.length; i++) {
+        chipsContainer.appendChild(
+            App.colors.createMultiColorChipWrapper(nodeId, color, color.components[i], i, simpleColors, editable)
+        );
+    }
+
+    // === 3. КНОПКА ДОБАВЛЕНИЯ ЦВЕТА (квадрат с плюсом) ===
+    const addBtn = App.colors.createMultiColorAddBtn(nodeId, color, editable);
+    if (addBtn) chipsContainer.appendChild(addBtn);
+
+    row.appendChild(chipsContainer);
+
+    // === 4. НАЗВАНИЕ (на уровне нижнего края квадратов) ===
+    card.appendChild(App.colors.createMultiColorNameWrapper(nodeId, color));
+
+    // === 5. СЛАЙДЕРЫ (на уровне нижнего края квадратов) ===
+    const sliders = App.colors.createMultiColorSliderWrap();
+    row.appendChild(sliders.sliderWrap);
+
+    // === 6. КНОПКА УДАЛЕНИЯ ВСЕГО ПРОФИЛЯ ===
+    row.appendChild(App.colors.createMultiColorDeleteBtn(nodeId, color, editable));
+
+    card.appendChild(row);
+
+    App.colors.registerMultiColorProfileRefs(color, {
+        rowDiv: row,
+        sliderContainer: sliders.sliderCont,
+        chipsContainer: chipsContainer,
+        radioSpan: radio,
+        editable: editable
+    });
+
+    App.colors.refreshMultiColorSliders(nodeId, color.id);
+
+    return card;
+}
 
 App.colors.recalculateBoundaries = function(color) {
     if (!color.components || color.components.length === 0) return;
