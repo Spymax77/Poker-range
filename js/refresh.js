@@ -3,6 +3,10 @@
 App.refresh = App.refresh || {};
 
 // ===== RESET TO CLEAN DATA =====
+// Fallback: используется ТОЛЬКО если data/default-editor.json не удалось
+// загрузить (сеть, 404, битый JSON) — см. persistence.js и js/default-data.js.
+// Основной источник дефолтных диапазонов — json-файл, который обновляется
+// заменой файла, без правок кода.
 App.refresh.resetToCleanData = function() {
     App.state.nodes = [];
     App.state.nodeIndex = new Map();

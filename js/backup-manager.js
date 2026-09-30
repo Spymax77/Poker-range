@@ -684,6 +684,15 @@
         });
     });
 
+    // ===== ЭКСПОРТ ДЛЯ ПОВТОРНОГО ИСПОЛЬЗОВАНИЯ =====
+    // default-data.js разворачивает дефолтное дерево (data/default-editor.json)
+    // через тот же импортёр, что и ручной импорт конфигурации, чтобы логика
+    // восстановления цветов/матриц не дублировалась.
+    App.backupManager = {
+        isValidTreeStructure: isValidTreeStructure,
+        createEditorNodeFromData: createEditorNodeFromData
+    };
+
     // ===== ЗАПУСК =====
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {

@@ -176,6 +176,10 @@ function resetBranchBeforeLoad(branch) {
 
 async function loadFromStorageV2() {
     var uiMetadata = App.storage.loadMetadata() || {};
+    // Флаг «у пользователя есть сохранённая структура редактора».
+    // Отсутствие ключа структуры = первый заход (дефолт из json),
+    // наличие ключа (даже с пустым деревом) = данные не трогаем.
+    var editorStructureExisted = false;
 
     for (var mi = 0; mi < ['editor', 'gto'].length; mi++) {
         var mode = ['editor', 'gto'][mi];
@@ -189,6 +193,7 @@ async function loadFromStorageV2() {
         // Загружаем структуру (каталог дерева, без цветов)
         var structure = App.storage.loadStructure(mode);
         if (structure) {
+            if (mode === 'editor') editorStructureExisted = true;
             branch.nodes = structure.nodes || [];
             branch.nextNodeId = structure.nextNodeId || 1;
             branch.commentsPerNode = structure.commentsPerNode || {};
@@ -265,9 +270,27 @@ async function loadFromStorageV2() {
 
     App.state.analysisMode = !!uiMetadata.analysisMode;
 
-    if (App.editor.nodes.length === 0) {
+    // Первый заход (сохранённой структуры редактора нет): загружаем дефолтные
+    // диапазоны из data/default-editor.json. Для авторизованного пользователя
+    // это единственная разовая автозапись данных без явного согласия — после
+    // неё ключ структуры появляется на сервере и дефолт больше не
+    // перезаписывается (даже если пользователь удалит всё дерево).
+    // Гостю дефолт разворачивается только в памяти сессии.
+    if (!editorStructureExisted) {
         App.currentMode = 'editor';
-        App.refresh.resetToCleanData();
+        if (App.defaults && App.defaults.load) {
+            try {
+                await App.defaults.load();
+            } catch (error) {
+                // Fallback: если дефолтный json недоступен (сеть, 404, битый
+                // JSON), создаём минимальный пустой скелет, чтобы редактор
+                // не оставался совсем без дерева.
+                console.error('Не удалось загрузить дефолтные диапазоны:', error);
+                App.refresh.resetToCleanData();
+            }
+        } else {
+            App.refresh.resetToCleanData();
+        }
     }
 
     return uiMetadata.activeTab || 'constructor';
