@@ -50,7 +50,9 @@ App.clipboard.createCopyAndFinalize = function(original) {
         siblings = App.state.nodes.filter(n => n.parentId === null);
     }
 
-    const existingNames = siblings.filter(n => n.type === 'range').map(n => n.name);
+    // Имена проверяем среди соседей того же типа (у поддиапазона — поддиапазонов),
+    // иначе два дубля поддиапазона получали бы одинаковое имя
+    const existingNames = siblings.filter(n => n.type === original.type).map(n => n.name);
     let newName = `${original.name} - дубль`;
     let counter = 2;
     while (existingNames.includes(newName)) {
@@ -67,6 +69,11 @@ App.clipboard.createCopyAndFinalize = function(original) {
     childrenIds: [],
     type: original.type   // ← сохраняем исходный тип ('range' или 'subrange')
 };
+    // Для поддиапазона копируем выбранный компонент родителя —
+    // от него зависят окраска иконки (getSubrangeColor) и семантика узла
+    if (original.type === 'subrange' && original.selectedComponentIndex !== undefined) {
+        newNode.selectedComponentIndex = original.selectedComponentIndex;
+    }
     addNode(newNode);
 
     if (parent) {

@@ -949,7 +949,9 @@ function buildTreeNodeActions(node, editable) {
         popupMenu.appendChild(addSubrangeBtn);
 
         const duplicateBtn = document.createElement("button");
-        duplicateBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">${App.i18n.t('menu.duplicateRange')}</span>`;
+        // Для поддиапазона — своя подпись пункта меню
+        const duplicateLabelKey = node.type === 'subrange' ? 'menu.duplicateSubrange' : 'menu.duplicateRange';
+        duplicateBtn.innerHTML = `<span class="menu-icon"></span><span class="menu-text">${App.i18n.t(duplicateLabelKey)}</span>`;
         duplicateBtn.onclick = (e) => {
             e.stopPropagation();
             App.clipboard.duplicateRange(node.id);
