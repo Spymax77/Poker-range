@@ -591,33 +591,9 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 
 document.getElementById('treeAddFolderBtn')?.addEventListener('click', App.tree.addRootNode);
 
-document.getElementById('treeAddRangeBtn')?.addEventListener('click', () => {
-    // Собираем имена всех корневых узлов
-    const rootNodes = App.state.nodes.filter(n => n.parentId === null);
-    const existingNames = rootNodes.map(n => n.name);
-    const newName = App.tree.generateUniqueName('Новый диапазон', existingNames);
-
-    let newId = App.state.nextNodeId++;
-    let newNode = {
-        id: newId,
-        name: newName,
-        parentId: null,
-        childrenIds: [],
-        type: 'range'
-    };
-    addNode(newNode);
-    App.grid.ensureTable(newId);
-    App.dirty.markStructureDirty();
-    App.dirty.markTableDirty(newId);
-    if (App.auth && App.auth.isLoggedIn()) {
-        flushPersist();
-    } else {
-        markUnsaved();
-        notifyGuestUnsavedChanges();
-    }
-    App.refresh.all();
-    App.navigation.selectNode(newId);
-});
+// Создание корневого диапазона перенесено в tree.js (App.tree.addRootRange),
+// чтобы тулбар и popup-меню папки вели себя одинаково, включая стартовый цвет.
+document.getElementById('treeAddRangeBtn')?.addEventListener('click', App.tree.addRootRange);
 
 document.getElementById('treeRenameBtn')?.addEventListener('click', () => {
     if (App.state.currentNodeId) {

@@ -12,35 +12,67 @@ App.tree.generateUniqueName = function(baseName, existingNames) {
     }
     return `${baseName} (${counter})`;
 }
-// ===== ДЕРЕВО (с компактным меню) =====
-App.tree.addChildNode = function(parentId) {
-    let parent = getNode(parentId);
-    if (!parent) return;
-    
-    // Собираем имена всех дочерних узлов
-    const children = parent.childrenIds.map(id => getNode(id)).filter(n => n);
-    const existingNames = children.map(n => n.name);
-    // ВНИМАНИЕ: дефолтные имена узлов (см. решение №8 в russian-text-inventory.md)
-    // намеренно не локализуются — вопрос отложен.
-    const newName = App.tree.generateUniqueName('Новый элемент', existingNames);
-    
-    let newId = App.state.nextNodeId++;
-    let newNode = {
-        id: newId,
-        name: newName,
-        parentId: parentId,
-        childrenIds: [],
-        type: 'folder'
-    };
-    addNode(newNode);
-    parent.childrenIds.push(newId);
-    App.grid.ensureTable(newId);
-    if (App.dirty) App.dirty.markStructureDirty();
-    persistAll();
-    App.refresh.all();
-    App.navigation.selectNode(newId);
+
+// ============================================================
+// ХЕЛПЕРЫ СОЗДАНИЯ УЗЛОВ (общие для тулбара и popup-меню дерева)
+// ============================================================
+
+// Стартовая палитра нового диапазона/поддиапазона: один простой
+// цвет "Raise", он же становится активным цветом узла.
+function initDefaultColor(nodeId) {
+    const tableId = getTableId(nodeId);
+    App.state.colorsPerNode[tableId] = [];
+    const colorId = App.state.nextColorId++;
+    App.state.colorsPerNode[tableId].push({
+        id: colorId,
+        name: "Raise",
+        color: "#E55757",
+        type: 'simple'
+    });
+    App.state.activePerNode[tableId] = colorId;
 }
 
+// Придумать уникальное имя нового узла: parentId === null — среди
+// корневых узлов, иначе — среди детей родителя.
+// ВНИМАНИЕ: дефолтные имена узлов (см. решение №8 в russian-text-inventory.md)
+// намеренно не локализуются — при создании узла в английском интерфейсе
+// временно используется русское имя по умолчанию.
+function generateUniqueNameFor(parentId, baseName) {
+    let existingNames;
+    if (parentId === null) {
+        existingNames = App.state.nodes
+            .filter(n => n.parentId === null)
+            .map(n => n.name);
+    } else {
+        const parent = getNode(parentId);
+        existingNames = parent
+            ? parent.childrenIds.map(id => getNode(id)).filter(n => n).map(n => n.name)
+            : [];
+    }
+    return App.tree.generateUniqueName(baseName, existingNames);
+}
+
+// Единый «хвост» создания узла: dirty-метки → перерисовка → выбор узла
+// → стратегия сохранения (аккаунт — немедленная отправка, гость —
+// предупреждение о несохранённых изменениях).
+// opts.table  — пометить таблицу узла изменённой (range/subrange);
+// opts.colors — пометить цвета изменёнными (создан стартовый цвет).
+function finishNodeCreation(newId, opts) {
+    opts = opts || {};
+    App.dirty.markStructureDirty();
+    if (opts.table) App.dirty.markTableDirty(newId);
+    if (opts.colors) App.dirty.markColorsDirty();
+    App.refresh.all();
+    App.navigation.selectNode(newId);
+    if (App.auth && App.auth.isLoggedIn()) {
+        flushPersist();
+    } else {
+        markUnsaved();
+        notifyGuestUnsavedChanges();
+    }
+}
+
+// ===== ДЕРЕВО (с компактным меню) =====
 App.tree.moveNodeUp = function(nodeId) {
     let node = getNode(nodeId);
     if (!node) return;
@@ -302,6 +334,44 @@ App.tree.deleteNode = function(nodeId) {
             return null;
         }
 
+        // Общий резервный поиск нового активного диапазона после удаления.
+        // Один и тот же алгоритм для редактора и для режима просмотра:
+        // сосед удаляемого → корневые диапазоны → первый диапазон в папках →
+        // первый range/subrange во всём дереве.
+        function findFallbackActiveRange(neighbourRange) {
+            let foundRange = neighbourRange;
+
+            // Ищем среди корневых диапазонов
+            if (!foundRange) {
+                const rootRanges = App.state.nodes.filter(n =>
+                    (n.type === 'range' || n.type === 'subrange') &&
+                    n.parentId === null
+                );
+                if (rootRanges.length > 0) {
+                    foundRange = rootRanges[0];
+                }
+            }
+
+            // Ищем во всех папках (рекурсивно)
+            if (!foundRange) {
+                const folders = App.state.nodes.filter(n => n.type === 'folder');
+                for (const folder of folders) {
+                    const rangeInFolder = findFirstRangeInFolder(folder.id);
+                    if (rangeInFolder) {
+                        foundRange = rangeInFolder;
+                        break;
+                    }
+                }
+            }
+
+            // Последний fallback: первый range/subrange во всём дереве
+            if (!foundRange) {
+                foundRange = App.state.nodes.find(n => n.type === 'range' || n.type === 'subrange');
+            }
+
+            return foundRange;
+        }
+
         function delSub(currentId) {
             let n = getNode(currentId);
             if (!n) return;
@@ -334,35 +404,7 @@ let p = getNode(n.parentId);
             // Приоритет: сосед удаляемого узла (тот, что перед ним; если его
             // нет — следующий), либо родитель-диапазон (поддиапазон поддиапазона).
             // Кандидат вычислен до delSub (см. выше).
-            let foundRange = neighbourRange;
-
-            // Ищем среди корневых диапазонов
-            if (!foundRange) {
-                const rootRanges = App.state.nodes.filter(n =>
-                    (n.type === 'range' || n.type === 'subrange') &&
-                    n.parentId === null
-                );
-                if (rootRanges.length > 0) {
-                    foundRange = rootRanges[0];
-                }
-            }
-
-            // Ищем во всех папках (рекурсивно)
-            if (!foundRange) {
-                const folders = App.state.nodes.filter(n => n.type === 'folder');
-                for (const folder of folders) {
-                    const rangeInFolder = findFirstRangeInFolder(folder.id);
-                    if (rangeInFolder) {
-                        foundRange = rangeInFolder;
-                        break;
-                    }
-                }
-            }
-
-            // Последний fallback: первый range/subrange во всём дереве
-            if (!foundRange) {
-                foundRange = App.state.nodes.find(n => n.type === 'range' || n.type === 'subrange');
-            }
+            const foundRange = findFallbackActiveRange(neighbourRange);
 
             if (foundRange) {
                 App.navigation.selectNode(foundRange.id);
@@ -375,36 +417,7 @@ let p = getNode(n.parentId);
         App.state.workLevels = App.state.workLevels.filter(lvl => lvl.parentNodeId !== id);
         const workActiveExists = !!getNode(App.state.workDisplayNodeId);
         if (!workActiveExists) {
-            // Приоритет: сосед удаляемого узла (тот, что перед ним; если его
-            // нет — следующий), либо родитель-диапазон (поддиапазон поддиапазона).
-            // Кандидат вычислен до delSub (см. выше).
-            let foundRange = neighbourRange;
-
-            if (!foundRange) {
-                const rootRanges = App.state.nodes.filter(n =>
-                    (n.type === 'range' || n.type === 'subrange') &&
-                    n.parentId === null
-                );
-                if (rootRanges.length > 0) {
-                    foundRange = rootRanges[0];
-                }
-            }
-
-            if (!foundRange) {
-                const folders = App.state.nodes.filter(n => n.type === 'folder');
-                for (const folder of folders) {
-                    const rangeInFolder = findFirstRangeInFolder(folder.id);
-                    if (rangeInFolder) {
-                        foundRange = rangeInFolder;
-                        break;
-                    }
-                }
-            }
-
-            if (!foundRange) {
-                foundRange = App.state.nodes.find(n => n.type === 'range' || n.type === 'subrange');
-            }
-
+            const foundRange = findFallbackActiveRange(neighbourRange);
             App.state.workDisplayNodeId = foundRange ? foundRange.id : null;
             persistAll();
         }
@@ -522,13 +535,7 @@ App.tree.finishInlineRename = function(save) {
 }
 
 App.tree.addRootNode = function() {
-    // Собираем имена всех корневых узлов
-    const rootNodes = App.state.nodes.filter(n => n.parentId === null);
-    const existingNames = rootNodes.map(n => n.name);
-    // ВНИМАНИЕ: дефолтные имена узлов (см. решение №8 в russian-text-inventory.md)
-    // намеренно не локализуются — при создании узла в английском интерфейсе
-    // временно используется русское имя по умолчанию.
-    const newName = App.tree.generateUniqueName('Новая папка', existingNames);
+    const newName = generateUniqueNameFor(null, 'Новая папка');
 
     let newId = App.state.nextNodeId++;
     let newNode = {
@@ -546,13 +553,31 @@ App.tree.addRootNode = function() {
     App.navigation.selectNode(newId);
 }
 
+// Создать корневой диапазон из тулбара дерева. Раньше логика жила в init.js
+// и теряла стартовый цвет; теперь единая точка создания диапазона наравне
+// с popup-меню папки (createChildNode).
+App.tree.addRootRange = function() {
+    const newName = generateUniqueNameFor(null, 'Новый диапазон');
+
+    let newId = App.state.nextNodeId++;
+    let newNode = {
+        id: newId,
+        name: newName,
+        parentId: null,
+        childrenIds: [],
+        type: 'range'
+    };
+    addNode(newNode);
+    App.grid.ensureTable(newId);
+
+    initDefaultColor(newId);
+    finishNodeCreation(newId, { table: true, colors: true });
+}
+
 App.tree.createChildNode = function(parentId, type) {
     let parent = getNode(parentId);
     if (!parent) return;
 
-    const children = parent.childrenIds.map(id => getNode(id)).filter(n => n);
-    const existingNames = children.map(n => n.name);
-    
     let baseName;
     if (type === 'folder') {
         baseName = 'Новая папка';
@@ -561,8 +586,7 @@ App.tree.createChildNode = function(parentId, type) {
     } else if (type === 'subrange') {
         baseName = 'Поддиапазон';
     }
-    
-    const newName = App.tree.generateUniqueName(baseName, existingNames);
+    const newName = generateUniqueNameFor(parentId, baseName);
 
     // ============================================================
     // ДЛЯ ПОДДИАПАЗОНА — ПОКАЗЫВАЕМ ДИАЛОГ, ПОТОМ СОЗДАЁМ
@@ -584,28 +608,9 @@ App.tree.createChildNode = function(parentId, type) {
                 parent.childrenIds.push(newId);
                 App.grid.ensureTable(newId);
                 
-                const tableId = getTableId(newId);
-                App.state.colorsPerNode[tableId] = [];
-                const colorId = App.state.nextColorId++;
-                App.state.colorsPerNode[tableId].push({
-                    id: colorId,
-                    name: "action",
-                    color: "#9C5479",
-                    type: 'simple'
-                });
-                App.state.activePerNode[tableId] = colorId;
+                initDefaultColor(newId);
                 
-                App.dirty.markStructureDirty();
-                App.dirty.markColorsDirty();
-                App.dirty.markTableDirty(newId);
-                App.refresh.all();
-                App.navigation.selectNode(newId);
-                if (App.auth && App.auth.isLoggedIn()) {
-                    flushPersist();
-                } else {
-                    markUnsaved();
-                    notifyGuestUnsavedChanges();
-                }
+                finishNodeCreation(newId, { table: true, colors: true });
             }
             // ❌ Если отмена → НИЧЕГО НЕ ДЕЛАЕМ
         });
@@ -628,32 +633,11 @@ App.tree.createChildNode = function(parentId, type) {
     App.grid.ensureTable(newId);
     
     if (type === 'range') {
-        const tableId = getTableId(newId);
-        App.state.colorsPerNode[tableId] = [];
-        const colorId = App.state.nextColorId++;
-        App.state.colorsPerNode[tableId].push({
-            id: colorId,
-            name: "action",
-            color: "#9C5479",
-            type: 'simple'
-        });
-        App.state.activePerNode[tableId] = colorId;
+        // Создан стартовый цвет диапазона — отмечаем для цветового ключа
+        initDefaultColor(newId);
     }
 
-    App.dirty.markStructureDirty();
-    if (type === 'range') {
-        App.dirty.markTableDirty(newId);
-        // Создан стартовый цвет диапазона — отмечаем для цветового ключа
-        App.dirty.markColorsDirty();
-    }
-    App.refresh.all();
-    App.navigation.selectNode(newId);
-    if (App.auth && App.auth.isLoggedIn()) {
-        flushPersist();
-    } else {
-        markUnsaved();
-        notifyGuestUnsavedChanges();
-    }
+    finishNodeCreation(newId, { table: type === 'range', colors: type === 'range' });
 }
 App.tree.renderTree = function(containerId, activeNodeId, editable, onSelectNode) {
     const container = document.getElementById(containerId);
@@ -899,20 +883,7 @@ if (hasChildren) {
 </svg>`;
     } 
 	else if (node.type === 'subrange') {
-    let color = null;
-    if (node.selectedComponentIndex !== null) {
-        const parent = getNode(node.parentId);
-        if (parent) {
-            const tableId = getTableId(parent.id);
-            const colors = App.state.colorsPerNode[tableId] || [];
-            // Берём только простые цвета (selectedComponentIndex — это индекс среди них)
-            const simpleColors = colors.filter(c => c.type === 'simple' || (!c.type && c.color));
-            const selectedColor = simpleColors[node.selectedComponentIndex];
-            if (selectedColor) {
-                color = selectedColor.color;
-            }
-        }
-    }
+    const color = App.tree.getSubrangeColor(node);
     
     iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24">
         <rect x="3" y="3" width="8" height="8" rx="1"/>

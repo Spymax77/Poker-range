@@ -71,19 +71,8 @@ App.refresh.resetToCleanData = function() {
             App.state.expandedNodes.add(folderId);
         }
 
-        // Создаём 2 цвета для диапазона
-        const tableId = getTableId(rangeId);
-        App.state.colorsPerNode[tableId] = [];
-
-       const colorId = App.state.nextColorId++;
-    App.state.colorsPerNode[tableId].push({
-    id: colorId,
-    name: "action",
-    color: "#9C5479",
-    type: 'simple'
-});
-
-App.state.activePerNode[tableId] = colorId;
+        // Стартовый цвет диапазона — единая логика с tree.js (initDefaultColor)
+        initDefaultColor(rangeId);
     }
 
     if (epRangeId) {
