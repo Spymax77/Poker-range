@@ -67,6 +67,10 @@
     */
 
     // ===== ПАТЧ: addPaletteColor (color-manager.js) — добавление цвета =====
+    // Отключён: markColorsDirty перенесён внутрь колбэка openColorPicker
+    // (color-manager.js) — флаг ставится только при реальном создании цвета,
+    // а не при открытии пикера.
+    /*
     if (typeof App.colors.addPaletteColor === 'function') {
         var _origAddPaletteColor = App.colors.addPaletteColor;
         App.colors.addPaletteColor = function() {
@@ -74,6 +78,7 @@
             if (ensureDirty()) App.dirty.markColorsDirty();
         };
     }
+    */
 
     // ===== ПАТЧ: createNewProfile (color-manager.js) — создание профиля =====
     if (typeof App.colors.createNewProfile === 'function') {

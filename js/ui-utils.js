@@ -376,6 +376,12 @@ okBtn.addEventListener('click', function() {
         App.colors.renderAllColors(App.state.currentNodeId, true);
         App.refresh.allGrids();
         markUnsaved();
+        // Цвет реально создан — помечаем цветовые данные как изменённые.
+        // (раньше dirty-флаг ставил патч из dirty-integration.js, но слишком
+        // рано — при открытии пикера, а не при создании цвета)
+        if (App.dirty) {
+            App.dirty.markColorsDirty();
+        }
     }
 
     editColorId = null;
