@@ -16,7 +16,16 @@ App.navigation.selectNode = function(nodeId) {
         return;
     }
     App.state.currentNodeId = nodeId;
-   persistAll();
+    // Метаданные (активный узел) изменились — помечаем для автосохранения.
+    // Раньше это делал патч из dirty-integration.js, но он срабатывал до
+    // диалога «Сохранить?» при смене узла с несохранёнными правками: после
+    // «Да» метаданные сохранялись со старым узлом и после F5 пользователь
+    // возвращался назад. В гостевом режиме навигационное состояние на сервер
+    // не переносится (как и в патче).
+    if (App.dirty && App.auth && App.auth.isLoggedIn()) {
+        App.dirty.markMetadataDirty();
+    }
+    persistAll();
 
     if (node && node.parentId !== null) {
         App.state.expandedNodes.add(node.parentId);

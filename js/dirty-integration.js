@@ -29,6 +29,10 @@
     }
 
     // ===== ПАТЧ: selectNode (navigation.js) — выбор узла (меняет метаданные) =====
+    // Отключён: markMetadataDirty перенесён внутрь selectNode (navigation.js)
+    // после смены currentNodeId. Патч помечал метаданные ДО диалога
+    // «Сохранить?» — после «Да» они сохранялись со старым узлом.
+    /*
     if (typeof App.navigation.selectNode === 'function') {
         var _origSelectNode = App.navigation.selectNode;
         App.navigation.selectNode = function(nodeId) {
@@ -41,6 +45,7 @@
             }
         };
     }
+    */
 
     // ===== ПАТЧ: saveButtonStyle (style-manager.js) — стиль кнопки =====
     // Отключён: markStructureDirty перенесён внутрь saveButtonStyle (style-manager.js)
@@ -109,6 +114,10 @@
     */
 
     // ===== ПАТЧ: proceedDeleteColor (color-manager.js) — удаление цвета =====
+    // Отключён: markColorsDirty перенесён внутрь proceedDeleteColor
+    // (color-manager.js). Там же — markTableDirty, если очищались ячейки
+    // матрицы (цвет использовался в ячейках → таблица реально меняется).
+    /*
     if (typeof App.colors.proceedDeleteColor === 'function') {
         var _origProceedDeleteColor = App.colors.proceedDeleteColor;
         App.colors.proceedDeleteColor = function(nodeId, tableId, colorId) {
@@ -116,6 +125,7 @@
             if (ensureDirty()) App.dirty.markColorsDirty();
         };
     }
+    */
 
     // ===== ПАТЧ: copyRange (clipboard.js) — копирование (не меняет данные) =====
     // НЕ трогаем — копирование не меняет состояние

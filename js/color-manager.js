@@ -304,11 +304,13 @@ App.colors.proceedDeleteColor = function(nodeId, tableId, colorId) {
     
     // Очищаем ячейки, где использовался этот цвет
     const matrix = App.state.cellStorage[getTableId(nodeId)];
+    let clearedCells = 0;
     if (matrix) {
         for (let i = 0; i < 13; i++) {
             for (let j = 0; j < 13; j++) {
                 if (matrix[i][j] === colorId) {
                     matrix[i][j] = null;
+                    clearedCells++;
                 }
             }
         }
@@ -317,6 +319,17 @@ App.colors.proceedDeleteColor = function(nodeId, tableId, colorId) {
     App.colors.renderAllColors(nodeId, true);
     App.events.emit('data:changed');
     App.events.emit('unsaved:mark');
+    // Цвет удалён — помечаем цветовые данные как изменённые
+    // (раньше dirty-флаг ставил патч из dirty-integration.js)
+    if (App.dirty) {
+        App.dirty.markColorsDirty();
+        // Если цвет использовался в матрице — ячейки очищены, таблица изменилась.
+        // markTableDirty НЕ сохраняет таблицу сам: она уйдёт на сервер только
+        // после подтверждения пользователя («Сохранить» или «Да» в диалоге).
+        // Без пометки очищенные ячейки не попали бы в сохранение даже по
+        // «Сохранить», и после F5 вернулись бы со ссылкой на удалённый цвет.
+        if (clearedCells > 0) App.dirty.markTableDirty(nodeId);
+    }
 }
 
 App.colors.isColorUsedInMatrix = function(nodeId, colorId) {
