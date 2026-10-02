@@ -81,6 +81,9 @@
     */
 
     // ===== ПАТЧ: createNewProfile (color-manager.js) — создание профиля =====
+    // Отключён: markColorsDirty теперь приходит из createMultiColor (вызывается
+    // внутри createNewProfile), флаг ставится в точке реального создания.
+    /*
     if (typeof App.colors.createNewProfile === 'function') {
         var _origCreateNewProfile = App.colors.createNewProfile;
         App.colors.createNewProfile = function() {
@@ -88,8 +91,13 @@
             if (ensureDirty()) App.dirty.markColorsDirty();
         };
     }
+    */
 
     // ===== ПАТЧ: createMultiColor (color-manager.js) — создание мультицвета =====
+    // Отключён: markColorsDirty перенесён внутрь createMultiColor
+    // (color-manager.js) — покрывает все пути вызова: кнопку «Добавить
+    // мультицвет» (createNewProfile) и импорт диапазонов (import-manager.js).
+    /*
     if (typeof App.colors.createMultiColor === 'function') {
         var _origCreateMultiColor = App.colors.createMultiColor;
         App.colors.createMultiColor = function(nodeId, name, components, boundaries) {
@@ -98,6 +106,7 @@
             return result;
         };
     }
+    */
 
     // ===== ПАТЧ: proceedDeleteColor (color-manager.js) — удаление цвета =====
     if (typeof App.colors.proceedDeleteColor === 'function') {

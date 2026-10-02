@@ -252,7 +252,10 @@ App.colors.createMultiColor = function(nodeId, name, components, boundaries) {
         boundaries: boundaries || []
     };
     App.state.colorsPerNode[tableId].push(newColor);
-    
+    // Мультицвет реально создан — помечаем цветовые данные как изменённые
+    // (раньше dirty-флаг ставили патчи из dirty-integration.js)
+    if (App.dirty) App.dirty.markColorsDirty();
+
     return newId;
 }
 
@@ -384,9 +387,14 @@ App.colors.removeUnusedColors = function(nodeId) {
     App.events.emit('unsaved:mark');
     if (App.dirty) {
         App.dirty.markColorsDirty();
-        App.dirty.markTableDirty(nodeId);
+        // markTableDirty убран: removeUnusedColors только читает матрицу и
+        // меняет цвета/активный профиль — сама таблица не меняется, сохранять её не нужно.
+        // App.dirty.markTableDirty(nodeId);
     }
-    if (typeof flushPersist === 'function') flushPersist();
+    // persistAll (а не flushPersist): цвета уйдут на сервер через дебаунс ~2с.
+    // flushPersist здесь нельзя — он сохраняет ВСЁ грязное, включая таблицы
+    // с непринятыми правками ячеек (например, свежую покраску до «Сохранить»).
+    persistAll();
     return { removed: removed };
 };
 
