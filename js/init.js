@@ -596,10 +596,10 @@ document.getElementById('treeAddFolderBtn')?.addEventListener('click', App.tree.
 document.getElementById('treeAddRangeBtn')?.addEventListener('click', App.tree.addRootRange);
 
 document.getElementById('treeRenameBtn')?.addEventListener('click', () => {
-    if (App.state.currentNodeId) {
-        const node = getNode(App.state.currentNodeId);
+    if (App.state.selectedNodeId) {
+        const node = getNode(App.state.selectedNodeId);
         if (node) {
-            App.tree.startInlineRename(App.state.currentNodeId);
+            App.tree.startInlineRename(App.state.selectedNodeId);
         } else {
             App.modals.showFloatingModal(App.i18n.t('tree.noActiveNodeToRename'));
         }
@@ -607,15 +607,15 @@ document.getElementById('treeRenameBtn')?.addEventListener('click', () => {
 });
 
 document.getElementById('treeMoveUpBtn')?.addEventListener('click', () => {
-    if (App.state.currentNodeId) App.tree.moveNodeUp(App.state.currentNodeId);
+    if (App.state.selectedNodeId) App.tree.moveNodeUp(App.state.selectedNodeId);
 });
 
 document.getElementById('treeMoveDownBtn')?.addEventListener('click', () => {
-    if (App.state.currentNodeId) App.tree.moveNodeDown(App.state.currentNodeId);
+    if (App.state.selectedNodeId) App.tree.moveNodeDown(App.state.selectedNodeId);
 });
 
 document.getElementById('treeDeleteBtn')?.addEventListener('click', () => {
-    if (App.state.currentNodeId) App.tree.deleteNode(App.state.currentNodeId);
+    if (App.state.selectedNodeId) App.tree.deleteNode(App.state.selectedNodeId);
 });
 
 document.getElementById('treeCollapseText')?.addEventListener('click', () => {

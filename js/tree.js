@@ -1039,7 +1039,11 @@ function buildTreeNodeActions(node, editable) {
     actionsDiv.appendChild(menuBtn);
     actionsDiv.appendChild(popupMenu);
 
-    function closeMenu() {
+    let closeTimer = null;
+
+    function finishClose() {
+        closeTimer = null;
+        popupMenu.classList.remove('menu-closing');
         popupMenu.style.display = "none";
         actionsDiv.classList.remove('menu-open');
         document.removeEventListener('click', outsideClick);
@@ -1048,6 +1052,20 @@ function buildTreeNodeActions(node, editable) {
         popupMenu.style.top = '';
         popupMenu.style.left = '';
         popupMenu.style.right = '';
+        popupMenu.style.transformOrigin = '';
+    }
+
+    function closeMenu() {
+        if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+        popupMenu.classList.remove('menu-entering');
+        const wasOpen = popupMenu.style.display === "block";
+        if (!wasOpen) {
+            finishClose();
+            return;
+        }
+        // Эффект закрытия как у freebetrange: быстрое затухание ~120мс
+        popupMenu.classList.add('menu-closing');
+        closeTimer = setTimeout(finishClose, 120);
     }
 
     function outsideClick(e) {
@@ -1060,11 +1078,13 @@ function buildTreeNodeActions(node, editable) {
         // ===== ЗАКРЫВАЕМ ВСЕ ОСТАЛЬНЫЕ МЕНЮ =====
         document.querySelectorAll('.popup-menu').forEach(m => {
             if (m !== popupMenu) {
+                m.classList.remove('menu-entering', 'menu-closing');
                 m.style.display = 'none';
                 m.style.position = '';
                 m.style.top = '';
                 m.style.left = '';
                 m.style.right = '';
+                m.style.transformOrigin = '';
                 const parent = m.closest('.tree-actions-popup');
                 if (parent) parent.classList.remove('menu-open');
             }
@@ -1073,6 +1093,7 @@ function buildTreeNodeActions(node, editable) {
         const isOpenMenu = popupMenu.style.display === "block";
         closeMenu();
         if (!isOpenMenu) {
+            popupMenu.classList.remove('menu-closing');
             popupMenu.style.display = "block";
             // Позиционируем меню фиксированно относительно viewport, чтобы не обрезалось при overflow скролле дерева
             const btnRect = menuBtn.getBoundingClientRect();
@@ -1088,7 +1109,12 @@ function buildTreeNodeActions(node, editable) {
             const popupRect = popupMenu.getBoundingClientRect();
             if (popupRect.bottom > window.innerHeight - 8) {
                 popupMenu.style.top = Math.max(8, window.innerHeight - popupRect.height - 8) + 'px';
+                // Меню прижато к низу — растёт из нижнего угла
+                popupMenu.style.transformOrigin = '0 100%';
             }
+
+            // Эффект появления как у freebetrange: рост из 80% + проявление, ~120мс
+            popupMenu.classList.add('menu-entering');
 
             actionsDiv.classList.add('menu-open');
             document.addEventListener('click', outsideClick);
