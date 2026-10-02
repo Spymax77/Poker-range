@@ -786,33 +786,55 @@ function initTreeResize() {
 
 // ===== ЗАПУСК ПРИ ЗАГРУЗКЕ =====
 (function() {
+    // ES-модули матрицы (js/modules/grid/grid-*.js) исполняются асинхронно
+    // после классических скриптов. Если auth/storage успевают отработать
+    // раньше, чем догрузятся модули, App.grid ещё не существует и
+    // App.refresh.all() падает сразу после отрисовки дерева: дерево есть,
+    // матрицы нет (лечится F5). Поэтому явно дожидаемся модулей — параллельно
+    // с остальной инициализацией, так что обычный старт не замедляется.
+    function waitForGridModules(timeoutMs) {
+        if (App.grid) return Promise.resolve();
+        return new Promise(function(resolve) {
+            var started = Date.now();
+            var timer = setInterval(function() {
+                if (App.grid || Date.now() - started > timeoutMs) {
+                    clearInterval(timer);
+                    resolve();
+                }
+            }, 25);
+        });
+    }
+
+    function switchTabWhenReady(tab) {
+        return waitForGridModules(10000).then(function() {
+            App.navigation.switchTab(tab);
+            if (tab === 'constructor' && App.state.analysisMode) {
+                App.grid.refreshConstructorAnalysisMode();
+            }
+            App.grid.updateConstructorToolbarState();
+            App.comments.initComments();
+            initTreeResize();
+        });
+    }
+
     App.auth.checkSession().then(function() {
-        return App.storage.initialize();
+        return Promise.all([
+            App.storage.initialize(),
+            waitForGridModules(10000)
+        ]);
     }).then(function() {
         return loadFromStorage().then(function(tab) {
             return tab || 'constructor';
         });
     }).then(function(activeTab) {
-        App.navigation.switchTab(activeTab);
-        if (activeTab === 'constructor' && App.state.analysisMode) {
-            App.grid.refreshConstructorAnalysisMode();
-        }
-        App.grid.updateConstructorToolbarState();
-        App.comments.initComments();
-        initTreeResize();
+        return switchTabWhenReady(activeTab);
     }).catch(function(error) {
         console.error('Ошибка инициализации хранилища:', error);
         loadFromStorage().then(function(activeTab) {
-            App.navigation.switchTab(activeTab || 'constructor');
-            App.grid.updateConstructorToolbarState();
-            App.comments.initComments();
-            initTreeResize();
+            return switchTabWhenReady(activeTab || 'constructor');
         }).catch(function(loadError) {
             console.error('Ошибка резервной загрузки состояния:', loadError);
-            App.navigation.switchTab('constructor');
-            App.grid.updateConstructorToolbarState();
-            App.comments.initComments();
-            initTreeResize();
+            return switchTabWhenReady('constructor');
         });
     }).then(function() {
         initialLoadDone = true;
