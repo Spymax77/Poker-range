@@ -13,6 +13,10 @@
     }
 
     // ===== ПАТЧ: setCellProfile (grid modules) — клик/покраска ячейки =====
+    // Отключён: markTableDirty перенесён внутрь setCellProfile
+    // (js/modules/grid/grid-operations.js) — метка ставится только при
+    // фактическом изменении ячейки.
+    /*
     function patchGridSetCellProfile() {
         if (!App.grid || typeof App.grid.setCellProfile !== 'function') return false;
         var _origSetCellProfile = App.grid.setCellProfile;
@@ -27,6 +31,7 @@
     if (!patchGridSetCellProfile()) {
         document.addEventListener('DOMContentLoaded', patchGridSetCellProfile, { once: true });
     }
+    */
 
     // ===== ПАТЧ: selectNode (navigation.js) — выбор узла (меняет метаданные) =====
     // Отключён: markMetadataDirty перенесён внутрь selectNode (navigation.js)

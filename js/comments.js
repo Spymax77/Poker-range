@@ -11,6 +11,10 @@ App.comments.getComments = function(nodeId) {
 App.comments.setComments = function(nodeId, text) {
     const tableId = getTableId(nodeId);
     App.state.commentsPerNode[tableId] = text;
+    // Комментарии хранятся в ключе структуры (commentsPerNode внутри
+    // poker_range_structure_*) — без этой метки persistAll не сохранял
+    // их вовсе
+    if (App.dirty) App.dirty.markStructureDirty();
     markUnsaved();
 }
 

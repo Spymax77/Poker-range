@@ -9,5 +9,10 @@ export function setCellProfile(nodeId, r, c, pid, immediateSave = true) {
     const old = App.state.cellStorage[tid][r][c];
     if (old === pid) return false;
     App.state.cellStorage[tid][r][c] = pid;
+    // Ячейка реально изменена — помечаем таблицу как изменённую.
+    // (раньше dirty-флаг ставил патч patchGridSetCellProfile из
+    // dirty-integration.js; immediateSave на метку не влияет —
+    // любое фактическое изменение матрицы должно сохраняться)
+    if (App.dirty) App.dirty.markTableDirty(nodeId);
     return true;
 }

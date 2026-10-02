@@ -634,6 +634,8 @@ document.getElementById('treeCollapseText')?.addEventListener('click', () => {
     // Меняем стрелки на ▶ только у нод внутри вложенных уровней
     container.querySelectorAll('.tree-children .tree-arrow').forEach(a => { if (a.textContent) a.textContent = '▶'; });
 
+    // Состояние свёрнутости — часть метаданных, помечаем для сохранения
+    if (App.dirty) App.dirty.markMetadataDirty('editor');
     persistAll();
 });
 
@@ -653,6 +655,8 @@ document.getElementById('gtoTreeCollapseText')?.addEventListener('click', () => 
     // Меняем стрелки на ▶ только у нод внутри вложенных уровней
     container.querySelectorAll('.tree-children .tree-arrow').forEach(a => { if (a.textContent) a.textContent = '▶'; });
 
+    // Состояние свёрнутости — часть метаданных, помечаем для сохранения
+    if (App.dirty) App.dirty.markMetadataDirty('gto');
     persistAll();
 });
 

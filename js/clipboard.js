@@ -158,9 +158,13 @@ App.clipboard.createCopyAndFinalize = function(original) {
         App.dirty.markColorsDirty();
         App.dirty.markTableDirty(newId);
     }
-    flushPersist();
     App.refresh.all();
+    // Сначала переключаем узел: selectNode метит метаданные (активный узел).
+    // flushPersist вызывается ПОСЛЕ — иначе он сохранит метаданные со старым
+    // узлом, а его асинхронный clearDirty() сотрёт метку, поставленную
+    // selectNode'ом, и после F5 активным оставался бы прежний диапазон.
     App.navigation.selectNode(newId);
+    flushPersist();
     App.grid.updateCurrentDisplay();
 
 }
@@ -351,6 +355,10 @@ App.clipboard.executePaste = function(nodeId) {
 
     // Диапазон вставлен — отмечаем таблицу узла грязной для сохранения
     if (App.dirty && nodeId) {
+        // Вставленные цвета (colorsPerNode + activePerNode, строки выше)
+        // тоже нужно сохранить — иначе после F5 палитра пустая, а ячейки
+        // ссылаются на несуществующие цвета
+        App.dirty.markColorsDirty();
         App.dirty.markTableDirty(nodeId);
     }
 

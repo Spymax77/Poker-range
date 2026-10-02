@@ -650,6 +650,10 @@ for (const comp of newColor.components) {
     newBoundaries.push(sum);
 }
 newColor.boundaries = newBoundaries;
+        // Слитый мультицвет реально создан — помечаем цветовые данные как
+        // изменённые. Без метки при повторном импорте, где все ячейки идут
+        // в слияние, слитые цвета не сохранялись (после F5 — пустые ячейки)
+        if (App.dirty) App.dirty.markColorsDirty();
 
         return newId;
     }
