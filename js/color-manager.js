@@ -40,6 +40,11 @@ App.colors.setActiveForNode = function(nodeId, colorId) {
     } else {
         App.state.activePerNode[tableId] = colorId;
     }
+    // Смена активного профиля меняет цветовые данные узла
+    // (раньше dirty-флаг ставил патч из dirty-integration.js)
+    if (App.dirty) {
+        App.dirty.markColorsDirty();
+    }
 }
 
 

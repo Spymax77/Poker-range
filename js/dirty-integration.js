@@ -55,6 +55,8 @@
     */
 
     // ===== ПАТЧ: setActiveForNode (color-manager.js) — смена активного профиля =====
+    // Отключён: markColorsDirty перенесён внутрь setActiveForNode (color-manager.js)
+    /*
     if (typeof App.colors.setActiveForNode === 'function') {
         var _origSetActiveForNode = App.colors.setActiveForNode;
         App.colors.setActiveForNode = function(nodeId, colorId) {
@@ -62,6 +64,7 @@
             if (ensureDirty()) App.dirty.markColorsDirty();
         };
     }
+    */
 
     // ===== ПАТЧ: addPaletteColor (color-manager.js) — добавление цвета =====
     if (typeof App.colors.addPaletteColor === 'function') {
