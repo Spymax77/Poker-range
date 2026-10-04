@@ -266,8 +266,12 @@
                                 const multiColors = colorsData.multi || [];
                                 
                                 for (const sc of simpleColors) {
+                                    // while (а не одиночная проверка): ID, выданный
+                                    // счётчиком, тоже может оказаться занятым —
+                                    // счётчик мог отстать от данных после прошлых
+                                    // импортов, где ID брались из источника
                                     let colorId = sc.id;
-                                    if (App.state.colorsPerNode[tableId].some(c => c.id === colorId)) {
+                                    while (App.state.colorsPerNode[tableId].some(c => c.id === colorId)) {
                                         colorId = App.state.nextColorId++;
                                     }
                                     App.state.colorsPerNode[tableId].push({
@@ -279,8 +283,9 @@
                                 }
                                 
                                 for (const mc of multiColors) {
+                                    // while — см. комментарий в блоке simpleColors
                                     let colorId = mc.id;
-                                    if (App.state.colorsPerNode[tableId].some(c => c.id === colorId)) {
+                                    while (App.state.colorsPerNode[tableId].some(c => c.id === colorId)) {
                                         colorId = App.state.nextColorId++;
                                     }
                                     
@@ -518,8 +523,11 @@
                 const multiColors = colorsData.multi || [];
 
                 for (const sc of simpleColors) {
+                    // while (а не одиночная проверка): ID, выданный счётчиком,
+                    // тоже может оказаться занятым — счётчик мог отстать от
+                    // данных после прошлых импортов, где ID брались из источника
                     let colorId = sc.id;
-                    if (App.editor.colorsPerNode[tableId].some(c => c.id === colorId)) {
+                    while (App.editor.colorsPerNode[tableId].some(c => c.id === colorId)) {
                         colorId = App.editor.nextColorId++;
                     }
                     App.editor.colorsPerNode[tableId].push({
@@ -531,8 +539,9 @@
                 }
 
                 for (const mc of multiColors) {
+                    // while — см. комментарий в блоке simpleColors
                     let colorId = mc.id;
-                    if (App.editor.colorsPerNode[tableId].some(c => c.id === colorId)) {
+                    while (App.editor.colorsPerNode[tableId].some(c => c.id === colorId)) {
                         colorId = App.editor.nextColorId++;
                     }
 

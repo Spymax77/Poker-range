@@ -223,6 +223,25 @@ async function loadFromStorageV2() {
             branch.nextColorId = branch.nextColorId || 1;
         }
 
+        // Защита от рассинхрона счётчика: nextColorId в сохранённых данных мог
+        // отстать от фактических ID — импорт дефолта/конфигураций и перенос
+        // GTO→редактор берут ID цветов из источника, не обновляя счётчик
+        // (у новых пользователей после развёртывания дефолта он оставался 1).
+        // Поднимаем счётчик до max(ID)+1 по всем таблицам ветки. Только вверх
+        // (через max): сами данные не трогаем, счётчик — лишь источник
+        // кандидатов ID, уникальность внутри таблицы обеспечивают гварды.
+        var maxColorId = 0;
+        for (var cpnKey in branch.colorsPerNode) {
+            var branchColors = branch.colorsPerNode[cpnKey];
+            if (Array.isArray(branchColors)) {
+                for (var bci = 0; bci < branchColors.length; bci++) {
+                    var bcId = branchColors[bci] && branchColors[bci].id;
+                    if (typeof bcId === 'number' && bcId > maxColorId) maxColorId = bcId;
+                }
+            }
+        }
+        if (branch.nextColorId <= maxColorId) branch.nextColorId = maxColorId + 1;
+
         // Загружаем метаданные
         var metadata = App.storage.load('poker_range_metadata_' + mode);
         if (metadata) {
