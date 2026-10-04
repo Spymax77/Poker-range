@@ -87,6 +87,9 @@ App.paint.handlePaintMove = function(e) {
 }
 
 App.paint.handlePaintEnd = function() {
+    // Запоминаем, шло ли рисование, ДО сброса флага: mouseup случается на любом
+    // клике по странице (кнопки, слайдеры, дерево), а не только на ячейках матрицы.
+    const wasPainting = App.state.painting;
     App.state.painting = false;
     App.state.lastPaintedCell = null;
     // В режиме анализа рисование отключено (см. handlePaintStart/handlePaintMove),
@@ -96,7 +99,13 @@ App.paint.handlePaintEnd = function() {
     // отработать click-слушатель ячейки (toggleConstructorCellPin), рамка
     // закрепления добавляется на уже отсоединённый от DOM старый элемент
     // ячейки и визуально не появляется.
-    if (App.state.currentNodeId && App.currentMode !== 'gto' && !App.state.analysisMode) {
+    //
+    // Ререндер нужен только после реального рисования. Без проверки wasPainting
+    // любой клик по кнопкам (например, «высота диапазона») пересобирает сетку
+    // на mouseup, а click-обработчик кнопки затем меняет класс на wrapper уже
+    // ПОСЛЕ пересоздания оверлеев: Chrome не анимирует transition на элементах,
+    // которые ещё ни разу не были отрисованы, и оверлеи схлопываются мгновенно.
+    if (wasPainting && App.state.currentNodeId && App.currentMode !== 'gto' && !App.state.analysisMode) {
         App.grid.updateCurrentDisplay();
     }
 }

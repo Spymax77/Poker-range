@@ -2388,8 +2388,8 @@ body.dragging .tree-item.active .tree-actions-popup {
 .cell-overlay {
     position: absolute;
     top: 0;
-    left: 0;
-    width: 100%;
+    left: -1px;
+    width: calc(100% + 2px);
     background: var(--bg-page);
     pointer-events: none;
     z-index: 1;
@@ -2397,6 +2397,11 @@ body.dragging .tree-item.active .tree-actions-popup {
     overflow: hidden;
     transition: transform 0.3s ease;
     transform-origin: top center;
+    /* Оверлей сделан на 2px шире ячейки (и сдвинут на 1px влево): во время
+       transform-анимации Chrome растеризует слой с субпиксельным сглаживанием,
+       из-за чего правый край оверлея становится полупрозрачным и сквозь него
+       просвечивает заливка ячейки (тонкая цветная полоска справа). Выступающие
+       пиксели обрезаются overflow: hidden у .hand-cell (см. base.css). */
 }
 /* ===== СКРЫТИЕ ОВЕРЛЕЕВ ПОДДИАПАЗОНОВ (ПРОСМОТР) ===== */
 .matrix1-wrapper.hide-subrange-overlays .cell-overlay {
