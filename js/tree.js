@@ -383,6 +383,23 @@ App.tree.deleteNode = function(nodeId) {
 const tableId = getTableId(currentId);
 delete App.state.cellStorage[tableId];
 
+// Цвета, активный профиль и комментарии удалённого узла тоже удаляем:
+// иначе они оставались в памяти, а при ближайшем сохранении
+// (colorsPerNode уходит на сервер ЦЕЛИКОМ) мусорные записи от удалённых
+// диапазонов накапливались в ключе poker_range_colors_* и в
+// structure-ключе (commentsPerNode).
+delete App.state.colorsPerNode[tableId];
+delete App.state.activePerNode[tableId];
+delete App.state.commentsPerNode[tableId];
+
+// Серверный ключ таблицы удалённого узла больше не нужен: раньше он
+// оставался в БД навсегда (осиротевший ключ на каждое удаление).
+// Гостю не отправляем — он всё равно не сохраняет, а уведомление о
+// необходимости авторизации здесь лишнее.
+if (App.auth && App.auth.isLoggedIn()) {
+    App.storage.remove('poker_range_table_' + App.currentMode + '_' + currentId);
+}
+
 
 
 let p = getNode(n.parentId);
@@ -396,7 +413,12 @@ let p = getNode(n.parentId);
         const neighbourRange = findNeighbourRange(nodeToDelete);
 
         delSub(id);
-        if (App.dirty) App.dirty.markStructureDirty();
+        if (App.dirty) {
+            App.dirty.markStructureDirty();
+            // Очистка colorsPerNode/activePerNode удалённых узлов должна
+            // уйти в цветовой ключ — он сохраняется только при dirty.colors
+            App.dirty.markColorsDirty();
+        }
 
         // Поиск нового активного диапазона в редакторе
         const activeExists = !!getNode(App.state.currentNodeId);
