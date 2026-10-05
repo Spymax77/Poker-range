@@ -459,30 +459,31 @@ const tabsToggle = document.getElementById('tabsToggle');
 const mainTabs = document.getElementById('mainTabs');
 const mobileTabsQuery = window.matchMedia('(max-width: 530px)');
 const tabsMenuToggle = document.getElementById('tabsMenuToggle');
-const mobileTabsMenuQuery = window.matchMedia('(max-width: 849px)');
 
 function updateMobileTabsState() {
     if (!mainTabs || !tabsToggle) return;
 
+    // Панель вкладок по умолчанию открыта; свернутое состояние существует
+    // только на мобильной ширине и сбрасывается при возврате на десктоп.
     if (!mobileTabsQuery.matches) {
-        mainTabs.classList.remove('tabs-open');
-        tabsToggle.setAttribute('aria-expanded', 'false');
-    }
-
-    if (!mobileTabsMenuQuery.matches && tabsMenuToggle) {
-        mainTabs.classList.remove('tabs-menu-open');
-        tabsMenuToggle.setAttribute('aria-expanded', 'false');
-        tabsMenuToggle.setAttribute('aria-label', App.i18n.t('tabs.openMenu'));
+        mainTabs.classList.remove('tabs-closed');
+        document.body.classList.remove('tabs-closed');
+        tabsToggle.setAttribute('aria-expanded', 'true');
+        tabsToggle.setAttribute('aria-label', App.i18n.t('tabs.showPanelHide'));
     }
 }
 
 if (tabsToggle && mainTabs) {
     tabsToggle.addEventListener('click', function() {
-        const isOpen = mainTabs.classList.toggle('tabs-open');
-        tabsToggle.setAttribute('aria-expanded', String(isOpen));
+        // Панель открыта по умолчанию: клик по язычку сворачивает её.
+        // Класс дублируется на body, чтобы скрыть и кнопки вкладок,
+        // которые на мобильных находятся внутри контента страницы.
+        const isClosed = mainTabs.classList.toggle('tabs-closed');
+        document.body.classList.toggle('tabs-closed', isClosed);
+        tabsToggle.setAttribute('aria-expanded', String(!isClosed));
         tabsToggle.setAttribute(
             'aria-label',
-            isOpen ? App.i18n.t('tabs.showPanelHide') : App.i18n.t('tabs.showPanel')
+            isClosed ? App.i18n.t('tabs.showPanel') : App.i18n.t('tabs.showPanelHide')
         );
     });
 
@@ -490,16 +491,82 @@ if (tabsToggle && mainTabs) {
     updateMobileTabsState();
 }
 
-if (tabsMenuToggle && mainTabs) {
-    tabsMenuToggle.addEventListener('click', function() {
-        const isOpen = mainTabs.classList.toggle('tabs-menu-open');
-        tabsMenuToggle.setAttribute('aria-expanded', String(isOpen));
+// ===== МОБИЛЬНАЯ ВЫЕЗЖАЮЩАЯ ПАНЕЛЬ ДЕРЕВА (GTO / Редактор) =====
+// Кнопка «три полоски» в шапке выезжает деревом слева поверх матрицы.
+// Закрытие: повторное нажатие, касание вне панели или смена вкладки.
+function setTreePanelOpen(open) {
+    document.body.classList.toggle('tree-open', open);
+    if (tabsMenuToggle) {
+        tabsMenuToggle.setAttribute('aria-expanded', String(open));
         tabsMenuToggle.setAttribute(
             'aria-label',
-            isOpen ? App.i18n.t('tabs.openMenuClose') : App.i18n.t('tabs.openMenu')
+            open ? App.i18n.t('tree.hidePanel') : App.i18n.t('tree.openPanel')
         );
-    });
+    }
 }
+
+// Высота шапки передаётся в CSS-переменную, чтобы шторка дерева
+// начиналась ровно под ней.
+function updateTreePanelOffset() {
+    if (!mainTabs) return;
+    document.documentElement.style.setProperty(
+        '--mobile-header-h',
+        mainTabs.offsetHeight + 'px'
+    );
+}
+
+if (tabsMenuToggle) {
+    tabsMenuToggle.addEventListener('click', function() {
+        setTreePanelOpen(!document.body.classList.contains('tree-open'));
+    });
+
+    // Касание вне панели дерева (по матрице и любому другому месту) закрывает её.
+    document.addEventListener('pointerdown', function(e) {
+        if (!document.body.classList.contains('tree-open')) return;
+        if (e.target.closest && (e.target.closest('.tree-panel') || e.target.closest('#tabsMenuToggle'))) return;
+        setTreePanelOpen(false);
+    });
+
+    window.addEventListener('resize', updateTreePanelOffset);
+    window.addEventListener('load', updateTreePanelOffset);
+    updateTreePanelOffset();
+}
+
+// ===== СКРОЛЛЯЩИЕСЯ КНОПКИ ВКЛАДОК (МОБИЛЬНЫЕ) =====
+// На мобильной ширине строка кнопок GTO/Редактор/Просмотр перемещается
+// внутрь активной страницы — она прокручивается вместе с контентом и
+// уезжает вверх при скролле. На десктопе возвращается в шапку.
+// Паттерн тот же, что у updateConstructorModeToolbarPosition.
+const tabButtons = document.getElementById('tabButtons');
+const authPanel = document.getElementById('authPanel');
+const tabButtonsMobileQuery = window.matchMedia('(max-width: 849px)');
+
+function updateTabButtonsPosition() {
+    if (!tabButtons || !mainTabs) return;
+
+    const activePage = document.querySelector('.page.active-page');
+    if (tabButtonsMobileQuery.matches && activePage) {
+        if (tabButtons.parentElement !== activePage) {
+            activePage.insertBefore(tabButtons, activePage.firstChild);
+        }
+    } else if (tabButtons.parentElement !== mainTabs) {
+        // Возвращаем в шапку на исходное место (перед панелью аккаунта).
+        if (authPanel) {
+            mainTabs.insertBefore(tabButtons, authPanel);
+        } else {
+            mainTabs.appendChild(tabButtons);
+        }
+    }
+    // Высота шапки изменилась — пересчитываем отступ шторки дерева.
+    updateTreePanelOffset();
+}
+
+// Точка входа для switchTab (navigation.js) и обработчиков ресайза.
+App.ui = App.ui || {};
+App.ui.updateTabButtonsPosition = updateTabButtonsPosition;
+App.ui.updateTreePanelOffset = updateTreePanelOffset;
+
+window.addEventListener('resize', updateTabButtonsPosition);
 
 // ===== МОБИЛЬНАЯ ПАНЕЛЬ ФИЛЬТРОВ GTO =====
 const gtoFilterToggle = document.getElementById('gtoFilterToggle');

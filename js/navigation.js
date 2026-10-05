@@ -164,6 +164,32 @@ App.navigation.selectGtoNode = function(nodeId) {
 
 // ===== ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ =====
 App.navigation.switchTab = function(page) {
+    // Класс активного раздела на body — используется мобильными стилями:
+    // в ГТО и Редакторе язычок панели вкладок скрыт, в Просмотре остаётся.
+    document.body.classList.remove('page-gto', 'page-constructor', 'page-work');
+    document.body.classList.add('page-' + page);
+
+    // Панель вкладок при смене раздела всегда раскрыта (сворачивается
+    // только действием пользователя в Просмотре).
+    const mainTabsEl = document.getElementById('mainTabs');
+    if (mainTabsEl) {
+        mainTabsEl.classList.remove('tabs-closed');
+        document.body.classList.remove('tabs-closed');
+        const tabsToggleEl = document.getElementById('tabsToggle');
+        if (tabsToggleEl) {
+            tabsToggleEl.setAttribute('aria-expanded', 'true');
+            tabsToggleEl.setAttribute('aria-label', App.i18n.t('tabs.showPanelHide'));
+        }
+    }
+
+    // Выезжающая панель дерева на мобильных закрывается при смене раздела.
+    document.body.classList.remove('tree-open');
+    const tabsMenuToggleEl = document.getElementById('tabsMenuToggle');
+    if (tabsMenuToggleEl) {
+        tabsMenuToggleEl.setAttribute('aria-expanded', 'false');
+        tabsMenuToggleEl.setAttribute('aria-label', App.i18n.t('tree.openPanel'));
+    }
+
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     document.querySelector(`.tab-btn[data-page="${page}"]`).classList.add("active");
 
@@ -237,6 +263,13 @@ App.navigation.switchTab = function(page) {
         }
         App.comments.renderWorkComments(App.state.workDisplayNodeId);
         App.refresh.all();
+    }
+
+    // Кнопки вкладок на мобильных переезжают в активную страницу,
+    // чтобы прокручиваться вместе с её контентом. Вызов после активации
+    // страницы — иначе кнопки уедут в предыдущий раздел.
+    if (App.ui && App.ui.updateTabButtonsPosition) {
+        App.ui.updateTabButtonsPosition();
     }
 
     persistAll();

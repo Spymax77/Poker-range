@@ -69,6 +69,8 @@
             'tabs.showPanelHide': 'Скрыть панель вкладок',
             'tabs.openMenuClose': 'Закрыть меню вкладок',
             'tree.back': 'Назад',
+            'tree.openPanel': 'Показать дерево',
+            'tree.hidePanel': 'Скрыть дерево',
 
             'auth.forgotTitle': 'Восстановление пароля',
             'auth.forgotHint': 'Введите email, указанный при регистрации.',
@@ -298,6 +300,8 @@
             'tabs.showPanelHide': 'Hide tabs panel',
             'tabs.openMenuClose': 'Close tabs menu',
             'tree.back': 'Back',
+            'tree.openPanel': 'Show tree',
+            'tree.hidePanel': 'Hide tree',
 
             'auth.forgotTitle': 'Password recovery',
             'auth.forgotHint': 'Enter the email you used to register.',

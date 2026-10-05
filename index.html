@@ -15,7 +15,7 @@
 <body>
 <script src="js/cookie-consent.js"></script>
 <div class="app-card">
-    <button type="button" class="tabs-toggle" id="tabsToggle" aria-controls="mainTabs" aria-expanded="false" data-i18n-aria-label="tabs.showPanel" aria-label="Показать панель вкладок">
+    <button type="button" class="tabs-toggle" id="tabsToggle" aria-controls="mainTabs" aria-expanded="true" data-i18n-aria-label="tabs.showPanelHide" aria-label="Скрыть панель вкладок">
         <svg class="tabs-toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M5 8.5 12 15l7-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -50,7 +50,7 @@
     </div>
 
     <!-- Кнопки -->
-    <button type="button" class="tabs-menu-toggle" id="tabsMenuToggle" aria-controls="tabButtons" aria-expanded="false" data-i18n-aria-label="tabs.openMenu" aria-label="Открыть меню вкладок">
+    <button type="button" class="tabs-menu-toggle" id="tabsMenuToggle" aria-expanded="false" data-i18n-aria-label="tree.openPanel" aria-label="Показать дерево">
         <svg class="tabs-menu-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
@@ -260,6 +260,7 @@
     </div>
 <!-- GTO -->
     <div id="gtoPage" class="page">
+        <div class="gto-filter-area">
         <button type="button" class="gto-filter-toggle" id="gtoFilterToggle" aria-controls="gtoFilterBar" data-i18n="gto.filter" aria-expanded="false">
             Фильтр
         </button>
@@ -318,6 +319,7 @@
             </div>
         </div>
     </div>
+        </div>
         <div class="three-columns">
             <div class="tree-panel">
                 <div class="tree-collapse-wrapper">

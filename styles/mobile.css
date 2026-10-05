@@ -60,6 +60,22 @@
         -webkit-overflow-scrolling: touch;
     }
 
+    /* Страницы вкладок скроллятся без классического скроллбара. Его появление
+       (например, при включении детальной статистики в Просмотре) сужало
+       контент на ширину скроллбара, и «резиновая» матрица уменьшалась.
+       На мобильных прокрутка выполняется касанием — индикатор не нужен. */
+    #gtoPage.active-page,
+    #workPage.active-page,
+    #constructorPage.active-page {
+        scrollbar-width: none;
+    }
+
+    #gtoPage.active-page::-webkit-scrollbar,
+    #workPage.active-page::-webkit-scrollbar,
+    #constructorPage.active-page::-webkit-scrollbar {
+        display: none;
+    }
+
     /* Дерево, рабочая область и профили идут последовательно по вертикали. */
     .three-columns {
         width: 100%;
@@ -102,22 +118,29 @@
     }
 
     /* Этап 2: увеличиваем touch-области дерева. Размеры применяются только
-       на мобильных ширинах и не меняют desktop-компоновку. */
+       на мобильных ширинах и не меняют desktop-компоновку. Тулбар всегда
+       в один ряд: кнопки растягиваются и сжимаются, заполняя всю ширину
+       панели дерева (в ГТО/Редакторе это шторка ~340px), — иначе последняя
+       кнопка (корзина) переносится на второй ряд. */
     .tree-toolbar {
         min-height: 48px;
-        gap: 6px;
+        gap: 2px;
         padding: 3px 0;
+        flex-wrap: nowrap;
+        min-width: 0;
     }
 
     .tree-toolbar .toolbar-btn {
-        min-width: 42px;
+        flex: 1 1 auto;
+        min-width: 0;
         min-height: 42px;
-        padding: 8px;
+        padding: 8px 2px;
     }
 
     .tree-toolbar .divider {
         height: 30px;
-        margin-inline: 2px;
+        margin-inline: 1px;
+        flex: 0 0 auto;
     }
 
     .tree-item {
@@ -255,6 +278,14 @@
         padding-left: 0;
         padding-right: 0;
         overflow: visible;
+    }
+
+    /* GTO: небольшие боковые поля у матрицы — как в редакторе (их даёт
+       .table-profiles-wrapper) и в Просмотре (их даёт .work-single-panel).
+       Без этого матрица GTO упирается прямо в границы экрана. */
+    #gtoPage .table-panel {
+        padding-left: 8px;
+        padding-right: 8px;
     }
 
     .profiles-panel {
@@ -428,7 +459,21 @@
         outline: none;
     }
 
+    /* Обёртка кнопки «Фильтр» и панели — точка позиционирования выпадашки. */
+    #gtoPage .gto-filter-area {
+        position: relative;
+    }
+
+    /* Выпадающий фильтр наезжает на матрицу сверху, а не сдвигает её вниз:
+       панель вынимается из потока (position: absolute) и раскрывается
+       поверх контента страницы. */
     #gtoPage .gto-filter-bar {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 8px;
+        right: 8px;
+        width: auto;
+        z-index: 30;
         display: flex;
         max-height: 0;
         min-height: 0;
@@ -445,12 +490,13 @@
 
     #gtoPage .gto-filter-bar.gto-filter-open {
         max-height: 420px;
-        margin-bottom: 10px;
         padding-top: 4px;
         padding-bottom: 4px;
+        overflow-y: auto;
         opacity: 1;
         transform: translateY(0);
         pointer-events: auto;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .5);
     }
 }
 
@@ -485,8 +531,8 @@
     }
 
     .table-profiles-wrapper {
-        padding-left: 4px;
-        padding-right: 4px;
+        padding-left: 8px;
+        padding-right: 8px;
     }
 
     .profiles-panel {
@@ -637,19 +683,37 @@
         box-sizing: border-box;
     }
 
+    /* Все кнопки над матрицей всегда в один ряд и растягиваются, деля всю
+       ширину поровну — «воздуха» между группами кнопок не остаётся. */
     #constructorPage .toolbar-right {
         width: 100%;
         margin-left: 0;
-        flex-wrap: wrap;
-        justify-content: flex-start;
+        flex-wrap: nowrap;
+        gap: 3px;
+        min-width: 0;
     }
 
+    #constructorPage .toolbar-right .toolbar-btn {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 4px 2px;
+    }
+
+    #constructorPage .toolbar-right .divider {
+        flex: 0 0 auto;
+        margin: 0 1px;
+    }
+
+    /* Два режима получают двойную долю ширины (по кнопке на каждую),
+       чтобы их кнопки были такой же ширины, как остальные. */
     #constructorPage .toolbar-right .matrix-mode-toolbar {
         position: static;
-        margin-left: auto;
+        margin-left: 0;
         margin-right: 0;
+        flex: 2 1 auto;
         flex-direction: row;
-        gap: 4px;
+        gap: 3px;
+        min-width: 0;
         z-index: auto;
     }
 
@@ -681,6 +745,38 @@
         line-height: 1.1;
         touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* Кнопки над матрицей в редакторе: на узких экранах иконки чуть меньше,
+   но кнопки по-прежнему делят всю ширину ряда поровну. */
+@media (max-width: 530px) {
+    #constructorPage .toolbar-right {
+        gap: 2px;
+    }
+
+    #constructorPage .toolbar-right .toolbar-btn {
+        padding: 4px 2px;
+    }
+
+    #constructorPage .toolbar-right .toolbar-btn .icon {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+@media (max-width: 400px) {
+    #constructorPage .toolbar-right {
+        gap: 1px;
+    }
+
+    #constructorPage .toolbar-right .toolbar-btn {
+        padding: 4px 1px;
+    }
+
+    #constructorPage .toolbar-right .toolbar-btn .icon {
+        width: 18px;
+        height: 18px;
     }
 }
 
@@ -819,5 +915,54 @@
     .add-profile-block {
         min-height: 42px;
         padding: 8px 4px;
+    }
+}
+
+/* ===== ЭТАП 5: ВЫЕЗЖАЮЩЕЕ ДЕРЕВО (GTO / РЕДАКТОР) =====
+   Дерево больше не занимает место над матрицей: весь блок tree-panel
+   (тулбар, «Свернуть все», кнопка «Добавить в редактор» в GTO и само
+   дерево) выезжает слева как шторка поверх матрицы. Открывается кнопкой
+   «три полоски» в шапке, закрывается повторным нажатием, касанием вне
+   панели или сменой вкладки (класс tree-open на body ставит init.js). */
+@media (max-width: 849px) {
+    .tree-panel,
+    .tree-panel:has(.tree-item:hover),
+    .tree-panel:has(.tree-actions-popup.menu-open),
+    .tree-panel.tree-interacting {
+        position: fixed;
+        top: var(--mobile-header-h, 56px);
+        left: 0;
+        bottom: 0;
+        width: min(82vw, 340px);
+        min-width: 0;
+        max-width: none;
+        height: auto;
+        max-height: none;
+        z-index: 40;
+        margin: 0;
+        background: var(--bg-page);
+        border-right: 1px solid #3d3f46;
+        box-shadow: 10px 0 28px rgba(0, 0, 0, .5);
+        transform: translateX(-105%);
+        transition: transform .25s ease;
+        overflow: hidden;
+    }
+
+    body.tree-open .tree-panel,
+    body.tree-open .tree-panel:has(.tree-item:hover),
+    body.tree-open .tree-panel:has(.tree-actions-popup.menu-open),
+    body.tree-open .tree-panel.tree-interacting {
+        transform: translateX(0);
+    }
+
+    /* Дерево занимает всё место шторки под тулбаром и «Свернуть все». */
+    .tree-panel > [id$="Tree"],
+    .tree-panel:has(.tree-item:hover) > [id$="Tree"],
+    .tree-panel:has(.tree-actions-popup.menu-open) > [id$="Tree"],
+    .tree-panel.tree-interacting > [id$="Tree"] {
+        flex: 1 1 auto;
+        height: auto;
+        max-height: none;
+        min-height: 0;
     }
 }
