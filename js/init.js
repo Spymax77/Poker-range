@@ -666,8 +666,40 @@ function updateTabButtonsPosition() {
             mainTabs.appendChild(tabButtons);
         }
     }
+    // Кнопка «Фильтр» GTO следует за строкой вкладок: на мобильных она
+    // уезжает в её правый край, на десктопе возвращается на своё место.
+    updateGtoFilterTogglePosition();
     // Высота шапки изменилась — пересчитываем отступ шторки дерева.
     updateTreePanelOffset();
+}
+
+// ===== ПОЗИЦИЯ КНОПКИ «ФИЛЬТР» GTO (МОБИЛЬНЫЕ) =====
+// На мобильной ширине кнопка переносится в конец строки вкладок
+// (GTO / Редактор / Просмотр) и прижимается к правому краю экрана.
+// На десктопе возвращается в .gto-filter-area перед панелью фильтров.
+// Паттерн тот же, что у updateConstructorModeToolbarPosition.
+// Элементы ищутся через getElementById: функция вызывается из
+// updateTabButtonsPosition, которая объявлена выше по файлу, чем
+// const gtoFilterToggle/gtoFilterBar, — так она не зависит от их TDZ.
+const gtoFilterToggleMobileQuery = window.matchMedia('(max-width: 849px)');
+
+function updateGtoFilterTogglePosition() {
+    const toggle = document.getElementById('gtoFilterToggle');
+    const bar = document.getElementById('gtoFilterBar');
+    const tabButtonsEl = document.getElementById('tabButtons');
+    if (!toggle || !bar || !tabButtonsEl) return;
+
+    const filterArea = bar.parentElement;
+    if (gtoFilterToggleMobileQuery.matches && tabButtonsEl.parentElement && tabButtonsEl.parentElement.id === 'gtoPage') {
+        // Мобильные: строка вкладок лежит внутри #gtoPage — кнопка встаёт
+        // последней в строке и уходит к правому краю (margin-left: auto).
+        if (toggle.parentElement !== tabButtonsEl) {
+            tabButtonsEl.appendChild(toggle);
+        }
+    } else if (filterArea && toggle.parentElement !== filterArea) {
+        // Десктоп либо строка вкладок ещё в шапке: исходное место в разметке.
+        filterArea.insertBefore(toggle, bar);
+    }
 }
 
 // Точка входа для switchTab (navigation.js) и обработчиков ресайза.
