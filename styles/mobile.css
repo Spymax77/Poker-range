@@ -1020,6 +1020,9 @@
         transform: translateX(-105%);
         transition: transform .25s ease;
         overflow: hidden;
+        /* Горизонтальный жест свайпа всегда достаётся JS (перетаскивание
+           шторки в init.js), вертикальный скролл дерева остаётся нативным. */
+        touch-action: pan-y;
     }
 
     body.tree-open .tree-panel,
@@ -1027,6 +1030,16 @@
     body.tree-open .tree-panel:has(.tree-actions-popup.menu-open),
     body.tree-open .tree-panel.tree-interacting {
         transform: translateX(0);
+    }
+
+    /* Во время перетаскивания шторки пальцем CSS-переход отключается,
+       чтобы шторка двигалась без задержки (класс ставит init.js,
+       снимается при завершении жеста — анимацию доигрывает переход выше). */
+    body.tree-open .tree-panel.tree-swipe-dragging,
+    body.tree-open .tree-panel:has(.tree-item:hover).tree-swipe-dragging,
+    body.tree-open .tree-panel:has(.tree-actions-popup.menu-open).tree-swipe-dragging,
+    body.tree-open .tree-panel.tree-interacting.tree-swipe-dragging {
+        transition: none;
     }
 
     /* Дерево занимает всё место шторки под тулбаром и «Свернуть все». */

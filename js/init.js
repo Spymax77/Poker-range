@@ -529,35 +529,110 @@ if (tabsMenuToggle) {
     });
 
     // Свайп влево по панели дерева закрывает шторку (только мобильные).
-    // Требуем выраженного горизонтального движения: вертикальная прокрутка
-    // дерева не должна закрывать панель. touch-события на десктопе не
-    // возникают, поэтому поведение там не меняется.
-    let treeSwipeStart = null;
+    // Жест обрабатывается непрерывно: пока направление не определено, жест
+    // принадлежит нативному вертикальному скроллу дерева; после «замка» на
+    // горизонталь (|dx| превысил порог и больше |dy|) вертикальный дрейф
+    // игнорируется и шторка тянется пальцем. На отрыве пальца шторка
+    // закрывается при смещении влево больше порога или резком флике,
+    // иначе плавно возвращается на место.
+    // touch-события на десктопе не возникают, поэтому поведение там не меняется.
+    // Логика жеста общая для обеих шторок, состояние раздельное — единое
+    // хранилище с ключом по id дерева внутри панели (constructorTree / gtoTree).
+    const treeSwipeStates = {};
+    const TREE_SWIPE_LOCK_PX = 10;        // порог «замка» направления
+    const TREE_SWIPE_CLOSE_PX = 50;       // минимальное смещение для закрытия
+    const TREE_SWIPE_FLICK_V = 0.5;       // px/мс — скорость флика влево
+
+    function treeSwipeKey(panel) {
+        const tree = panel.querySelector('[id$="Tree"]');
+        return tree ? tree.id : null;
+    }
+
+    // Завершение жеста. Инлайновый transform на время перетаскивания
+    // перекрывает CSS, поэтому снимаем его после снятия класса drag,
+    // и анимацию (закрытие или возврат) доигрывает CSS-переход .25s.
+    function treeSwipeRelease(panel, key, close) {
+        delete treeSwipeStates[key];
+        panel.classList.remove('tree-swipe-dragging');
+        if (close) {
+            setTreePanelOpen(false);
+            requestAnimationFrame(function() {
+                panel.style.transform = '';
+            });
+        } else {
+            panel.style.transform = '';
+        }
+    }
+
+    function treeSwipeShouldClose(st, x) {
+        const dx = x - st.x;
+        const first = st.samples[0];
+        const velocity = (x - first.x) / Math.max(1, Date.now() - first.t);
+        return dx < -TREE_SWIPE_CLOSE_PX ||
+            velocity < -TREE_SWIPE_FLICK_V;
+    }
+
     document.querySelectorAll('.tree-panel').forEach(function(panel) {
+        const key = treeSwipeKey(panel);
+        if (!key) return;
+
         panel.addEventListener('touchstart', function(e) {
-            if (e.touches.length !== 1) { treeSwipeStart = null; return; }
-            treeSwipeStart = {
+            if (!window.matchMedia('(max-width: 849px)').matches) return;
+            if (e.touches.length !== 1) {
+                if (treeSwipeStates[key]) treeSwipeRelease(panel, key, false);
+                return;
+            }
+            treeSwipeStates[key] = {
                 x: e.touches[0].clientX,
+                lastX: e.touches[0].clientX,
                 y: e.touches[0].clientY,
-                time: Date.now()
+                locked: false,
+                samples: [{ x: e.touches[0].clientX, t: Date.now() }]
             };
         }, { passive: true });
 
-        panel.addEventListener('touchend', function(e) {
-            if (!treeSwipeStart) return;
-            const dx = e.changedTouches[0].clientX - treeSwipeStart.x;
-            const dy = e.changedTouches[0].clientY - treeSwipeStart.y;
-            const dt = Date.now() - treeSwipeStart.time;
-            treeSwipeStart = null;
-            const isHorizontalSwipe = Math.abs(dx) > Math.abs(dy) * 1.5;
-            if (dx < -50 && isHorizontalSwipe && dt < 700 &&
-                window.matchMedia('(max-width: 849px)').matches) {
-                setTreePanelOpen(false);
+        panel.addEventListener('touchmove', function(e) {
+            const st = treeSwipeStates[key];
+            if (!st) return;
+            if (e.touches.length !== 1) { treeSwipeRelease(panel, key, false); return; }
+            const t = e.touches[0];
+            st.lastX = t.clientX;
+            const dx = t.clientX - st.x;
+            const dy = t.clientY - st.y;
+            if (!st.locked) {
+                if (Math.abs(dx) > TREE_SWIPE_LOCK_PX && Math.abs(dx) > Math.abs(dy)) {
+                    st.locked = true;
+                    panel.classList.add('tree-swipe-dragging');
+                } else {
+                    return; // замка нет — не мешаем нативному скроллу дерева
+                }
             }
-        }, { passive: true });
+            if (e.cancelable) e.preventDefault();
+            // Окно скорости: держим сэмплы за последние 120 мс для флика.
+            const now = Date.now();
+            st.samples.push({ x: t.clientX, t: now });
+            while (st.samples.length > 1 && now - st.samples[0].t > 120) st.samples.shift();
+            const clamped = Math.max(-panel.offsetWidth, Math.min(0, dx));
+            panel.style.transform = 'translateX(' + clamped + 'px)';
+        }, { passive: false });
 
-        panel.addEventListener('touchcancel', function() {
-            treeSwipeStart = null;
+        panel.addEventListener('touchend', function(e) {
+            const st = treeSwipeStates[key];
+            if (!st) return;
+            if (!st.locked) {
+                treeSwipeRelease(panel, key, false);
+                return;
+            }
+            const x = e.changedTouches[0] ? e.changedTouches[0].clientX : st.lastX;
+            treeSwipeRelease(panel, key, treeSwipeShouldClose(st, x));
+        }, { passive: true });
+        panel.addEventListener('touchcancel', function(e) {
+            const st = treeSwipeStates[key];
+            if (!st) return;
+            const x = e.changedTouches[0] ? e.changedTouches[0].clientX : st.lastX;
+            const movedLeft = x - st.x < -TREE_SWIPE_CLOSE_PX;
+            treeSwipeRelease(panel, key,
+                movedLeft || (st.locked && treeSwipeShouldClose(st, x)));
         }, { passive: true });
     });
 
