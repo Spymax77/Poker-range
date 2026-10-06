@@ -493,7 +493,8 @@ if (tabsToggle && mainTabs) {
 
 // ===== МОБИЛЬНАЯ ВЫЕЗЖАЮЩАЯ ПАНЕЛЬ ДЕРЕВА (GTO / Редактор) =====
 // Кнопка «три полоски» в шапке выезжает деревом слева поверх матрицы.
-// Закрытие: повторное нажатие, касание вне панели или смена вкладки.
+// Закрытие: повторное нажатие, касание вне панели, свайп влево по панели
+// или смена вкладки.
 function setTreePanelOpen(open) {
     document.body.classList.toggle('tree-open', open);
     if (tabsMenuToggle) {
@@ -525,6 +526,39 @@ if (tabsMenuToggle) {
         if (!document.body.classList.contains('tree-open')) return;
         if (e.target.closest && (e.target.closest('.tree-panel') || e.target.closest('#tabsMenuToggle'))) return;
         setTreePanelOpen(false);
+    });
+
+    // Свайп влево по панели дерева закрывает шторку (только мобильные).
+    // Требуем выраженного горизонтального движения: вертикальная прокрутка
+    // дерева не должна закрывать панель. touch-события на десктопе не
+    // возникают, поэтому поведение там не меняется.
+    let treeSwipeStart = null;
+    document.querySelectorAll('.tree-panel').forEach(function(panel) {
+        panel.addEventListener('touchstart', function(e) {
+            if (e.touches.length !== 1) { treeSwipeStart = null; return; }
+            treeSwipeStart = {
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY,
+                time: Date.now()
+            };
+        }, { passive: true });
+
+        panel.addEventListener('touchend', function(e) {
+            if (!treeSwipeStart) return;
+            const dx = e.changedTouches[0].clientX - treeSwipeStart.x;
+            const dy = e.changedTouches[0].clientY - treeSwipeStart.y;
+            const dt = Date.now() - treeSwipeStart.time;
+            treeSwipeStart = null;
+            const isHorizontalSwipe = Math.abs(dx) > Math.abs(dy) * 1.5;
+            if (dx < -50 && isHorizontalSwipe && dt < 700 &&
+                window.matchMedia('(max-width: 849px)').matches) {
+                setTreePanelOpen(false);
+            }
+        }, { passive: true });
+
+        panel.addEventListener('touchcancel', function() {
+            treeSwipeStart = null;
+        }, { passive: true });
     });
 
     window.addEventListener('resize', updateTreePanelOffset);
