@@ -38,14 +38,30 @@
         font-size: 12.6px;
     }
 
-    html,
+    /* ===== СКРОЛЛ ДОКУМЕНТА: ШАПКА «ПРИЛИПАЕТ», АДРЕСНАЯ СТРОКА ПРЯЧЕТСЯ =====
+       Раньше скроллился внутренний блок .page (overflow-y: auto), а сам документ
+       был закрыт (overflow: hidden). Мобильные браузеры прячут адресную строку
+       только при прокрутке корневого элемента, поэтому панель адреса занимала
+       экран зря. Теперь на мобильных скроллит сам документ. Важно: скролл
+       задаётся ТОЛЬКО на html — если overflow-y: auto задать и на body, body
+       станет отдельным scroll-контейнером и position: sticky у шапки перестанет
+       работать. На десктопе (окно >= 850px) эти правила не действуют. */
+    html {
+        height: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
     body {
-        overflow: hidden;
+        height: auto;
+        overflow: visible;
     }
 
     .app-card {
         width: 100%;
         min-width: 0;
+        height: auto;
+        overflow: visible;
         padding-bottom: 12px;
     }
 
@@ -55,9 +71,10 @@
     #constructorPage.active-page {
         width: 100%;
         min-width: 0;
-        overflow-x: hidden;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        /* flex: 1 (basis 0%) из base.css в каркасе без фиксированной высоты
+           схлопывает страницу в ноль — растём по контенту. */
+        flex: 0 0 auto;
+        overflow: visible;
     }
 
     /* Страницы вкладок скроллятся без классического скроллбара. Его появление
@@ -75,6 +92,56 @@
     #constructorPage.active-page::-webkit-scrollbar {
         display: none;
     }
+
+    /* Шапка прилипает к верхней границе окна при прокрутке документа.
+       Фон обязателен: под «прилипшей» шапкой прокручивается контент страницы,
+       и без заливки он просвечивал бы сквозь неё. */
+    .tabs {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: var(--bg-page);
+    }
+
+    /* Язычок сворачивания панели (Просмотр) — fixed: при прокрутке документа
+       абсолютная привязка к .app-card увела бы его вместе со страницей,
+       а он должен оставаться доступным у верхнего края, как и липкая шапка. */
+    .tabs-toggle {
+        position: fixed;
+        top: 0;
+        left: 50%;
+        z-index: 40;
+        transform: translateX(-50%);
+    }
+
+    /* Каркас и страницы больше не привязаны к высоте экрана: высоту определяет
+       контент, а прокручивает документ. Внимание: блоки с flex-basis 0
+       (three-columns, profiles-panel и т.д.) в каркасе без фиксированной высоты
+       схлопываются в ноль, поэтому на мобильных они растут по контенту. */
+    .three-columns,
+    .profiles-panel,
+    .work-single-panel,
+    .table-profiles-wrapper,
+    .table-profiles-row {
+        flex: 0 0 auto;
+    }
+
+    /* Список профилей прокручивается документом, а не внутри панели. */
+    .profiles-panel {
+        overflow-y: visible;
+    }
+
+    /* Плашка статуса синхронизации — fixed у нижнего края окна: раньше она
+       привязывалась к нижней границе .app-card (absolute bottom), но каркас
+       теперь растёт по контенту, и плашка уезжала бы за пределы экрана.
+       Селектор по id нужен, чтобы перебить .save-status из styles.css,
+       который подключается позже мобильных стилей. */
+    #saveStatus {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+    }
+
 
     /* Дерево, рабочая область и профили идут последовательно по вертикали. */
     .three-columns {
