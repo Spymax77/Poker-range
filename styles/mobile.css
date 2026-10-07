@@ -1073,3 +1073,73 @@
         margin-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     }
 }
+
+/* ===== АЛЬБОМНАЯ ОРИЕНТАЦИЯ ТЕЛЕФОНА: МАТРИЦА СЛЕВА, ВТОРОЙ БЛОК СПРАВА =====
+   На телефоне в альбомной ориентации (ширина <= 849px, orientation: landscape)
+   матрица занимает левую половину экрана, а второй блок — правую, как на
+   десктопе:
+   - Редактор (режим редактора): панель цветовых профилей справа от матрицы;
+   - Редактор (режим анализа): цветная легенда действий справа от матрицы
+     (панель профилей в анализе скрыта, как и в портрете);
+   - GTO: цветная легенда действий справа от матрицы (панель профилей на GTO
+     скрыта всегда).
+   Портретная ориентация и десктоп (окно >= 850px) не затрагиваются: правила
+   живут внутри max-width: 849px + orientation: landscape. Раскладка полностью
+   «резиновая» и не зависит от точного разрешения: колонки flex: 1 1 0 дают
+   ровно 50/50 при любой ширине экрана, матрица (repeat(13, minmax(0, 1fr)) +
+   aspect-ratio: 1) заполняет свою колонку, ширина таблицы статистики совпадает
+   с шириной матрицы, шрифт ячеек масштабируется clamp'ом (8–11px). Страница
+   скроллится по вертикали, если матрица со статистикой не влезают по высоте. */
+@media (max-width: 849px) and (orientation: landscape) {
+    /* --- Редактор, режим редактора: ряд «матрица + профили» --- */
+    #constructorPage:not(.analysis-mode) .table-profiles-row {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    #constructorPage:not(.analysis-mode) .table-profiles-row .table-panel,
+    #constructorPage:not(.analysis-mode) .table-profiles-row .profiles-panel {
+        flex: 1 1 0;
+        width: auto;
+        max-width: 50%;
+        min-width: 0;
+    }
+
+    /* --- Редактор, режим анализа: ряд «матрица + легенда» --- */
+    #constructorPage.analysis-mode .constructor-matrix-row {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    #constructorPage.analysis-mode .constructor-matrix-col,
+    #constructorPage.analysis-mode .constructor-legend-col {
+        flex: 1 1 0;
+        width: auto;
+        max-width: 50%;
+        align-self: auto;
+    }
+
+    /* --- GTO: ряд «матрица + легенда» --- */
+    #gtoPage .gto-matrix-row {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    #gtoPage .gto-matrix-col,
+    #gtoPage .gto-legend-col {
+        flex: 1 1 0;
+        width: auto;
+        max-width: 50%;
+    }
+
+    /* --- Шрифт ячеек: в альбомной ориентации матрица вдвое уже, чем full-width
+       в портрете, поэтому шрифт привязан к половинной ширине (1.35vw),
+       диапазон 8–11px — пропорция «шрифт/ячейка» как на десктопе. --- */
+    #gtoPage .matrix-wrapper .hand-cell,
+    #constructorPage .matrix-wrapper .hand-cell {
+        font-size: clamp(8px, 1.35vw, 11px);
+    }
+}
