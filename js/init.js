@@ -318,7 +318,7 @@ document.addEventListener('keydown', function(e) {
 // (markUnsaved / clearUnsaved вынесены в persistence.js)
 
 // ===== КНОПКА "СОХРАНИТЬ" =====
-document.getElementById('tableSaveBtn')?.addEventListener('click', async function() {
+document.getElementById('tableSaveBtn')?.addEventListener('click', function() {
     // В режиме анализа кнопки редактирования погашены классом
     // .toolbar-btn-disabled (pointer-events: none), но CSS не мешает
     // программному .click() (например, из userscript'а), поэтому дублируем
@@ -328,15 +328,10 @@ document.getElementById('tableSaveBtn')?.addEventListener('click', async functio
         App.modals.showFloatingModal(App.i18n.t('range.noActiveSave'));
         return;
     }
-    const results = await flushPersist();
-    const saveSucceeded = !results || results.every(function(result) {
-        return result && result.success !== false;
-    });
-    if (saveSucceeded) {
-        clearUnsaved();
-    } else {
-        App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
-    }
+    // Тот же сценарий сохранения, что в App.ui.saveAndContinue (flushPersist →
+    // проверка → clearUnsaved / range.saveFailed), но без продолжения:
+    // хелпер возвращает колбэк «Да» — вызываем его сразу.
+    App.ui.saveAndContinue()();
 });
 
 // ===== ДОПОЛНИТЕЛЬНОЕ МЕНЮ МАТРИЦЫ =====

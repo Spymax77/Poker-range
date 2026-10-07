@@ -12,26 +12,13 @@ App.clipboard.duplicateRange = function(nodeId) {
             ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
             : App.i18n.t('range.saveChangesQuestion');
 
-        App.modals.showSaveConfirmModal(message, async function() {
-            // ДА — сохраняем
-            const results = await flushPersist();
-            const saveSucceeded = !results || results.every(function(result) {
-                return result && result.success !== false;
-            });
-            if (!saveSucceeded) {
-                App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
-                return;
-            }
-            clearUnsaved();
+        // Да — сохраняем, Нет — откатываемся (общие хелперы App.ui.saveAndContinue /
+        // App.ui.rollbackAndContinue, определены в init.js).
+        App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
             App.clipboard.createCopyAndFinalize(original);
-        }, async function() {
-            // НЕТ — откатываем
-            await loadFromStorage();
-            App.refresh.all();
-            App.grid.updateCurrentDisplay();
-            clearUnsaved();
+        }), App.ui.rollbackAndContinue(function() {
             App.clipboard.createCopyAndFinalize(original);
-        });
+        }));
         return;
     }
 
