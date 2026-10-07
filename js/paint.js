@@ -41,7 +41,7 @@ const cell = document.querySelector(`#${gridId} .hand-cell[data-row='${row}'][da
     App.state.blockUntilMap.set(cellKey, newBlockUntil);
     cell.blockUntil = newBlockUntil;
 	
-	markUnsaved();
+	App.persistence.markUnsaved();
 }
 
 App.paint.handlePaintStart = function(e) {

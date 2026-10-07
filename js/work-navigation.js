@@ -3,7 +3,7 @@
 App.work = App.work || {};
 
 App.work.findFirstRange = function(nodeId) {
-    let node = getNode(nodeId);
+    let node = App.nodes.getNode(nodeId);
     if (!node) return null;
     if (node.type === 'range' || node.type === 'subrange') return node.id;
     for (let childId of node.childrenIds) {
@@ -18,12 +18,12 @@ App.work.findFirstRange = function(nodeId) {
 // кнопки пути (1-й, 2-й, 3-й уровень и т.д.).
 App.work.isNodeInPath = function(nodeId) {
     if (App.state.workDisplayNodeId === nodeId) return true;
-    let cur = getNode(App.state.workDisplayNodeId);
+    let cur = App.nodes.getNode(App.state.workDisplayNodeId);
     if (!cur) return false;
     let p = cur.parentId;
     while (p !== null) {
         if (p === nodeId) return true;
-        const parentNode = getNode(p);
+        const parentNode = App.nodes.getNode(p);
         p = parentNode ? parentNode.parentId : null;
     }
     return false;
@@ -44,9 +44,9 @@ App.work.renderNavigation = function() {
             let rootOrder = App.state.nodes.filter(n => n.parentId === null).map(n => n.id);
             children.sort((a, b) => rootOrder.indexOf(a.id) - rootOrder.indexOf(b.id));
         } else {
-            let parent = getNode(parentId);
+            let parent = App.nodes.getNode(parentId);
             if (parent) {
-                children = parent.childrenIds.map(cid => getNode(cid)).filter(n => n);
+                children = parent.childrenIds.map(cid => App.nodes.getNode(cid)).filter(n => n);
                 children.sort((a, b) => parent.childrenIds.indexOf(a.id) - parent.childrenIds.indexOf(b.id));
             }
         }
@@ -61,7 +61,7 @@ App.work.renderNavigation = function() {
 
         for (let child of children) {
             if (child.type === 'folder') {
-                let parent = getNode(child.parentId);
+                let parent = App.nodes.getNode(child.parentId);
                 let parentIsRange = parent && parent.type === 'range';
                 let parentIsSelectedRange = parentIsRange && App.state.workLevels.some(l => l.parentNodeId === child.parentId);
 
@@ -95,7 +95,7 @@ if (saved) {
         }
         
         if (App.dirty) App.dirty.markMetadataDirty('editor');
-        persistAll();
+        App.persistence.persistAll();
         App.work.updateDisplay();
     };
 })(child, li);
@@ -121,7 +121,7 @@ const isActiveFolder = lastLevel && lastLevel.parentNodeId === child.id;
 // Проверяем, находится ли активный диапазон внутри этой папки
 let isRangeInsideFolder = false;
 if (App.state.workDisplayNodeId) {
-    const activeRange = getNode(App.state.workDisplayNodeId);
+    const activeRange = App.nodes.getNode(App.state.workDisplayNodeId);
     if (activeRange) {
         let parent = activeRange.parentId;
         while (parent !== null) {
@@ -129,7 +129,7 @@ if (App.state.workDisplayNodeId) {
                 isRangeInsideFolder = true;
                 break;
             }
-            const parentNode = getNode(parent);
+            const parentNode = App.nodes.getNode(parent);
             parent = parentNode ? parentNode.parentId : null;
         }
     }
@@ -143,7 +143,7 @@ if (isActiveFolder || isRangeInsideFolder) {
                     levelDiv.appendChild(btn);
                 }
             } else if (child.type === 'range' || child.type === 'subrange') {
-                let parent = getNode(child.parentId);
+                let parent = App.nodes.getNode(child.parentId);
                 let parentIsRange = parent && parent.type === 'range';
                 let parentIsSelectedRange = parentIsRange && App.state.workLevels.some(l => l.parentNodeId === child.parentId);
                 let isRoot = child.parentId === null;
@@ -167,7 +167,7 @@ if (saved && saved.text) {
                             let path = [];
                             let current = c;
                             while (current && current.parentId !== null) {
-                                let parentNode = getNode(current.parentId);
+                                let parentNode = App.nodes.getNode(current.parentId);
                                 if (parentNode) {
                                     path.unshift(parentNode);
                                     current = parentNode;
@@ -181,7 +181,7 @@ if (saved && saved.text) {
                             }
                             App.state.workLevels.push({ parentNodeId: c.id, levelIndex: App.state.workLevels.length });
                             if (App.dirty) App.dirty.markMetadataDirty('editor');
-                            persistAll();
+                            App.persistence.persistAll();
                             App.work.updateDisplay();
                             App.work.updateGrid();
                         };
@@ -209,15 +209,15 @@ link.appendChild(dotLink);
         container.appendChild(levelDiv);
 
         if (li === 0) {
-            let sel = getNode(App.state.workDisplayNodeId);
+            let sel = App.nodes.getNode(App.state.workDisplayNodeId);
             let rangeNode = sel;
             if (sel && sel.type === 'subrange') {
-                rangeNode = getNode(sel.parentId);
+                rangeNode = App.nodes.getNode(sel.parentId);
             }
             if (rangeNode && rangeNode.type === 'range' && rangeNode.parentId === null) {
                 let isInLevels = App.state.workLevels.some(l => l.parentNodeId === rangeNode.id);
                 if (isInLevels) {
-                    let kids = rangeNode.childrenIds.map(cid => getNode(cid)).filter(n => n);
+                    let kids = rangeNode.childrenIds.map(cid => App.nodes.getNode(cid)).filter(n => n);
                     if (kids.length) {
                         let alreadyAdded = false;
                         let mainDiv = container.querySelector('.work-level:last-child');
@@ -258,7 +258,7 @@ link.appendChild(dotLink);
                                                 App.state.workDisplayNodeId = firstRange;
                                             }
                                                             if (App.dirty) App.dirty.markMetadataDirty('editor');
-                                            persistAll();
+                                            App.persistence.persistAll();
                                             App.work.updateDisplay();
                                         };
                                     })(kid, App.state.workLevels.length);
@@ -276,7 +276,7 @@ link.appendChild(dotLink);
                                         return function() {
                                             App.state.workDisplayNodeId = k.id;
                                             if (App.dirty) App.dirty.markMetadataDirty('editor');
-                                            persistAll();
+                                            App.persistence.persistAll();
                                             App.work.updateDisplay();
                                             App.work.updateGrid();
                                         };
@@ -322,7 +322,7 @@ App.work.updateGrid = function() {
 
 App.work.updateDisplay = function() {
 	    // ===== ПРОВЕРКА ВАЛИДНОСТИ App.state.workDisplayNodeId =====
-    const isValid = App.state.workDisplayNodeId && !!getNode(App.state.workDisplayNodeId);
+    const isValid = App.state.workDisplayNodeId && !!App.nodes.getNode(App.state.workDisplayNodeId);
     if (!isValid) {
         const firstRange = App.state.nodes.find(n => n.type === 'range' || n.type === 'subrange');
         if (firstRange) {
@@ -334,7 +334,7 @@ App.work.updateDisplay = function() {
     App.work.renderNavigation();
 	// ===== ПОКАЗЫВАЕМ ВЛОЖЕННЫЕ ЭЛЕМЕНТЫ АКТИВНОГО ДИАПАЗОНА =====
 if (App.state.workDisplayNodeId) {
-    const activeNode = getNode(App.state.workDisplayNodeId);
+    const activeNode = App.nodes.getNode(App.state.workDisplayNodeId);
     if (activeNode && activeNode.childrenIds && activeNode.childrenIds.length > 0) {
         const existingLevel = App.state.workLevels.find(l => l.parentNodeId === App.state.workDisplayNodeId);
         if (!existingLevel) {
@@ -352,7 +352,7 @@ if (App.state.workDisplayNodeId) {
             workGrid.classList.add('matrix-fade');
         }
         let titleEl = document.getElementById("workRangeName");
-        let node = getNode(App.state.workDisplayNodeId);
+        let node = App.nodes.getNode(App.state.workDisplayNodeId);
         if (titleEl && node) {
             // Собираем цепочку предков от текущего узла до корня (по parentId).
             // Папки (type === 'folder') не отображаем — только диапазоны и поддиапазоны.
@@ -362,11 +362,11 @@ if (App.state.workDisplayNodeId) {
                 if (cur.type === 'range' || cur.type === 'subrange') {
                     chain.push(cur.name);
                 }
-                cur = (cur.parentId != null) ? getNode(cur.parentId) : null;
+                cur = (cur.parentId != null) ? App.nodes.getNode(cur.parentId) : null;
             }
             chain.reverse();
             titleEl.innerHTML = chain
-                .map(name => escapeHtml(name))
+                .map(name => App.nodes.escapeHtml(name))
                 .join('<span class="breadcrumb-arrow">&#9654;</span>');
         }
     }
@@ -376,7 +376,7 @@ if (App.state.workDisplayNodeId) {
     // ========================================
     
     const workTableWrapper = document.querySelector('.matrix1-wrapper');
-    const rangeNode = getNode(App.state.workDisplayNodeId);
+    const rangeNode = App.nodes.getNode(App.state.workDisplayNodeId);
     const isSubrange = rangeNode && rangeNode.type === 'subrange';
     
     if (workTableWrapper) {
@@ -564,8 +564,8 @@ if (App.state.workDisplayNodeId) {
         textarea.addEventListener('blur', function() {
             if (App.state.workDisplayNodeId) {
                 App.comments.setComments(App.state.workDisplayNodeId, this.value);
-                persistAll();
-                clearUnsaved();
+                App.persistence.persistAll();
+                App.persistence.clearUnsaved();
             }
         });
     }

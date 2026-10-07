@@ -56,7 +56,7 @@ App.modals.showFloatingModal = function(message, callback) {
             <span>${App.i18n.t('modal.messageTitle')}</span>
         </div>
         <div class="save-confirm-body">
-            <p>${escapeHtml(message)}</p>
+            <p>${App.nodes.escapeHtml(message)}</p>
         </div>
         <div class="save-confirm-actions" style="justify-content: center;">
             <button class="btn btn-confirm" id="floatingOkBtn">${App.i18n.t('modal.ok')}</button>
@@ -126,7 +126,7 @@ App.modals.showSaveConfirmModal = function(message, onSave, onCancel) {
             <span>${App.i18n.t('modal.messageTitle')}</span>
         </div>
         <div class="save-confirm-body">
-            <p>${escapeHtml(message)}</p>
+            <p>${App.nodes.escapeHtml(message)}</p>
         </div>
         <div class="save-confirm-actions">
             <button class="btn btn-cancel" id="saveConfirmNo">${App.i18n.t('modal.no')}</button>
@@ -184,7 +184,7 @@ App.modals.showSaveConfirmModal = function(message, onSave, onCancel) {
 // ===== ДИАЛОГ ВЫБОРА КОМПОНЕНТА (для поддиапазонов) =====
 App.modals.showComponentSelectionDialog = function(parentNodeId, callback) {
     
-    const parent = getNode(parentNodeId);
+    const parent = App.nodes.getNode(parentNodeId);
     if (!parent) {
         if (callback) callback(null);
         return;
@@ -212,13 +212,13 @@ const components = colors.filter(c => c.type === 'simple' || (!c.type && c.color
 
 for (const comp of components) {
     const colorName = comp.name || App.i18n.t('modal.color');
-    const colorHex = escapeHtml(comp.color || '#9C5479');
+    const colorHex = App.nodes.escapeHtml(comp.color || '#9C5479');
     
     listHtml += `
       <div class="component-option" data-index="${components.indexOf(comp)}">
     <div class="profile-radio" data-index="${components.indexOf(comp)}"></div>
     <div class="color-swatch" style="background: ${colorHex};"></div>
-    <span class="color-name">${escapeHtml(colorName)}</span>
+    <span class="color-name">${App.nodes.escapeHtml(colorName)}</span>
 </div> 
     `;
 }

@@ -40,12 +40,12 @@ document.addEventListener('languagechange', function () {
 App.ui = App.ui || {};
 
 // Колбэк «Да» для showSaveConfirmModal: сохраняет всё грязное через
-// flushPersist; при провале показывает range.saveFailed и прерывает
+// App.persistence.flushPersist; при провале показывает range.saveFailed и прерывает
 // (onSuccess не вызывается), при успехе снимает флаг несохранённых
 // изменений и вызывает onSuccess.
 App.ui.saveAndContinue = function(onSuccess) {
     return async function() {
-        const results = await flushPersist();
+        const results = await App.persistence.flushPersist();
         const saveSucceeded = !results || results.every(function(result) {
             return result && result.success !== false;
         });
@@ -53,7 +53,7 @@ App.ui.saveAndContinue = function(onSuccess) {
             App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
             return;
         }
-        clearUnsaved();
+        App.persistence.clearUnsaved();
         if (onSuccess) await onSuccess();
     };
 };
@@ -63,10 +63,10 @@ App.ui.saveAndContinue = function(onSuccess) {
 // флаг несохранённых изменений и вызывает onSuccess.
 App.ui.rollbackAndContinue = function(onSuccess) {
     return async function() {
-        await loadFromStorage();
+        await App.persistence.loadFromStorage();
         App.refresh.all();
         App.grid.updateCurrentDisplay();
-        clearUnsaved();
+        App.persistence.clearUnsaved();
         if (onSuccess) await onSuccess();
     };
 };
@@ -224,7 +224,7 @@ document.getElementById('authLogoutItem')?.addEventListener('click', function() 
         return;
     }
 
-    const node = getNode(App.state.currentNodeId);
+    const node = App.nodes.getNode(App.state.currentNodeId);
     const message = node
         ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
         : App.i18n.t('range.saveChangesQuestion');
@@ -249,10 +249,10 @@ async function reloadAllData() {
         // После входа гостевая сессия не переносится в аккаунт: загружаем
         // только состояние, сохранённое для авторизованного пользователя.
         if (App.dirty) App.dirty.clearDirty();
-        clearUnsaved();
+        App.persistence.clearUnsaved();
         App.storage.clearCache();
         await App.storage.initialize();
-        const activeTab = await loadFromStorage();
+        const activeTab = await App.persistence.loadFromStorage();
         const tab = activeTab || 'constructor';
         App.navigation.switchTab(tab);
         if (tab === 'constructor' && App.state.analysisMode) {
@@ -315,7 +315,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ===== ФЛАГ ИЗМЕНЕНИЙ =====
-// (markUnsaved / clearUnsaved вынесены в persistence.js)
+// (App.persistence.markUnsaved / App.persistence.clearUnsaved вынесены в persistence.js)
 
 // ===== КНОПКА "СОХРАНИТЬ" =====
 document.getElementById('tableSaveBtn')?.addEventListener('click', function() {
@@ -328,8 +328,8 @@ document.getElementById('tableSaveBtn')?.addEventListener('click', function() {
         App.modals.showFloatingModal(App.i18n.t('range.noActiveSave'));
         return;
     }
-    // Тот же сценарий сохранения, что в App.ui.saveAndContinue (flushPersist →
-    // проверка → clearUnsaved / range.saveFailed), но без продолжения:
+    // Тот же сценарий сохранения, что в App.ui.saveAndContinue (App.persistence.flushPersist →
+    // проверка → App.persistence.clearUnsaved / range.saveFailed), но без продолжения:
     // хелпер возвращает колбэк «Да» — вызываем его сразу.
     App.ui.saveAndContinue()();
 });
@@ -375,17 +375,17 @@ document.getElementById('tableUndoBtn')?.addEventListener('click', function() {
         return;
     }
 
-    const node = getNode(App.state.currentNodeId);
+    const node = App.nodes.getNode(App.state.currentNodeId);
     const message = node
         ? App.i18n.t('range.undoChangesNamedQuestion', { name: node.name })
         : App.i18n.t('range.undoChangesQuestion');
 
     App.modals.showSaveConfirmModal(message, async function() {
         // Да — отменяем
-        await loadFromStorage();
+        await App.persistence.loadFromStorage();
         App.refresh.all();
         App.grid.updateCurrentDisplay();
-        clearUnsaved();
+        App.persistence.clearUnsaved();
     }, function() {
         // Нет — ничего не делаем
     });
@@ -414,7 +414,7 @@ document.getElementById('tablePasteBtn')?.addEventListener('click', function() {
 const originalSelectNode = App.navigation.selectNode;
 
 App.navigation.selectNode = function(nodeId) {
-    const targetNode = getNode(nodeId);
+    const targetNode = App.nodes.getNode(nodeId);
     if (targetNode && targetNode.type === 'folder') {
         originalSelectNode(nodeId);
         return;
@@ -424,13 +424,13 @@ App.navigation.selectNode = function(nodeId) {
         return;
     }
     if (App.state.hasUnsavedChanges) {
-        const node = getNode(App.state.currentNodeId);
+        const node = App.nodes.getNode(App.state.currentNodeId);
         const message = node
     ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
     : App.i18n.t('range.saveChangesQuestion');
 
         // В гостевом режиме изменения живут в памяти. Не показываем диалог
-        // сохранения и не вызываем loadFromStorage(): загрузка гостевого
+        // сохранения и не вызываем App.persistence.loadFromStorage(): загрузка гостевого
         // состояния могла затереть раскрашенную матрицу.
         if (!App.auth || !App.auth.isLoggedIn()) {
             originalSelectNode(nodeId);
@@ -761,7 +761,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 
         // ===== ПРОВЕРКА ПРИ ПЕРЕКЛЮЧЕНИИ НА ПРОСМОТР =====
         if (page === "work" && App.state.hasUnsavedChanges && App.auth && App.auth.isLoggedIn()) {
-            const node = getNode(App.state.currentNodeId);
+            const node = App.nodes.getNode(App.state.currentNodeId);
             const message = node
                 ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
                 : App.i18n.t('range.saveChangesQuestion');
@@ -790,7 +790,7 @@ document.getElementById('treeAddRangeBtn')?.addEventListener('click', App.tree.a
 
 document.getElementById('treeRenameBtn')?.addEventListener('click', () => {
     if (App.state.selectedNodeId) {
-        const node = getNode(App.state.selectedNodeId);
+        const node = App.nodes.getNode(App.state.selectedNodeId);
         if (node) {
             App.tree.startInlineRename(App.state.selectedNodeId);
         } else {
@@ -829,7 +829,7 @@ document.getElementById('treeCollapseText')?.addEventListener('click', () => {
 
     // Состояние свёрнутости — часть метаданных, помечаем для сохранения
     if (App.dirty) App.dirty.markMetadataDirty('editor');
-    persistAll();
+    App.persistence.persistAll();
 });
 
 document.getElementById('gtoTreeCollapseText')?.addEventListener('click', () => {
@@ -850,7 +850,7 @@ document.getElementById('gtoTreeCollapseText')?.addEventListener('click', () => 
 
     // Состояние свёрнутости — часть метаданных, помечаем для сохранения
     if (App.dirty) App.dirty.markMetadataDirty('gto');
-    persistAll();
+    App.persistence.persistAll();
 });
 
 // ===== КНОПКИ ДОБАВЛЕНИЯ ЦВЕТА И ПРОФИЛЯ =====
@@ -888,7 +888,7 @@ document.getElementById('editorModeBtn')?.addEventListener('click', function() {
     App.state.analysisMode = false;
     App.grid.refreshConstructorAnalysisMode();
     if (App.dirty) App.dirty.markMetadataDirty('editor');
-    persistAll();
+    App.persistence.persistAll();
 });
 
 document.getElementById('analysisModeBtn')?.addEventListener('click', function() {
@@ -896,7 +896,7 @@ document.getElementById('analysisModeBtn')?.addEventListener('click', function()
     App.state.analysisMode = true;
     App.grid.refreshConstructorAnalysisMode();
     if (App.dirty) App.dirty.markMetadataDirty('editor');
-    persistAll();
+    App.persistence.persistAll();
 });
 
 
@@ -904,7 +904,7 @@ document.getElementById('tableClearBtn')?.addEventListener('click', () => {
     if (App.state.analysisMode) return;
     if (!App.state.currentNodeId) return;
 
-    const node = getNode(App.state.currentNodeId);
+    const node = App.nodes.getNode(App.state.currentNodeId);
     const message = node
         ? App.i18n.t('range.clearTableNamedQuestion', { name: node.name })
         : App.i18n.t('range.clearTableQuestion');
@@ -918,7 +918,7 @@ App.modals.showSaveConfirmModal(message, () => {
             }
         }
         App.dirty.markTableDirty(App.state.currentNodeId);
-        markUnsaved();
+        App.persistence.markUnsaved();
         App.grid.updateCurrentDisplay();
     }
 }, null);
@@ -1020,14 +1020,14 @@ function initTreeResize() {
             waitForGridModules(10000)
         ]);
     }).then(function() {
-        return loadFromStorage().then(function(tab) {
+        return App.persistence.loadFromStorage().then(function(tab) {
             return tab || 'constructor';
         });
     }).then(function(activeTab) {
         return switchTabWhenReady(activeTab);
     }).catch(function(error) {
         console.error('Ошибка инициализации хранилища:', error);
-        loadFromStorage().then(function(activeTab) {
+        App.persistence.loadFromStorage().then(function(activeTab) {
             return switchTabWhenReady(activeTab || 'constructor');
         }).catch(function(loadError) {
             console.error('Ошибка резервной загрузки состояния:', loadError);

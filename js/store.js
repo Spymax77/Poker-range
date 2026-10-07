@@ -153,60 +153,64 @@
 
 // ============================================================
 // NODE INDEX — быстрый доступ к узлам по id
+// Публичный API работы с узлами. Новые функции добавлять сюда
+// (App.nodes.*), голые top-level function больше не объявляем.
 // ============================================================
+
+App.nodes = App.nodes || {};
 
 /**
  * Получить узел по id из текущей ветки (editor или gto).
  * O(1) вместо O(n).
  */
-function getNode(id) {
+App.nodes.getNode = function(id) {
     return App.state.nodeIndex.get(id) || null;
-}
+};
 
 /**
  * Получить узел по id из конкретной ветки (editor/gto).
  */
-function getNodeFrom(branch, id) {
+App.nodes.getNodeFrom = function(branch, id) {
     return branch.nodeIndex.get(id) || null;
-}
+};
 
 /**
  * Пересобрать индекс из массива nodes.
- * Вызывать после loadFromStorage и массовых операций.
+ * Вызывать после App.persistence.loadFromStorage и массовых операций.
  */
-function rebuildNodeIndex() {
+App.nodes.rebuildNodeIndex = function() {
     App.state.nodeIndex.clear();
     for (const node of App.state.nodes) {
         App.state.nodeIndex.set(node.id, node);
     }
-}
+};
 
 /**
  * Пересобрать индекс для конкретной ветки.
  */
-function rebuildNodeIndexFor(branch) {
+App.nodes.rebuildNodeIndexFor = function(branch) {
     branch.nodeIndex.clear();
     for (const node of branch.nodes) {
         branch.nodeIndex.set(node.id, node);
     }
-}
+};
 
 /**
  * Добавить узел в массив nodes И в индекс.
  */
-function addNode(node) {
+App.nodes.addNode = function(node) {
     App.state.nodes.push(node);
     App.state.nodeIndex.set(node.id, node);
-}
+};
 
 /**
  * Удалить узел из массива nodes И из индекса по id.
  */
-function removeNode(id) {
+App.nodes.removeNode = function(id) {
     App.state.nodeIndex.delete(id);
     const idx = App.state.nodes.findIndex(n => n.id === id);
     if (idx !== -1) App.state.nodes.splice(idx, 1);
-}
+};
 
 // ============================================================
 // КОНСТАНТЫ И УТИЛИТЫ (используются во всех модулях)
@@ -233,7 +237,7 @@ globalThis.rowsData = rowsData;
  * Экранирует HTML-спецсимволы в строке, чтобы её можно было безопасно
  * вставлять в innerHTML (защита от XSS через имена узлов/цветов).
  */
-function escapeHtml(str) {
+App.nodes.escapeHtml = function(str) {
     if (str === null || str === undefined) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -241,4 +245,4 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-}
+};

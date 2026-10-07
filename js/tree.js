@@ -44,9 +44,9 @@ function generateUniqueNameFor(parentId, baseName) {
             .filter(n => n.parentId === null)
             .map(n => n.name);
     } else {
-        const parent = getNode(parentId);
+        const parent = App.nodes.getNode(parentId);
         existingNames = parent
-            ? parent.childrenIds.map(id => getNode(id)).filter(n => n).map(n => n.name)
+            ? parent.childrenIds.map(id => App.nodes.getNode(id)).filter(n => n).map(n => n.name)
             : [];
     }
     return App.tree.generateUniqueName(baseName, existingNames);
@@ -65,16 +65,16 @@ function finishNodeCreation(newId, opts) {
     App.refresh.all();
     App.navigation.selectNode(newId);
     if (App.auth && App.auth.isLoggedIn()) {
-        flushPersist();
+        App.persistence.flushPersist();
     } else {
-        markUnsaved();
-        notifyGuestUnsavedChanges();
+        App.persistence.markUnsaved();
+        App.persistence.notifyGuestUnsavedChanges();
     }
 }
 
 // ===== ДЕРЕВО (с компактным меню) =====
 App.tree.moveNodeUp = function(nodeId) {
-    let node = getNode(nodeId);
+    let node = App.nodes.getNode(nodeId);
     if (!node) return;
     let parentId = node.parentId;
     if (parentId === null) {
@@ -90,7 +90,7 @@ App.tree.moveNodeUp = function(nodeId) {
             if (App.dirty) App.dirty.markStructureDirty();
         }
     } else {
-        let parent = getNode(parentId);
+        let parent = App.nodes.getNode(parentId);
         let arr = parent.childrenIds;
         let idx = arr.indexOf(nodeId);
         if (idx > 0) {
@@ -98,12 +98,12 @@ App.tree.moveNodeUp = function(nodeId) {
             if (App.dirty) App.dirty.markStructureDirty();
         }
     }
-    persistAll();
+    App.persistence.persistAll();
     App.refresh.all();
 }
 
 App.tree.moveNodeDown = function(nodeId) {
-    let node = getNode(nodeId);
+    let node = App.nodes.getNode(nodeId);
     if (!node) return;
     let parentId = node.parentId;
     if (parentId === null) {
@@ -119,7 +119,7 @@ App.tree.moveNodeDown = function(nodeId) {
             if (App.dirty) App.dirty.markStructureDirty();
         }
     } else {
-        let parent = getNode(parentId);
+        let parent = App.nodes.getNode(parentId);
         let arr = parent.childrenIds;
         let idx = arr.indexOf(nodeId);
         if (idx < arr.length - 1) {
@@ -127,12 +127,12 @@ App.tree.moveNodeDown = function(nodeId) {
             if (App.dirty) App.dirty.markStructureDirty();
         }
     }
-    persistAll();
+    App.persistence.persistAll();
     App.refresh.all();
 }
 
 App.tree.deleteNode = function(nodeId) {
-    let node = getNode(nodeId);
+    let node = App.nodes.getNode(nodeId);
     if (!node) return;
 
     let hasFilledRanges = false; // ← ОБЪЯВЛЯЕМ ЗДЕСЬ (в начале функции)
@@ -141,11 +141,11 @@ App.tree.deleteNode = function(nodeId) {
     if (node.type === 'folder') {
         // Вспомогательная функция: сбор всех диапазонов внутри папки (рекурсивно)
         function getAllRangesInFolder(folderId) {
-            const folder = getNode(folderId);
+            const folder = App.nodes.getNode(folderId);
             if (!folder) return [];
             let result = [];
             for (const childId of folder.childrenIds) {
-                const child = getNode(childId);
+                const child = App.nodes.getNode(childId);
                 if (!child) continue;
                 if (child.type === 'range' || child.type === 'subrange') {
                     result.push(child);
@@ -242,15 +242,15 @@ App.tree.deleteNode = function(nodeId) {
 
     // ===== ОСНОВНАЯ ЛОГИКА УДАЛЕНИЯ =====
     function proceedDelete(id) {
-        const nodeToDelete = getNode(id);
+        const nodeToDelete = App.nodes.getNode(id);
         if (!nodeToDelete) return;
 
         // Хелпер: рекурсивный поиск первого диапазона внутри папки
         function findFirstRangeInFolder(folderId) {
-            const folder = getNode(folderId);
+            const folder = App.nodes.getNode(folderId);
             if (!folder) return null;
             for (const childId of folder.childrenIds) {
-                const child = getNode(childId);
+                const child = App.nodes.getNode(childId);
                 if (!child) continue;
                 if (child.type === 'range' || child.type === 'subrange') {
                     return child;
@@ -265,10 +265,10 @@ App.tree.deleteNode = function(nodeId) {
 
         // Хелпер: рекурсивный поиск последнего диапазона внутри папки
         function findLastRangeInFolder(folderId) {
-            const folder = getNode(folderId);
+            const folder = App.nodes.getNode(folderId);
             if (!folder) return null;
             for (let i = folder.childrenIds.length - 1; i >= 0; i--) {
-                const child = getNode(folder.childrenIds[i]);
+                const child = App.nodes.getNode(folder.childrenIds[i]);
                 if (!child) continue;
                 if (child.type === 'range' || child.type === 'subrange') {
                     return child;
@@ -289,7 +289,7 @@ App.tree.deleteNode = function(nodeId) {
             let siblingIds;
             let idx;
             if (deletedNode.parentId !== null) {
-                const parentNode = getNode(deletedNode.parentId);
+                const parentNode = App.nodes.getNode(deletedNode.parentId);
                 if (!parentNode) return null;
                 siblingIds = parentNode.childrenIds;
                 idx = siblingIds.indexOf(deletedNode.id);
@@ -303,7 +303,7 @@ App.tree.deleteNode = function(nodeId) {
             if (idx === -1) return null;
 
             function pickSibling(i) {
-                const sib = getNode(siblingIds[i]);
+                const sib = App.nodes.getNode(siblingIds[i]);
                 if (!sib) return null;
                 if (sib.type === 'range' || sib.type === 'subrange') return sib;
                 if (sib.type === 'folder') {
@@ -325,7 +325,7 @@ App.tree.deleteNode = function(nodeId) {
             }
             // Родитель сам является диапазоном (случай поддиапазона поддиапазона)
             if (deletedNode.parentId !== null) {
-                const parentNode = getNode(deletedNode.parentId);
+                const parentNode = App.nodes.getNode(deletedNode.parentId);
                 if (parentNode &&
                     (parentNode.type === 'range' || parentNode.type === 'subrange')) {
                     return parentNode;
@@ -373,12 +373,12 @@ App.tree.deleteNode = function(nodeId) {
         }
 
         function delSub(currentId) {
-            let n = getNode(currentId);
+            let n = App.nodes.getNode(currentId);
             if (!n) return;
             for (let cid of n.childrenIds) {
                 delSub(cid);
             }
-            removeNode(currentId);
+            App.nodes.removeNode(currentId);
 
 const tableId = getTableId(currentId);
 delete App.state.cellStorage[tableId];
@@ -402,7 +402,7 @@ if (App.auth && App.auth.isLoggedIn()) {
 
 
 
-let p = getNode(n.parentId);
+let p = App.nodes.getNode(n.parentId);
             if (p) {
                 p.childrenIds = p.childrenIds.filter(cid => cid !== currentId);
             }
@@ -421,7 +421,7 @@ let p = getNode(n.parentId);
         }
 
         // Поиск нового активного диапазона в редакторе
-        const activeExists = !!getNode(App.state.currentNodeId);
+        const activeExists = !!App.nodes.getNode(App.state.currentNodeId);
         if (!activeExists) {
             // Приоритет: сосед удаляемого узла (тот, что перед ним; если его
             // нет — следующий), либо родитель-диапазон (поддиапазон поддиапазона).
@@ -437,18 +437,18 @@ let p = getNode(n.parentId);
 
         // Поиск нового активного диапазона в просмотре
         App.state.workLevels = App.state.workLevels.filter(lvl => lvl.parentNodeId !== id);
-        const workActiveExists = !!getNode(App.state.workDisplayNodeId);
+        const workActiveExists = !!App.nodes.getNode(App.state.workDisplayNodeId);
         if (!workActiveExists) {
             const foundRange = findFallbackActiveRange(neighbourRange);
             App.state.workDisplayNodeId = foundRange ? foundRange.id : null;
-            persistAll();
+            App.persistence.persistAll();
         }
 
         if (!App.state.workLevels.length) {
             App.state.workLevels = [{ parentNodeId: null, levelIndex: 0 }];
         }
 
-        persistAll();
+        App.persistence.persistAll();
         App.refresh.all();
     }
 
@@ -458,7 +458,7 @@ let p = getNode(n.parentId);
     }
 }
 App.tree.startInlineRename = function(nodeId) {
-    const node = getNode(nodeId);
+    const node = App.nodes.getNode(nodeId);
     if (!node) return;
     
     // Ищем элемент в дереве по data-node-id
@@ -478,15 +478,15 @@ App.tree.startInlineRename = function(nodeId) {
     }
     
     // Сохраняем данные
-    renameNodeId = nodeId;
-    renameOldName = node.name;
+    App.state.renameNodeId = nodeId;
+    App.state.renameOldName = node.name;
     
     // Создаём input
-    renameInput = document.createElement('input');
-    renameInput.type = 'text';
-    renameInput.className = 'rename-input';
-    renameInput.value = node.name;
-    renameInput.maxLength = 35;
+    App.state.renameInput = document.createElement('input');
+    App.state.renameInput.type = 'text';
+    App.state.renameInput.className = 'rename-input';
+    App.state.renameInput.value = node.name;
+    App.state.renameInput.maxLength = 35;
     
     // Заменяем текст на input
     const parent = targetElement.parentNode;
@@ -503,17 +503,17 @@ App.tree.startInlineRename = function(nodeId) {
     if (icon) {
         targetElement.appendChild(icon);
     }
-    targetElement.appendChild(renameInput);
+    targetElement.appendChild(App.state.renameInput);
     
     // Фокус и выделение текста
-    renameInput.focus();
-    renameInput.select();
+    App.state.renameInput.focus();
+    App.state.renameInput.select();
     // Останавливаем всплытие, чтобы клик внутри поля не вызывал selectNode()
-renameInput.addEventListener('mousedown', function(e) {
+App.state.renameInput.addEventListener('mousedown', function(e) {
     e.stopPropagation();
 });
     // Обработчики
-    renameInput.addEventListener('keydown', function(e) {
+    App.state.renameInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             App.tree.finishInlineRename(true);
@@ -523,26 +523,26 @@ renameInput.addEventListener('mousedown', function(e) {
         }
     });
     
-    renameInput.addEventListener('blur', function() {
+    App.state.renameInput.addEventListener('blur', function() {
         App.tree.finishInlineRename(true);
     });
 }
 
 App.tree.finishInlineRename = function(save) {
-    if (!renameInput || renameNodeId === null) return;
+    if (!App.state.renameInput || App.state.renameNodeId === null) return;
     
-    const node = getNode(renameNodeId);
+    const node = App.nodes.getNode(App.state.renameNodeId);
     if (!node) return;
     
-    const newName = renameInput.value.trim();
+    const newName = App.state.renameInput.value.trim();
     
     // Если сохраняем и имя не пустое
     if (save && newName.length > 0) {
         node.name = newName;
         if (App.dirty) App.dirty.markStructureDirty();
-        persistAll();
+        App.persistence.persistAll();
         App.refresh.all();
-        if (App.state.currentNodeId === renameNodeId) {
+        if (App.state.currentNodeId === App.state.renameNodeId) {
             App.grid.updateCurrentDisplay();
         }
     } else {
@@ -551,9 +551,9 @@ App.tree.finishInlineRename = function(save) {
     }
     
     // Очищаем
-    renameInput = null;
-    renameNodeId = null;
-    renameOldName = '';
+    App.state.renameInput = null;
+    App.state.renameNodeId = null;
+    App.state.renameOldName = '';
 }
 
 App.tree.addRootNode = function() {
@@ -567,10 +567,10 @@ App.tree.addRootNode = function() {
         childrenIds: [],
         type: 'folder'
     };
-    addNode(newNode);
+    App.nodes.addNode(newNode);
     App.grid.ensureTable(newId);
     if (App.dirty) App.dirty.markStructureDirty();
-    persistAll();
+    App.persistence.persistAll();
     App.refresh.all();
     App.navigation.selectNode(newId);
 }
@@ -589,7 +589,7 @@ App.tree.addRootRange = function() {
         childrenIds: [],
         type: 'range'
     };
-    addNode(newNode);
+    App.nodes.addNode(newNode);
     App.grid.ensureTable(newId);
 
     initDefaultColor(newId);
@@ -597,7 +597,7 @@ App.tree.addRootRange = function() {
 }
 
 App.tree.createChildNode = function(parentId, type) {
-    let parent = getNode(parentId);
+    let parent = App.nodes.getNode(parentId);
     if (!parent) return;
 
     let baseName;
@@ -626,7 +626,7 @@ App.tree.createChildNode = function(parentId, type) {
                     type: 'subrange',
                     selectedComponentIndex: selectedIndex
                 };
-                addNode(newNode);
+                App.nodes.addNode(newNode);
                 parent.childrenIds.push(newId);
                 App.grid.ensureTable(newId);
                 
@@ -650,7 +650,7 @@ App.tree.createChildNode = function(parentId, type) {
         childrenIds: [],
         type: type
     };
-    addNode(newNode);
+    App.nodes.addNode(newNode);
     parent.childrenIds.push(newId);
     App.grid.ensureTable(newId);
     
@@ -694,7 +694,7 @@ App.tree.scrollNodeIntoView = function(nodeId) {
             if (!node) return;
             result.push(node.id);
             if (!branch.expandedNodes.has(node.id)) return;
-            (node.childrenIds || []).forEach(childId => visit(getNodeFrom(branch, childId)));
+            (node.childrenIds || []).forEach(childId => visit(App.nodes.getNodeFrom(branch, childId)));
         };
         branch.nodes.filter(node => node.parentId === null).forEach(visit);
         return result;
@@ -702,7 +702,7 @@ App.tree.scrollNodeIntoView = function(nodeId) {
 
     App.tree.toggleNodeExpansion = function(nodeId, expanded) {
         const branch = App.tree.getKeyboardBranch();
-        const node = getNodeFrom(branch, nodeId);
+        const node = App.nodes.getNodeFrom(branch, nodeId);
         if (!node || !node.childrenIds || !node.childrenIds.length) return false;
 
         const shouldExpand = expanded === undefined
@@ -728,7 +728,7 @@ App.tree.scrollNodeIntoView = function(nodeId) {
         }
 
         if (App.dirty) App.dirty.markMetadataDirty(App.currentMode);
-        persistAll();
+        App.persistence.persistAll();
         return true;
     };
 
@@ -737,7 +737,7 @@ App.tree.scrollNodeIntoView = function(nodeId) {
         const visibleIds = App.tree.getVisibleNodeIds(branch);
         if (!visibleIds.length) return;
 
-        const currentId = getNodeFrom(branch, branch.selectedNodeId)
+        const currentId = App.nodes.getNodeFrom(branch, branch.selectedNodeId)
             ? branch.selectedNodeId
             : branch.currentNodeId;
         const currentIndex = visibleIds.indexOf(currentId);
@@ -754,10 +754,10 @@ App.tree.scrollNodeIntoView = function(nodeId) {
 
     App.tree.handleKeyboardNavigation = function(key) {
         const branch = App.tree.getKeyboardBranch();
-        const selectedId = getNodeFrom(branch, branch.selectedNodeId)
+        const selectedId = App.nodes.getNodeFrom(branch, branch.selectedNodeId)
             ? branch.selectedNodeId
             : branch.currentNodeId;
-        const selectedNode = selectedId === null ? null : getNodeFrom(branch, selectedId);
+        const selectedNode = selectedId === null ? null : App.nodes.getNodeFrom(branch, selectedId);
         if (!selectedNode) return false;
 
         if (key === 'ArrowDown' || key === 'ArrowUp') {
@@ -778,7 +778,7 @@ App.tree.scrollNodeIntoView = function(nodeId) {
         }
         if (key === 'Delete') {
             // Удаление доступно только в редакторе: в GTO дерево read-only
-            // (меню с удалением рендерится только при editable), а getNode
+            // (меню с удалением рендерится только при editable), а App.nodes.getNode
             // ищет по индексу редактора — можно удалить чужой узел.
             if (App.currentMode === 'gto') return false;
             App.tree.deleteNode(selectedNode.id);
@@ -789,10 +789,10 @@ App.tree.scrollNodeIntoView = function(nodeId) {
 // ===== ВЫЧИСЛЕНИЕ УРОВНЯ ВЛОЖЕННОСТИ =====
 App.tree.getNodeLevel = function(nodeId) {
     let level = 0;
-    let current = getNode(nodeId);
+    let current = App.nodes.getNode(nodeId);
     while (current && current.parentId !== null) {
         level++;
-        current = getNode(current.parentId);
+        current = App.nodes.getNode(current.parentId);
     }
     return level;
 }
@@ -804,7 +804,7 @@ App.tree.getSubrangeColor = function(node) {
         return null;
     }
     
-    const parent = getNode(node.parentId);
+    const parent = App.nodes.getNode(node.parentId);
     if (!parent) return null;
     
     const tableId = getTableId(parent.id);
@@ -913,8 +913,8 @@ function buildTreeNodeIconSvg(node) {
     const color = App.tree.getSubrangeColor(node);
     return `<svg width="20" height="20" viewBox="0 0 24 24">
         <rect x="3" y="3" width="8" height="8" rx="1"/>
-        <rect x="13.5" y="3.5" width="7" height="7" rx="1" ${color ? `fill="${escapeHtml(color)}" stroke="${escapeHtml(color)}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
-        <rect x="3.5" y="13.5" width="7" height="7" rx="1" ${color ? `fill="${escapeHtml(color)}" stroke="${escapeHtml(color)}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
+        <rect x="13.5" y="3.5" width="7" height="7" rx="1" ${color ? `fill="${App.nodes.escapeHtml(color)}" stroke="${App.nodes.escapeHtml(color)}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
+        <rect x="3.5" y="13.5" width="7" height="7" rx="1" ${color ? `fill="${App.nodes.escapeHtml(color)}" stroke="${App.nodes.escapeHtml(color)}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
         <rect x="13" y="13" width="8" height="8" rx="1"/>
     </svg>`;
 }
@@ -1173,7 +1173,7 @@ function buildTreeNodeChildren(node, activeNodeId, editable, onSelectNode, isOpe
     childrenInner.className = "tree-children-inner";
 
     if (node.childrenIds && node.childrenIds.length) {
-        let childNodes = node.childrenIds.map(cid => getNode(cid)).filter(n => n);
+        let childNodes = node.childrenIds.map(cid => App.nodes.getNode(cid)).filter(n => n);
         childNodes.sort((a, b) => node.childrenIds.indexOf(a.id) - node.childrenIds.indexOf(b.id));
         for (let child of childNodes) {
             App.tree.renderTreeNode(childrenInner, child, activeNodeId, editable, onSelectNode);

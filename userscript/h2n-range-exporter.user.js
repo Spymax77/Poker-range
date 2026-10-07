@@ -45,12 +45,24 @@
     // ===== ЧАСТЬ 1: САЙТ PFRangeTool (localhost:3000) =====
     // Собирает контекст текущего узла и кладёт в общее хранилище Tampermonkey.
 
+    // getNode на странице жил голой глобальной функцией; после переноса в
+    // App.nodes читаем новый путь, оставляя fallback на старый глобал.
+    function pfHasNodeApi() {
+        return !!(W.App && W.App.state && ((W.App.nodes && W.App.nodes.getNode) || W.getNode));
+    }
+
+    function pfGetNode(id) {
+        if (W.App && W.App.nodes && W.App.nodes.getNode) return W.App.nodes.getNode(id);
+        if (W.getNode) return W.getNode(id);
+        return null;
+    }
+
     function collectPFContext() {
         try {
-            if (!W.App || !W.App.state || !W.getNode) return;
+            if (!pfHasNodeApi()) return;
             const nodeId = W.App.state.currentNodeId;
             if (nodeId === null || nodeId === undefined) return;
-            const node = W.getNode(nodeId);
+            const node = pfGetNode(nodeId);
             if (!node) return;
 
             const ctx = {
@@ -66,7 +78,7 @@
             };
 
             if (node.type === 'subrange' && node.parentId !== null && node.parentId !== undefined) {
-                const pn = W.getNode(node.parentId);
+                const pn = pfGetNode(node.parentId);
                 ctx.parentName = pn ? (pn.name || '') : null;
                 if (W.App.stats && W.App.stats.getCellAvailabilityPercent && W.App.importManager) {
                     const map = W.App.importManager.generateHandMap();
@@ -96,7 +108,7 @@
         setInterval(() => {
             try {
                 const nid = (W.App && W.App.state) ? W.App.state.currentNodeId : null;
-                const ntype = (nid !== null && W.getNode) ? (W.getNode(nid) || {}).type : null;
+                const ntype = (nid !== null) ? (pfGetNode(nid) || {}).type : null;
                 if (nid !== lastNodeId || ntype !== lastType) {
                     lastNodeId = nid;
                     lastType = ntype;

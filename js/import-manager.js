@@ -125,7 +125,7 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
         return;
     }
 
-    const currentNode = getNode(nodeId);
+    const currentNode = App.nodes.getNode(nodeId);
     const isSubrange = currentNode && currentNode.type === 'subrange';
 
     const overwriteCheck = document.getElementById('importOverwriteCheck');
@@ -306,7 +306,7 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
     App.colors.renderAllColors(nodeId, true);
     App.refresh.all();
     App.grid.updateCurrentDisplay();
-    markUnsaved();
+    App.persistence.markUnsaved();
 
     App.importManager.deduplicateMultiColors(nodeId);
     App.importManager.removeUnusedMultiColors(nodeId);

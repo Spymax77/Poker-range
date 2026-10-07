@@ -112,9 +112,9 @@ App.defaults = App.defaults || {};
 
         // Разовая автозапись дефолта в аккаунт при первом заходе
         // авторизованного пользователя. Гостю сохранять нечего и некуда:
-        // persistAll/flushPersist сами выходят без авторизации.
-        if (App.auth && App.auth.isLoggedIn() && typeof flushPersist === 'function') {
-            await flushPersist();
+        // App.persistence.persistAll/App.persistence.flushPersist сами выходят без авторизации.
+        if (App.auth && App.auth.isLoggedIn() && typeof App.persistence.flushPersist === 'function') {
+            await App.persistence.flushPersist();
         }
     };
 })();

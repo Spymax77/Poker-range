@@ -2,7 +2,7 @@
 // ===== DRAG & DROP: ПРОВЕРКА, МОЖНО ЛИ ТАЩИТЬ =====
 App.dragDrop = App.dragDrop || {};
 App.dragDrop.canDrag = function(nodeId) {
-    const node = getNode(nodeId);
+    const node = App.nodes.getNode(nodeId);
     if (!node) return false;
 
     // Поддиапазоны — никогда
@@ -18,7 +18,7 @@ App.dragDrop.canDrag = function(nodeId) {
             // Если это любой другой узел внутри диапазона — нельзя
             return false;
         }
-        current = getNode(current.parentId);
+        current = App.nodes.getNode(current.parentId);
     }
 
     // Папки вне диапазона — можно
@@ -29,7 +29,7 @@ App.dragDrop.canDrag = function(nodeId) {
 // ===== DRAG & DROP: ПРОВЕРКА, МОЖНО ЛИ ВСТАВИТЬ =====
 App.dragDrop.canDrop = function(sourceId, targetId) {
     // Запрещаем вставку в родителя
-    const source = getNode(sourceId);
+    const source = App.nodes.getNode(sourceId);
     if (source && source.parentId === targetId) {
         return false;
     }
@@ -37,13 +37,13 @@ App.dragDrop.canDrop = function(sourceId, targetId) {
     if (sourceId === targetId) return false;
 
     // Защита от циклов
-    let current = getNode(targetId);
+    let current = App.nodes.getNode(targetId);
     while (current) {
         if (current.id === sourceId) return false;
-        current = getNode(current.parentId);
+        current = App.nodes.getNode(current.parentId);
     }
 
-    const target = getNode(targetId);
+    const target = App.nodes.getNode(targetId);
     if (!source || !target) return false;
 
     if (target.type !== 'folder') return false;
@@ -52,7 +52,7 @@ App.dragDrop.canDrop = function(sourceId, targetId) {
     let t = target;
     while (t) {
         if (t.type === 'range') return false;
-        t = getNode(t.parentId);
+        t = App.nodes.getNode(t.parentId);
     }
 
     return true;
@@ -60,9 +60,9 @@ App.dragDrop.canDrop = function(sourceId, targetId) {
 
 // ===== DRAG & DROP: ПРОВЕРКА, ВНУТРИ ЛИ ДИАПАЗОНА =====
 App.dragDrop.isInsideRange = function(nodeId) {
-    let current = getNode(nodeId);
+    let current = App.nodes.getNode(nodeId);
     while (current) {
-        const parent = getNode(current.parentId);
+        const parent = App.nodes.getNode(current.parentId);
         if (parent && parent.type === 'range') return true;
         current = parent;
     }
@@ -212,7 +212,7 @@ App.dragDrop.highlightDropTarget = function(clientX, clientY) {
     // Если цель — текущий родитель, не подсвечиваем
 if (App.state.dragData) {
     const targetId = App.dragDrop.getDropTarget(clientX, clientY);
-    const source = getNode(App.state.dragData.nodeId);
+    const source = App.nodes.getNode(App.state.dragData.nodeId);
     if (source && source.parentId === targetId) {
         App.dragDrop.clearHighlight();
         return;
@@ -230,7 +230,7 @@ if (App.state.dragData) {
     const nodeId = parseInt(treeItem.dataset.nodeId);
     if (!nodeId) return;
 
-    const node = getNode(nodeId);
+    const node = App.nodes.getNode(nodeId);
     if (!node) return;
 
     if (node.type === 'folder') {
@@ -283,7 +283,7 @@ App.dragDrop.getDropTarget = function(clientX, clientY) {
     const nodeId = parseInt(treeItem.dataset.nodeId);
     if (!nodeId) return null;
 
-    const node = getNode(nodeId);
+    const node = App.nodes.getNode(nodeId);
     if (!node) return null;
 
     // Можно вставлять только в папки (не в диапазоны)
@@ -302,22 +302,22 @@ App.dragDrop.updateGhostTarget = function(targetNodeId) {
         return;
     }
 
-    const target = getNode(targetNodeId);
+    const target = App.nodes.getNode(targetNodeId);
     if (!target) {
         hintEl.innerHTML = `→ переместить в <strong>...</strong>`;
         return;
     }
 
     if (App.dragDrop.canDrop(App.state.dragData.nodeId, targetNodeId)) {
-        hintEl.innerHTML = `→ переместить в <strong>${escapeHtml(target.name)}</strong>`;
+        hintEl.innerHTML = `→ переместить в <strong>${App.nodes.escapeHtml(target.name)}</strong>`;
     } else {
         hintEl.innerHTML = `🚫`;
     }
 }
 // ===== DRAG & DROP: ОКНО ПОДТВЕРЖДЕНИЯ ПЕРЕМЕЩЕНИЯ =====
 App.dragDrop.showMoveConfirm = function(sourceId, targetId) {
-    const source = getNode(sourceId);
-    const target = getNode(targetId);
+    const source = App.nodes.getNode(sourceId);
+    const target = App.nodes.getNode(targetId);
     if (!source || !target) return;
 
     const typeName = source.type === 'folder' ? App.i18n.t('move.folder') : App.i18n.t('move.range');
@@ -336,9 +336,9 @@ App.dragDrop.showMoveConfirm = function(sourceId, targetId) {
         <div class="move-popup-question">
             ${App.i18n.t('move.confirm', {
                 typeName: typeName,
-                sourceName: escapeHtml(source.name),
+                sourceName: App.nodes.escapeHtml(source.name),
                 targetTypeName: targetTypeName,
-                targetName: escapeHtml(target.name)
+                targetName: App.nodes.escapeHtml(target.name)
             })}
         </div>
         <div class="move-popup-actions">
@@ -387,12 +387,12 @@ App.dragDrop.closeMovePopup = function(overlay, sourceId) {
 }
 // ===== DRAG & DROP: ПЕРЕМЕЩЕНИЕ УЗЛА =====
 App.dragDrop.moveNodeWithChildren = function(sourceId, targetId) {
-    const source = getNode(sourceId);
-    const target = getNode(targetId);
+    const source = App.nodes.getNode(sourceId);
+    const target = App.nodes.getNode(targetId);
     if (!source || !target) return;
 
     // Удаляем из старого родителя
-    const oldParent = getNode(source.parentId);
+    const oldParent = App.nodes.getNode(source.parentId);
     if (oldParent) {
         oldParent.childrenIds = oldParent.childrenIds.filter(id => id !== sourceId);
     }
@@ -404,7 +404,7 @@ App.dragDrop.moveNodeWithChildren = function(sourceId, targetId) {
     // Структура дерева изменена — отмечаем для сохранения
     if (App.dirty) App.dirty.markStructureDirty();
 
-    persistAll();
+    App.persistence.persistAll();
     App.refresh.all();
     App.navigation.selectNode(sourceId);
 }

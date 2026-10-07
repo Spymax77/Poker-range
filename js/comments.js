@@ -12,10 +12,10 @@ App.comments.setComments = function(nodeId, text) {
     const tableId = getTableId(nodeId);
     App.state.commentsPerNode[tableId] = text;
     // Комментарии хранятся в ключе структуры (commentsPerNode внутри
-    // poker_range_structure_*) — без этой метки persistAll не сохранял
+    // poker_range_structure_*) — без этой метки App.persistence.persistAll не сохранял
     // их вовсе
     if (App.dirty) App.dirty.markStructureDirty();
-    markUnsaved();
+    App.persistence.markUnsaved();
 }
 
 App.comments.renderComments = function(nodeId) {
@@ -63,8 +63,8 @@ App.comments.saveComments = function() {
     if (!textarea) return;
     
     App.comments.setComments(App.state.currentNodeId, textarea.value);
-    persistAll();
-    clearUnsaved();
+    App.persistence.persistAll();
+    App.persistence.clearUnsaved();
 }
 
 // ===== ИНИЦИАЛИЗАЦИЯ КОММЕНТАРИЕВ =====
@@ -92,8 +92,8 @@ App.comments.initComments = function() {
         textarea.addEventListener('blur', function() {
             if (App.state.currentNodeId) {
                 App.comments.setComments(App.state.currentNodeId, this.value);
-                persistAll();
-                clearUnsaved();
+                App.persistence.persistAll();
+                App.persistence.clearUnsaved();
             }
         });
     }

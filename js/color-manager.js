@@ -404,10 +404,10 @@ App.colors.removeUnusedColors = function(nodeId) {
         // меняет цвета/активный профиль — сама таблица не меняется, сохранять её не нужно.
         // App.dirty.markTableDirty(nodeId);
     }
-    // persistAll (а не flushPersist): цвета уйдут на сервер через дебаунс ~2с.
-    // flushPersist здесь нельзя — он сохраняет ВСЁ грязное, включая таблицы
+    // App.persistence.persistAll (а не App.persistence.flushPersist): цвета уйдут на сервер через дебаунс ~2с.
+    // App.persistence.flushPersist здесь нельзя — он сохраняет ВСЁ грязное, включая таблицы
     // с непринятыми правками ячеек (например, свежую покраску до «Сохранить»).
-    persistAll();
+    App.persistence.persistAll();
     return { removed: removed };
 };
 

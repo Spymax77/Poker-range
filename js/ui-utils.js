@@ -365,7 +365,7 @@ okBtn.addEventListener('click', function() {
 
     if (editColorId !== null && typeof editCallback === 'function') {
         editCallback(hex);
-        markUnsaved();
+        App.persistence.markUnsaved();
     } else {
         if (!App.state.currentNodeId) {
             console.error('App.state.currentNodeId не определён');
@@ -375,7 +375,7 @@ okBtn.addEventListener('click', function() {
         App.colors.createSimpleColor(App.state.currentNodeId, null, hex);
         App.colors.renderAllColors(App.state.currentNodeId, true);
         App.refresh.allGrids();
-        markUnsaved();
+        App.persistence.markUnsaved();
         // Цвет реально создан — помечаем цветовые данные как изменённые.
         // (раньше dirty-флаг ставил патч из dirty-integration.js, но слишком
         // рано — при открытии пикера, а не при создании цвета)

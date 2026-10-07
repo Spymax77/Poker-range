@@ -324,7 +324,7 @@ function restoreGtoStateSnapshot(snapshot) {
     App.gto.nextNodeId = snapshot.nextNodeId;
     App.gto.nextColorId = snapshot.nextColorId;
     if (App.gto.nodes && App.gto.nodes.length) {
-        rebuildNodeIndexFor(App.gto);
+        App.nodes.rebuildNodeIndexFor(App.gto);
     }
 }
 
@@ -378,10 +378,10 @@ function loadGtoData(fileName, onSuccess, resetView) {
             App.gto.colorsPerNode = converted.colorsPerNode;
             App.gto.activePerNode = converted.activePerNode;
 
-            rebuildNodeIndexFor(App.gto);
+            App.nodes.rebuildNodeIndexFor(App.gto);
 
             const firstRange = App.gto.nodes.find(n => n.type === 'range');
-            const savedCurrent = getNodeFrom(App.gto, snapshot.currentNodeId);
+            const savedCurrent = App.nodes.getNodeFrom(App.gto, snapshot.currentNodeId);
             const canRestoreView = !resetView && savedCurrent &&
                 (savedCurrent.type === 'range' || savedCurrent.type === 'subrange');
 
@@ -406,12 +406,12 @@ function loadGtoData(fileName, onSuccess, resetView) {
                 if (firstRange) {
                     // Раскрываем весь путь к первому диапазону: техническую
                     // корневую папку JSON и папку UTG внутри неё.
-                    let folder = getNodeFrom(App.gto, firstRange.parentId);
+                    let folder = App.nodes.getNodeFrom(App.gto, firstRange.parentId);
                     while (folder && folder.type === 'folder') {
                         App.gto.expandedNodes.add(folder.id);
                         folder = folder.parentId === null
                             ? null
-                            : getNodeFrom(App.gto, folder.parentId);
+                            : App.nodes.getNodeFrom(App.gto, folder.parentId);
                     }
                 }
             }
@@ -466,7 +466,7 @@ function loadGtoByFilters(overrides, onSuccess) {
     const persistViewAfterSwitch = () => {
         if (overrides && App.dirty) {
             App.dirty.markMetadataDirty('gto');
-            persistAll();
+            App.persistence.persistAll();
         }
     };
 
@@ -672,7 +672,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Если GTO-дерево уже восстановлено из хранилища (loadFromStorage в init.js
+    // Если GTO-дерево уже восстановлено из хранилища (App.persistence.loadFromStorage в init.js
     // выполняется раньше этого события) — не перезатираем сохранённый currentNodeId
     // и expandedNodes повторной загрузкой JSON. Загружаем данные только если
     // GTO-ветка действительно пуста (первый визит / очищенное хранилище).

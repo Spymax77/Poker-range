@@ -2,10 +2,14 @@
 // persistence.js — сохранение/загрузка состояния (V2 только)
 // ============================================================
 
+// Публичный API слоя сохранения/загрузки. Новые функции добавлять сюда
+// (App.persistence.*), голые top-level function больше не объявляем.
+App.persistence = App.persistence || {};
+
 // ===== PERSIST ALL =====
 let persistTimer = null;
 
-function persistAllNow(skipTables) {
+App.persistence.persistAllNow = function(skipTables) {
     // Если нет изменений — ничего не делаем
     if (!App.dirty || !App.dirty.hasDirty()) {
         return Promise.resolve();
@@ -121,9 +125,9 @@ function persistAllNow(skipTables) {
 
         return results;
     });
-}
+};
 
-function persistAll() {
+App.persistence.persistAll = function() {
     // Гостевые изменения остаются только в памяти текущей страницы и никогда
     // не отправляются на сервер. При входе гостевое состояние сбрасывается,
     // после чего загружается состояние авторизованного пользователя.
@@ -133,19 +137,19 @@ function persistAll() {
     if (persistTimer) clearTimeout(persistTimer);
     persistTimer = setTimeout(function() {
         persistTimer = null;
-        persistAllNow(true); // по таймеру — только структура, без таблиц
+        App.persistence.persistAllNow(true); // по таймеру — только структура, без таблиц
     }, 2000);
-}
+};
 
-function flushPersist() {
+App.persistence.flushPersist = function() {
     if (persistTimer) {
         clearTimeout(persistTimer);
         persistTimer = null;
     }
-    return persistAllNow();
-}
+    return App.persistence.persistAllNow();
+};
 
-function persistActiveTab(activeTab) {
+App.persistence.persistActiveTab = function(activeTab) {
     if (!App.auth || !App.auth.isLoggedIn()) {
         return;
     }
@@ -153,10 +157,10 @@ function persistActiveTab(activeTab) {
         activeTab: activeTab || 'constructor',
         analysisMode: App.state.analysisMode
     });
-}
+};
 
 // ===== V2: Загрузка разделённых данных =====
-function resetBranchBeforeLoad(branch) {
+App.persistence.resetBranchBeforeLoad = function(branch) {
     branch.nodes = [];
     branch.nodeIndex = new Map();
     branch.nextNodeId = 1;
@@ -172,9 +176,9 @@ function resetBranchBeforeLoad(branch) {
     branch.profileRefs = new Map();
     branch.activePopup = null;
     branch.commentsPerNode = {};
-}
+};
 
-async function loadFromStorageV2() {
+App.persistence.loadFromStorageV2 = async function() {
     var uiMetadata = App.storage.loadMetadata() || {};
     // Флаг «у пользователя есть сохранённая структура редактора».
     // Отсутствие ключа структуры = первый заход (дефолт из json),
@@ -188,7 +192,7 @@ async function loadFromStorageV2() {
         // Серверное состояние является единственным источником данных при
         // загрузке. Это также отбрасывает все изменения гостевой сессии,
         // которые оставались только в памяти браузера.
-        resetBranchBeforeLoad(branch);
+        App.persistence.resetBranchBeforeLoad(branch);
 
         // Загружаем структуру (каталог дерева, без цветов)
         var structure = App.storage.loadStructure(mode);
@@ -284,7 +288,7 @@ async function loadFromStorageV2() {
             }
         }
 
-        rebuildNodeIndexFor(branch);
+        App.nodes.rebuildNodeIndexFor(branch);
     }
 
     App.state.analysisMode = !!uiMetadata.analysisMode;
@@ -313,29 +317,29 @@ async function loadFromStorageV2() {
     }
 
     return uiMetadata.activeTab || 'constructor';
-}
+};
 
-function loadFromStorage() {
-    return loadFromStorageV2();
-}
+App.persistence.loadFromStorage = function() {
+    return App.persistence.loadFromStorageV2();
+};
 
 // ===== ФЛАГ ИЗМЕНЕНИЙ =====
 
-function markUnsaved() {
+App.persistence.markUnsaved = function() {
     App.state.hasUnsavedChanges = true;
     if (App.grid && App.grid.updateConstructorToolbarState) App.grid.updateConstructorToolbarState();
-}
+};
 
-function clearUnsaved() {
+App.persistence.clearUnsaved = function() {
     App.state.hasUnsavedChanges = false;
     if (App.grid && App.grid.updateConstructorToolbarState) App.grid.updateConstructorToolbarState();
-}
+};
 
-function notifyGuestUnsavedChanges() {
+App.persistence.notifyGuestUnsavedChanges = function() {
     if (App.auth && App.auth.isLoggedIn()) return;
     App.modals.showFloatingModal(App.i18n.t('auth.guestUnsaved'));
-}
+};
 
 // ===== ПОДПИСКИ НА СОБЫТИЯ PERSISTENCE =====
-App.events.on('unsaved:mark', markUnsaved);
-App.events.on('unsaved:clear', clearUnsaved);
+App.events.on('unsaved:mark', App.persistence.markUnsaved);
+App.events.on('unsaved:clear', App.persistence.clearUnsaved);

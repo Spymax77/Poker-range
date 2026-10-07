@@ -1,4 +1,6 @@
 // Grid toolbar
+import { getNode } from './grid-utils.js';
+
 const CONSTRUCTOR_EDIT_BUTTON_IDS = [
     'tableSaveBtn',
     'tableUndoBtn',

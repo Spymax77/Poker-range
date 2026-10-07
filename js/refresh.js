@@ -30,7 +30,7 @@ App.refresh.resetToCleanData = function() {
         childrenIds: [],
         type: 'folder'
     };
-    addNode(rootNode);
+    App.nodes.addNode(rootNode);
     App.state.expandedNodes.add(rootId);
     const positions = ['EP', 'MP', 'CO', 'BU', 'SB', 'BB'];
     let epRangeId = null;
@@ -45,7 +45,7 @@ App.refresh.resetToCleanData = function() {
             childrenIds: [],
             type: 'folder'
         };
-        addNode(folderNode);
+        App.nodes.addNode(folderNode);
 		 rootNode.childrenIds.push(folderId);
         App.grid.ensureTable(folderId);
 
@@ -62,7 +62,7 @@ App.refresh.resetToCleanData = function() {
             childrenIds: [],
             type: 'range'
         };
-        addNode(rangeNode);
+        App.nodes.addNode(rangeNode);
         folderNode.childrenIds.push(rangeId);
         App.grid.ensureTable(rangeId);
 
@@ -83,7 +83,7 @@ App.refresh.resetToCleanData = function() {
     // Стартовые цвета диапазонов должны попасть в цветовой ключ хранения
     App.dirty.markColorsDirty();
 
-    persistAll();
+    App.persistence.persistAll();
 }
 
 // ===== ОБНОВЛЕНИЕ ИНТЕРФЕЙСА =====

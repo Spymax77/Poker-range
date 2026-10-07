@@ -143,7 +143,7 @@
             
             if (node.childrenIds && node.childrenIds.length > 0) {
                 result.children = node.childrenIds
-                    .map(id => getNode(id))
+                    .map(id => App.nodes.getNode(id))
                     .filter(n => n)
                     .map(child => serializeNode(child));
             } else {
@@ -246,7 +246,7 @@
                         App.state.nodeIndex.set(newNode.id, newNode);
                         
                         if (parentId !== null) {
-                            const parent = getNode(parentId);
+                            const parent = App.nodes.getNode(parentId);
                             if (parent) {
                                 parent.childrenIds.push(newId);
                             }
@@ -375,7 +375,7 @@
 
                     // Импорт создаёт не только узлы, но и таблицы диапазонов.
                     // Отмечаем все импортированные таблицы и сохраняем их сразу:
-                    // отложенный persistAll() сохраняет только структуру
+                    // отложенный App.persistence.persistAll() сохраняет только структуру
                     // (skipTables=true), из-за чего после перезагрузки матрицы
                     // импортированных узлов могли быть пустыми.
                     if (App.dirty) {
@@ -388,10 +388,10 @@
                         }
                     }
 
-                    if (typeof flushPersist === 'function') {
-                        flushPersist();
+                    if (typeof App.persistence.flushPersist === 'function') {
+                        App.persistence.flushPersist();
                     } else {
-                        persistAll();
+                        App.persistence.persistAll();
                     }
                     App.refresh.all();
                     
@@ -474,7 +474,7 @@
 
         if (node.childrenIds && node.childrenIds.length > 0) {
             result.children = node.childrenIds
-                .map(id => getNodeFrom(App.gto, id))
+                .map(id => App.nodes.getNodeFrom(App.gto, id))
                 .filter(n => n)
                 .map(child => serializeGtoNode(child));
         } else {
@@ -503,7 +503,7 @@
         App.editor.nodeIndex.set(newNode.id, newNode);
 
         if (parentId !== null) {
-            const parent = getNodeFrom(App.editor, parentId);
+            const parent = App.nodes.getNodeFrom(App.editor, parentId);
             if (parent) {
                 parent.childrenIds.push(newId);
             }
@@ -654,12 +654,12 @@
         App.refresh.all();
 
         // Перенос GTO должен сохранить не только структуру, но и все созданные
-        // матрицы. Обычный persistAll() сохраняет по таймеру только структуру
+        // матрицы. Обычный App.persistence.persistAll() сохраняет по таймеру только структуру
         // (skipTables=true), поэтому после F5 таблицы могли быть пустыми.
-        if (typeof flushPersist === 'function') {
-            await flushPersist();
+        if (typeof App.persistence.flushPersist === 'function') {
+            await App.persistence.flushPersist();
         } else {
-            persistAll();
+            App.persistence.persistAll();
         }
 
         App.modals.showFloatingModal(App.i18n.t('backup.gtoAdded', { count: addedCount }));

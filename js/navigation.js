@@ -3,7 +3,7 @@
 App.navigation = App.navigation || {};
 
 App.navigation.selectNode = function(nodeId) {
-    let node = getNode(nodeId);
+    let node = App.nodes.getNode(nodeId);
     App.state.selectedNodeId = nodeId;
     if (node && node.type === 'folder') {
         App.tree.renderTree("constructorTree", App.state.selectedNodeId, true, App.navigation.selectNode);
@@ -25,7 +25,7 @@ App.navigation.selectNode = function(nodeId) {
     if (App.dirty && App.auth && App.auth.isLoggedIn()) {
         App.dirty.markMetadataDirty();
     }
-    persistAll();
+    App.persistence.persistAll();
 
     if (node && node.parentId !== null) {
         App.state.expandedNodes.add(node.parentId);
@@ -47,8 +47,8 @@ App.navigation.renderGtoPage = function() {
     const prevMode = App.currentMode;
     App.currentMode = 'gto';
     try {
-        const selectedGtoNode = getNodeFrom(App.gto, App.gto.selectedNodeId);
-        const activeGtoNode = getNodeFrom(App.gto, App.gto.currentNodeId);
+        const selectedGtoNode = App.nodes.getNodeFrom(App.gto, App.gto.selectedNodeId);
+        const activeGtoNode = App.nodes.getNodeFrom(App.gto, App.gto.currentNodeId);
         const treeActiveNodeId = selectedGtoNode ? selectedGtoNode.id
             : (activeGtoNode ? activeGtoNode.id : null);
         App.gto.selectedNodeId = treeActiveNodeId;
@@ -63,7 +63,7 @@ App.navigation.renderGtoPage = function() {
         const nameEl = document.getElementById("gtoRangeName");
         const titleWrapper = nameEl ? nameEl.closest('.range-title-wrapper') : null;
         if (nameEl && hasTable) {
-            const node = getNodeFrom(App.gto, App.gto.currentNodeId);
+            const node = App.nodes.getNodeFrom(App.gto, App.gto.currentNodeId);
             nameEl.textContent = node ? node.name : App.i18n.t('gto.range');
         }
 
@@ -83,7 +83,7 @@ App.navigation.renderGtoPage = function() {
         // ===== КНОПКА: ПОКАЗАТЬ/СКРЫТЬ ОВЕРЛЕИ ПОДДИАПАЗОНОВ (GTO) =====
         const gtoWrapper = document.querySelector('#gtoPage .matrix-wrapper');
         if (gtoWrapper) {
-            const node = getNodeFrom(App.gto, App.gto.currentNodeId);
+            const node = App.nodes.getNodeFrom(App.gto, App.gto.currentNodeId);
             const isSubrange = node && node.type === 'subrange';
             let overlayBtn = document.getElementById('gtoOverlayToggleBtn');
             if (isSubrange && hasTable) {
@@ -128,7 +128,7 @@ App.navigation.renderGtoPage = function() {
 }
 
 App.navigation.selectGtoNode = function(nodeId) {
-    const node = getNodeFrom(App.gto, nodeId);
+    const node = App.nodes.getNodeFrom(App.gto, nodeId);
     App.gto.selectedNodeId = nodeId;
     if (node && node.type === 'folder') {
         App.tree.renderTree("gtoTree", App.gto.selectedNodeId, false, App.navigation.selectGtoNode);
@@ -156,7 +156,7 @@ App.navigation.selectGtoNode = function(nodeId) {
     if (App.auth && App.auth.isLoggedIn() && App.dirty) {
         App.dirty.markMetadataDirty('gto');
     }
-    persistAll();
+    App.persistence.persistAll();
     App.navigation.renderGtoPage();
     App.tree.scrollNodeIntoView(nodeId);
     App.animations.gtoFade();
@@ -272,6 +272,6 @@ App.navigation.switchTab = function(page) {
         App.ui.updateTabButtonsPosition();
     }
 
-    persistAll();
-    persistActiveTab(page);
+    App.persistence.persistAll();
+    App.persistence.persistActiveTab(page);
 }

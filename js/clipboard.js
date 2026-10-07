@@ -2,12 +2,12 @@
 // ===== ДУБЛИРОВАНИЕ ДИАПАЗОНА =====
 App.clipboard = App.clipboard || {};
 App.clipboard.duplicateRange = function(nodeId) {
-    const original = getNode(nodeId);
+    const original = App.nodes.getNode(nodeId);
     if (!original) return;
 
     // ===== 1. ПРОВЕРКА НА НЕСОХРАНЁННЫЕ ИЗМЕНЕНИЯ =====
     if (App.state.hasUnsavedChanges) {
-        const node = getNode(App.state.currentNodeId);
+        const node = App.nodes.getNode(App.state.currentNodeId);
         const message = node
             ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
             : App.i18n.t('range.saveChangesQuestion');
@@ -29,10 +29,10 @@ App.clipboard.duplicateRange = function(nodeId) {
 // ===== СОЗДАНИЕ КОПИИ ДИАПАЗОНА =====
 App.clipboard.createCopyAndFinalize = function(original) {
     // ===== 1. Генерируем уникальное имя =====
-    const parent = getNode(original.parentId);
+    const parent = App.nodes.getNode(original.parentId);
     let siblings = [];
     if (parent) {
-        siblings = parent.childrenIds.map(id => getNode(id)).filter(n => n);
+        siblings = parent.childrenIds.map(id => App.nodes.getNode(id)).filter(n => n);
     } else {
         siblings = App.state.nodes.filter(n => n.parentId === null);
     }
@@ -61,7 +61,7 @@ App.clipboard.createCopyAndFinalize = function(original) {
     if (original.type === 'subrange' && original.selectedComponentIndex !== undefined) {
         newNode.selectedComponentIndex = original.selectedComponentIndex;
     }
-    addNode(newNode);
+    App.nodes.addNode(newNode);
 
     if (parent) {
         parent.childrenIds.push(newId);
@@ -137,7 +137,7 @@ App.clipboard.createCopyAndFinalize = function(original) {
 
     // ===== 4. Сохраняем и активируем =====
     // Дублирование создаёт новую таблицу, поэтому её нужно пометить dirty
-    // ДО сохранения. Обычный persistAll() отложен на 2 секунды и работает в
+    // ДО сохранения. Обычный App.persistence.persistAll() отложен на 2 секунды и работает в
     // режиме skipTables=true — в результате структура узла сохранялась, а
     // матрица нового диапазона могла не попасть на сервер до перезагрузки.
     if (App.dirty) {
@@ -147,17 +147,17 @@ App.clipboard.createCopyAndFinalize = function(original) {
     }
     App.refresh.all();
     // Сначала переключаем узел: selectNode метит метаданные (активный узел).
-    // flushPersist вызывается ПОСЛЕ — иначе он сохранит метаданные со старым
+    // App.persistence.flushPersist вызывается ПОСЛЕ — иначе он сохранит метаданные со старым
     // узлом, а его асинхронный clearDirty() сотрёт метку, поставленную
     // selectNode'ом, и после F5 активным оставался бы прежний диапазон.
     App.navigation.selectNode(newId);
-    flushPersist();
+    App.persistence.flushPersist();
     App.grid.updateCurrentDisplay();
 
 }
 // ===== КОПИРОВАНИЕ ДИАПАЗОНА В БУФЕР =====
 App.clipboard.copyRange = function(nodeId) {
-    const node = getNode(nodeId);
+    const node = App.nodes.getNode(nodeId);
     if (!node) {
         App.modals.showFloatingModal(App.i18n.t('clipboard.rangeNotFound'));
         return;
@@ -207,7 +207,7 @@ App.clipboard.pasteRange = function(nodeId) {
         return;
     }
 
-    const targetNode = getNode(nodeId);
+    const targetNode = App.nodes.getNode(nodeId);
     if (!targetNode) {
         App.modals.showFloatingModal(App.i18n.t('clipboard.targetNotFound'));
         return;
@@ -338,7 +338,7 @@ App.clipboard.executePaste = function(nodeId) {
     // 7. Обновляем интерфейс
     App.refresh.all();
     App.grid.updateCurrentDisplay();
-    markUnsaved();
+    App.persistence.markUnsaved();
 
     // Диапазон вставлен — отмечаем таблицу узла грязной для сохранения
     if (App.dirty && nodeId) {

@@ -27,7 +27,7 @@ App.stats.CONTAINERS = {
 App.stats.getCellAvailabilityPercent = function(nodeId, i, j, recursive = true, branch = null) {
     const data = branch || App.state;
     const nodes = data.nodes || [];
-    const node = nodes.find(item => item.id === nodeId) || getNode(nodeId);
+    const node = nodes.find(item => item.id === nodeId) || App.nodes.getNode(nodeId);
     if (!node || node.type !== 'subrange') return 100;
     if (node.parentId === null) return 0;
     const parentTableId = getTableId(node.parentId);
@@ -56,7 +56,7 @@ App.stats.getCellAvailabilityPercent = function(nodeId, i, j, recursive = true, 
     }
     if (availability <= 0) return 0;
     if (recursive) {
-        const parentNode = nodes.find(item => item.id === node.parentId) || getNode(node.parentId);
+        const parentNode = nodes.find(item => item.id === node.parentId) || App.nodes.getNode(node.parentId);
         if (parentNode && parentNode.type === 'subrange') {
             availability *= App.stats.getCellAvailabilityPercent(node.parentId, i, j, true, data) / 100;
         }
@@ -222,7 +222,7 @@ App.stats.renderStatsTable = function(nodeId, branch, containerId) {
     const comboValues = App.stats.getDisplayedComboValues(stats);
     let html = `<div class="stats-table stats-table--total"><div class="stats-row stats-row--total--prim"><div class="stats-cell stats-cell--empty"></div><div class="stats-cell stats-cell--percent--prim">${totalPercent.toFixed(1)}%</div><div class="stats-cell stats-cell--combos--prim">(${App.stats.formatCombos(totalCombosSum)}/1326)</div></div></div>`;
     html += `<div class="stats-table stats-table--details"><div class="stats-row stats-row--header"><div class="stats-cell stats-cell--header">${App.i18n.t('stats.color')}</div><div class="stats-cell stats-cell--header">${App.i18n.t('stats.action')}</div><div class="stats-cell stats-cell--header">Combos</div><div class="stats-cell stats-cell--header">% of range</div><div class="stats-cell stats-cell--header">% of total</div></div>`;
-    sorted.forEach(([key, data], index) => { html += `<div class="stats-row"><div class="stats-cell stats-cell--color"><span class="stats-color" style="background-color: ${escapeHtml(data.color)};"></span></div><div class="stats-cell stats-cell--name">${escapeHtml(data.name)}</div><div class="stats-cell stats-cell--combos">${App.stats.formatCombos(comboValues[index])}</div><div class="stats-cell stats-cell--percent">${percentages[index].toFixed(1)}%</div><div class="stats-cell stats-cell--percent">${(data.combos / 1326 * 100).toFixed(1)}%</div></div>`; });
+    sorted.forEach(([key, data], index) => { html += `<div class="stats-row"><div class="stats-cell stats-cell--color"><span class="stats-color" style="background-color: ${App.nodes.escapeHtml(data.color)};"></span></div><div class="stats-cell stats-cell--name">${App.nodes.escapeHtml(data.name)}</div><div class="stats-cell stats-cell--combos">${App.stats.formatCombos(comboValues[index])}</div><div class="stats-cell stats-cell--percent">${percentages[index].toFixed(1)}%</div><div class="stats-cell stats-cell--percent">${(data.combos / 1326 * 100).toFixed(1)}%</div></div>`; });
     const foldIndex = sorted.length;
     html += `<div class="stats-row"><div class="stats-cell stats-cell--color"><span class="stats-color stats-color--fold"></span></div><div class="stats-cell stats-cell--name">Fold</div><div class="stats-cell stats-cell--combos">${App.stats.formatCombos(comboValues[foldIndex])}</div><div class="stats-cell stats-cell--percent">${(percentages[foldIndex] || 0).toFixed(1)}%</div><div class="stats-cell stats-cell--percent">${(foldCombos / 1326 * 100).toFixed(1)}%</div></div></div>`;
     element.innerHTML = html;
