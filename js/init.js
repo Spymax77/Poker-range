@@ -1,17 +1,4 @@
 // ===== init.js -- extracted from all.js (top-level listeners & bootstrap) =====
-// ---------- ВЫБОР КАРТ ----------
-const rankOrder = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"];
-const suits = ["h","c","d","s"];
-const suitSymbols = { h: "♥", c: "♣", d: "♦", s: "♠" };
-const suitColors = { h: "#ff6666", c: "#2ecc71", d: "#2f80ed", s: "#cccccc" };
-let currentBoard = { flop: [null, null, null], turn: null, river: null };
-const slotElements = {
-    flop1: document.getElementById("flopSlot1"),
-    flop2: document.getElementById("flopSlot2"),
-    flop3: document.getElementById("flopSlot3"),
-    turn: document.getElementById("turnSlot"),
-    river: document.getElementById("riverSlot")
-};
 
 App.events.on('storage:loading', function() {
     const status = document.getElementById('saveStatus');
@@ -44,6 +31,45 @@ document.addEventListener('languagechange', function () {
         status.textContent = App.i18n.t('status.error');
     }
 });
+
+// ===== ОБЩИЕ ХЕЛПЕРЫ «СОХРАНИТЬ И ПРОДОЛЖИТЬ» / «ОТКАТИТЬСЯ И ПРОДОЛЖИТЬ» =====
+// Один и тот же сценарий повторяется в трёх обработчиках (выход из аккаунта,
+// выбор диапазона, переключение вкладки), поэтому вынесен в App.ui.
+// onSuccess может быть как sync-, так и async-функцией.
+
+App.ui = App.ui || {};
+
+// Колбэк «Да» для showSaveConfirmModal: сохраняет всё грязное через
+// flushPersist; при провале показывает range.saveFailed и прерывает
+// (onSuccess не вызывается), при успехе снимает флаг несохранённых
+// изменений и вызывает onSuccess.
+App.ui.saveAndContinue = function(onSuccess) {
+    return async function() {
+        const results = await flushPersist();
+        const saveSucceeded = !results || results.every(function(result) {
+            return result && result.success !== false;
+        });
+        if (!saveSucceeded) {
+            App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
+            return;
+        }
+        clearUnsaved();
+        if (onSuccess) await onSuccess();
+    };
+};
+
+// Колбэк «Нет» для showSaveConfirmModal: отбрасывает несохранённые правки
+// (перезагрузка состояния из хранилища), перерисовывает интерфейс, снимает
+// флаг несохранённых изменений и вызывает onSuccess.
+App.ui.rollbackAndContinue = function(onSuccess) {
+    return async function() {
+        await loadFromStorage();
+        App.refresh.all();
+        App.grid.updateCurrentDisplay();
+        clearUnsaved();
+        if (onSuccess) await onSuccess();
+    };
+};
 
 function showAuthDialog(mode) {
     const oldOverlay = document.querySelector('.auth-dialog-overlay');
@@ -203,19 +229,9 @@ document.getElementById('authLogoutItem')?.addEventListener('click', function() 
         ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
         : App.i18n.t('range.saveChangesQuestion');
 
-    App.modals.showSaveConfirmModal(message, async function() {
-        // Да — сохраняем перед выходом из аккаунта
-        const results = await flushPersist();
-        const saveSucceeded = !results || results.every(function(result) {
-            return result && result.success !== false;
-        });
-        if (!saveSucceeded) {
-            App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
-            return;
-        }
-        clearUnsaved();
-        await logout();
-    }, async function() {
+    // Да — сохраняем перед выходом из аккаунта; при провале сохранения хелпер
+    // покажет range.saveFailed и выход из аккаунта не произойдёт.
+    App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(logout), async function() {
         // Нет — выходим без сохранения
         await logout();
     });
@@ -426,26 +442,13 @@ App.navigation.selectNode = function(nodeId) {
             return;
         }
 
-        App.modals.showSaveConfirmModal(message, async function() {
-            // Да — сохраняем
-            const results = await flushPersist();
-            const saveSucceeded = !results || results.every(function(result) {
-                return result && result.success !== false;
-            });
-            if (!saveSucceeded) {
-                App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
-                return;
-            }
-            clearUnsaved();
+        // Да — сохраняем и переключаем узел, Нет — откатываемся и переключаем
+        // (общие хелперы App.ui.saveAndContinue / App.ui.rollbackAndContinue).
+        App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
             originalSelectNode(nodeId);
-        }, async function() {
-            // Нет — откатываем
-            await loadFromStorage();
-            App.refresh.all();
-            App.grid.updateCurrentDisplay();
-            clearUnsaved();
+        }), App.ui.rollbackAndContinue(function() {
             originalSelectNode(nodeId);
-        });
+        }));
     } else {
         originalSelectNode(nodeId);
     }
@@ -768,26 +771,13 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
                 ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
                 : App.i18n.t('range.saveChangesQuestion');
 
-            App.modals.showSaveConfirmModal(message, async function() {
-                // Да — сохраняем изменения перед переключением вкладки
-                const results = await flushPersist();
-                const saveSucceeded = !results || results.every(function(result) {
-                    return result && result.success !== false;
-                });
-                if (!saveSucceeded) {
-                    App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
-                    return;
-                }
-                clearUnsaved();
+            // Да — сохраняем изменения перед переключением вкладки, Нет —
+            // откатываемся и переключаем (App.ui.saveAndContinue / rollbackAndContinue).
+            App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
                 App.navigation.switchTab(page);
-            }, async function() {
-                // Нет — откатываем
-                await loadFromStorage();
-                App.refresh.all();
-                App.grid.updateCurrentDisplay();
-                clearUnsaved();
+            }), App.ui.rollbackAndContinue(function() {
                 App.navigation.switchTab(page);
-            });
+            }));
             return;
         }
 
