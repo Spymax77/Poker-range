@@ -1082,7 +1082,8 @@
    - Редактор (режим анализа): цветная легенда действий справа от матрицы
      (панель профилей в анализе скрыта, как и в портрете);
    - GTO: цветная легенда действий справа от матрицы (панель профилей на GTO
-     скрыта всегда).
+     скрыта всегда);
+   - Просмотр: блок кнопок уровней (.right-area) справа от матрицы.
    Портретная ориентация и десктоп (окно >= 850px) не затрагиваются: правила
    живут внутри max-width: 849px + orientation: landscape. Раскладка полностью
    «резиновая» и не зависит от точного разрешения: колонки flex: 1 1 0 дают
@@ -1135,11 +1136,29 @@
         max-width: 50%;
     }
 
+    /* --- Просмотр: матрица слева, блок кнопок справа (как на десктопе).
+       .work-layout в колонку ставит base.css на ширинах <= 974px — здесь
+       возвращаем ряд; ширина матрицы = ширине #workStatsFooter под ней. --- */
+    #workPage .work-layout {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    #workPage .left-area,
+    #workPage .right-area {
+        flex: 1 1 0;
+        width: auto;
+        max-width: 50%;
+        min-width: 0;
+    }
+
     /* --- Шрифт ячеек: в альбомной ориентации матрица вдвое уже, чем full-width
        в портрете, поэтому шрифт привязан к половинной ширине (1.35vw),
        диапазон 8–11px — пропорция «шрифт/ячейка» как на десктопе. --- */
     #gtoPage .matrix-wrapper .hand-cell,
-    #constructorPage .matrix-wrapper .hand-cell {
+    #constructorPage .matrix-wrapper .hand-cell,
+    #workPage .matrix1-wrapper .hand-cell {
         font-size: clamp(8px, 1.35vw, 11px);
     }
 }
