@@ -233,7 +233,7 @@ if (!finalName) {
     return newId;
 }
 
-App.colors.createMultiColor = function(nodeId, name, components, boundaries) {
+App.colors.createMultiColor = function(nodeId, components, boundaries) {
     const tableId = getTableId(nodeId);
     if (!tableId) return null;
     if (!App.state.colorsPerNode[tableId]) App.state.colorsPerNode[tableId] = [];
@@ -244,9 +244,11 @@ App.colors.createMultiColor = function(nodeId, name, components, boundaries) {
     while (App.state.colorsPerNode[tableId].some(c => c.id === newId)) {
         newId = App.state.nextColorId++;
     }
+    // У мультицвета НЕТ поля name: оно не используется — интерфейс составляет
+    // имя динамически из имён простых цветов-компонентов (generateNameForColor).
+    // Отсутствие поля также не засоряет localStorage и экспортируемый JSON.
     const newColor = {
         id: newId,
-        name: name || 'Смесь',
         type: 'multi',
         components: components || [],
         boundaries: boundaries || []
@@ -1132,9 +1134,8 @@ App.colors.createNewProfile = function() {
     
     const components = [{ colorId: activeSimple.id, share: 100 }];
     const boundaries = [100];
-    const name = activeSimple.name + " (смесь)";
-    
-    App.colors.createMultiColor(App.state.currentNodeId, name, components, boundaries);
+
+    App.colors.createMultiColor(App.state.currentNodeId, components, boundaries);
     App.colors.renderAllColors(App.state.currentNodeId, true);
     App.events.emit('data:changed');
     App.events.emit('unsaved:mark');

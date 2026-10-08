@@ -210,8 +210,7 @@ function convertGtoJson(jsonArray) {
                         share: comp.share
                     }));
                     
-                    // Восстанавливаем name если отсутствует
-                    const multiName = mc.name || 'Смесь';
+                    // У мультицвета нет поля name — имя составляется в UI динамически
                     
                     // Восстанавливаем boundaries из share если отсутствуют
                    let boundaries = mc.boundaries;
@@ -226,7 +225,6 @@ if (!boundaries || boundaries.length === 0) {
                     
                     colorList.push({
                         id: newId,
-                        name: multiName,
                         type: 'multi',
                         components: mappedComponents,
                         boundaries: boundaries

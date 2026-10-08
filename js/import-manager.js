@@ -213,7 +213,6 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
                     if (!multiColorMap[cacheKey]) {
                         const newId = App.colors.createMultiColor(
                             nodeId,
-                            'Смесь',
                             [{ colorId: colorId, share: percent }],
                             [percent]
                         );
@@ -254,7 +253,6 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
                 if (!multiColorMap[freqKey]) {
                     const newId = App.colors.createMultiColor(
                         nodeId,
-                        'Смесь',
                         [{ colorId: colorId, share: percent }],
                         [percent]
                     );
@@ -596,7 +594,6 @@ App.importManager.getOrCreateMultiColorForCell = function(nodeId, row, col, colo
     if (currentPid === null) {
         const newId = App.colors.createMultiColor(
             nodeId,
-            'Смесь',
             [{ colorId: colorId, share: percent }],
             [percent]
         );
@@ -613,7 +610,6 @@ App.importManager.getOrCreateMultiColorForCell = function(nodeId, row, col, colo
         }
         const newColor = {
             id: newId,
-            name: 'Смесь',
             type: 'multi',
             components: existingColor.components.map(comp => ({
                 colorId: comp.colorId,

@@ -85,9 +85,11 @@ App.clipboard.createCopyAndFinalize = function(original) {
         const newColorId = App.state.nextColorId++;
         const newColor = {
             id: newColorId,
-            name: color.name,
             type: color.type
         };
+        // name есть только у простых цветов: у мультицвета имя составляется
+        // динамически из компонентов и нигде не хранится
+        if (color.name !== undefined) newColor.name = color.name;
 
         if (color.type === 'simple' || (!color.type && color.color)) {
             newColor.color = color.color;
@@ -269,9 +271,11 @@ App.clipboard.executePaste = function(nodeId) {
         const newId = App.state.nextColorId++;
         const newColor = {
             id: newId,
-            name: color.name,
             type: color.type
         };
+        // name есть только у простых цветов: у мультицвета имя составляется
+        // динамически из компонентов и нигде не хранится
+        if (color.name !== undefined) newColor.name = color.name;
 
         if (color.type === 'simple' || (!color.type && color.color)) {
             newColor.color = color.color;

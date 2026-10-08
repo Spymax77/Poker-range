@@ -114,25 +114,19 @@
                                 share: comp.share
                             }));
                             
-                            // Оптимизация: не сохраняем name если он "Смесь" (дефолт)
-                            // Оптимизация: не сохраняем boundaries, т.к. они вычисляются из share
-                            const result = {
+                            // У мультицвета нет поля name (имя составляется в UI
+                            // из компонентов). boundaries не сохраняем —
+                            // вычисляются из share.
+                            return {
                                 id: c.id,
                                 components: components
                             };
-                            
-                            // Сохраняем name только если он отличается от "Смесь"
-                            if (c.name && c.name !== 'Смесь') {
-                                result.name = c.name;
-                            }
-                            
-                            return result;
                         });
                     }
                     
                     result.colors = colorsData;
                 }
-                
+
                 // ===== ЭКСПОРТ МАТРИЦЫ (ОПТИМИЗИРОВАННЫЙ - МАССИВ 13x13) =====
                 const matrix = App.state.cellStorage[tableId];
                 if (matrix) {
@@ -309,7 +303,6 @@
                                     
                                     App.state.colorsPerNode[tableId].push({
                                         id: colorId,
-                                        name: mc.name || 'Смесь',
                                         type: 'multi',
                                         components: components,
                                         boundaries: boundaries
@@ -446,19 +439,13 @@
                             share: comp.share
                         }));
                         
-                        // Оптимизация: не сохраняем name если он "Смесь" (дефолт)
-                        // Оптимизация: не сохраняем boundaries, т.к. они вычисляются из share
-                        const result = {
+                        // У мультицвета нет поля name (имя составляется в UI
+                        // из компонентов). boundaries не сохраняем —
+                        // вычисляются из share.
+                        return {
                             id: c.id,
                             components: components
                         };
-                        
-                        // Сохраняем name только если он отличается от "Смесь"
-                        if (c.name && c.name !== 'Смесь') {
-                            result.name = c.name;
-                        }
-                        
-                        return result;
                     });
                 }
 
@@ -565,7 +552,6 @@
 
                     App.editor.colorsPerNode[tableId].push({
                         id: colorId,
-                        name: mc.name || 'Смесь',
                         type: 'multi',
                         components: components,
                         boundaries: boundaries
