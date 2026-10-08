@@ -387,9 +387,10 @@
                         App.persistence.persistAll();
                     }
                     App.refresh.all();
-                    
-                    const importedCount = App.state.nodes.length - oldNodesCount;
-                    App.modals.showFloatingModal('✅ ' + App.i18n.t('backup.imported', { count: importedCount }));
+
+                    // Сообщение об успешном импорте — имя файла. Показываем
+                    // как «призрачное» уведомление: само растворяется, ОК не нужен.
+                    App.modals.showToast(App.i18n.t('backup.imported', { fileName: file.name }));
                     
                 } catch(err) {
                     App.modals.showFloatingModal('❌ ' + App.i18n.t('backup.importError', { error: err.message }));

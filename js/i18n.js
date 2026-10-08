@@ -176,7 +176,7 @@
 
             'backup.noDataToExport': 'Нет данных для экспорта',
             'backup.invalidFormat': 'Неверный формат файла. Импорт отменён.',
-            'backup.imported': 'Импортировано {count} узлов с цветами и матрицей',
+            'backup.imported': '«{fileName}» импортирован',
             'backup.importError': 'Ошибка импорта: {error}',
             'backup.noGtoData': 'Нет данных GTO для добавления',
             'backup.gtoAdded': '«{name}» скопирован в редактор',
@@ -405,7 +405,7 @@
 
             'backup.noDataToExport': 'No data to export',
             'backup.invalidFormat': 'Invalid file format. Import cancelled.',
-            'backup.imported': 'Imported {count} nodes with colors and matrix',
+            'backup.imported': '"{fileName}" imported',
             'backup.importError': 'Import error: {error}',
             'backup.noGtoData': 'No GTO data to add',
             'backup.gtoAdded': '"{name}" copied to the editor',
