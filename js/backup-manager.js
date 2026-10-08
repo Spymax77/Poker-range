@@ -622,8 +622,6 @@
         for (const rootData of serialized) {
             createEditorNodeFromData(rootData, null);
         }
-        
-        const addedCount = App.editor.nodes.length - oldNodesCount;
 
         // Перенос изменяет структуру редактора и создаёт новые таблицы.
         // Явно отмечаем их dirty, иначе V2-сохранение не отправит данные на сервер.
@@ -648,7 +646,11 @@
             App.persistence.persistAll();
         }
 
-        App.modals.showFloatingModal(App.i18n.t('backup.gtoAdded', { count: addedCount }));
+        // Сообщение об успешном переносе — имя корневого узла GTO-дерева
+        // (корневой папки). Если корней несколько — перечисляем все через « / ».
+        // Показываем как «призрачное» уведомление: само растворяется, ОК не нужен.
+        const rootName = rootNodes.map(n => n.name).join(' / ');
+        App.modals.showToast(App.i18n.t('backup.gtoAdded', { name: rootName }));
     }
 
     function initGtoAddToEditorButton() {

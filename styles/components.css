@@ -1764,6 +1764,75 @@
 .floating-modal .modal-actions .btn-ok:hover {
     background: #4dabf7;
 }
+
+/* ===== ПРИЗРАЧНОЕ УВЕДОМЛЕНИЕ (toast без кнопки ОК) ===== */
+/* Контейнер: весь экран, содержимое по центру. Полностью прозрачен для
+   мыши — клики проходят сквозь тосты. */
+.ghost-toast-container {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    pointer-events: none;
+}
+
+/* Дизайн тот же, что у прежнего плавающего окна (.save-confirm-modal):
+   тёмная карточка с рамкой, шапка «Сообщение» и тело с текстом. */
+.ghost-toast {
+    background: #2d2f34;
+    border: 1px solid #3d3f46;
+    border-radius: 4px;
+    padding: 24px 28px;
+    min-width: 320px;
+    max-width: min(420px, calc(100vw - 32px));
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    will-change: opacity, transform, filter;
+    /* Единый сценарий: появление → пауза → постепенное «призрачное» растворение
+       (потеря непрозрачности + расфокус + лёгкий дрейф вверх). Общая длительность
+       переопределяется из showToast (animationDuration). */
+    animation: ghostToast 3500ms ease-in-out forwards;
+}
+
+.ghost-toast-body {
+    font-size: 15px;
+    color: #e6edf5;
+    line-height: 1.5;
+    text-align: left;
+}
+
+@keyframes ghostToast {
+    0% {
+        opacity: 0;
+        transform: translateY(16px) scale(0.96);
+        filter: blur(2px);
+    }
+    10% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+    /* Явная точка «полностью виден» — дольше держится заметным */
+    45% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+    /* Растворение как у привидения: непрозрачность уходит плавно и долго,
+       контур расплывается, силуэт слегка тает вверх */
+    100% {
+        opacity: 0;
+        transform: translateY(-14px) scale(1.04);
+        filter: blur(6px);
+    }
+}
+
+/* Уважаем настройку «уменьшить анимацию»: длительность сокращается
+   в showToast (matchMedia), т.к. inline animationDuration из JS
+   имеет приоритет над CSS-правилами. */
 /* ===== ПОДТВЕРЖДЕНИЕ ПЕРЕМЕЩЕНИЯ (POPUP) ===== */
 .move-popup-overlay {
     position: fixed;

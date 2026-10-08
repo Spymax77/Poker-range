@@ -52,9 +52,6 @@ App.modals.showFloatingModal = function(message, callback) {
     const modal = document.createElement('div');
     modal.className = 'save-confirm-modal';
     modal.innerHTML = `
-        <div class="save-confirm-header" id="modalHeader">
-            <span>${App.i18n.t('modal.messageTitle')}</span>
-        </div>
         <div class="save-confirm-body">
             <p>${App.nodes.escapeHtml(message)}</p>
         </div>
@@ -67,11 +64,11 @@ App.modals.showFloatingModal = function(message, callback) {
     document.body.appendChild(overlay);
 
     // ===== ПЕРЕТАСКИВАНИЕ =====
-    const header = modal.querySelector('#modalHeader');
+    // Заголовка больше нет — окно можно тянуть за любую точку, кроме кнопок
     let isDragging = false;
     let offsetX, offsetY;
 
-    header.addEventListener('mousedown', function(e) {
+    modal.addEventListener('mousedown', function(e) {
         if (e.target.tagName === 'BUTTON') return;
         isDragging = true;
         const rect = modal.getBoundingClientRect();
@@ -106,6 +103,69 @@ App.modals.showFloatingModal = function(message, callback) {
     };
 }
 
+// ===== ПРИЗРАЧНОЕ УВЕДОМЛЕНИЕ (toast без кнопки ОК) =====
+// Неинтерактивное сообщение в духе всплывашек Яндекса: появляется внизу
+// по центру, висит пару секунд и само растворяется. Ничего не блокирует:
+// pointer-events: none — клики проходят сквозь уведомление, как будто его нет.
+App.modals.showToast = function(message, duration) {
+    if (!message) {
+        console.warn('⚠️ showToast: не передан текст сообщения');
+        return;
+    }
+
+    const DURATION = (typeof duration === 'number' && duration > 0) ? duration : 3500;
+    // Настройка «уменьшить анимацию»: тост живёт короче и почти без движения
+    let reducedMotion = false;
+    try {
+        reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) { /* вне браузера */ }
+    const lifetime = reducedMotion ? Math.min(DURATION, 1500) : DURATION;
+
+    // Контейнер стопки уведомлений создаётся один раз и живёт, пока есть тосты
+    let container = document.querySelector('.ghost-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'ghost-toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'ghost-toast';
+
+    // Дизайн повторяет прежнее плавающее окно showFloatingModal,
+    // но без заголовка и без кнопки ОК — только текст сообщения
+    const body = document.createElement('div');
+    body.className = 'ghost-toast-body';
+    // textContent, а не innerHTML: защита от внедрения разметки без escapeHtml
+    body.textContent = message;
+
+    toast.appendChild(body);
+
+    // Полный сценарий (появление → пауза → растворение) живёт в CSS-анимации,
+    // здесь задаётся только общее время жизни
+    toast.style.animationDuration = lifetime + 'ms';
+    container.appendChild(toast);
+
+    let removed = false;
+    function finish() {
+        if (removed) return;
+        removed = true;
+        clearTimeout(fallbackTimer);
+        toast.removeEventListener('animationend', onAnimationEnd);
+        toast.remove();
+        // Контейнер больше не нужен — убираем, чтобы не копить пустые узлы
+        if (container && !container.hasChildNodes()) container.remove();
+    }
+    function onAnimationEnd(event) {
+        if (event.animationName === 'ghostToast') finish();
+    }
+
+    toast.addEventListener('animationend', onAnimationEnd);
+    // Страховка, если animationend не сработает (свёрнутая вкладка и т.п.)
+    const fallbackTimer = setTimeout(finish, lifetime + 1000);
+}
+
+
 // ===== КАСТОМНОЕ ОКНО ДЛЯ ПОДТВЕРЖДЕНИЯ (Да/Нет) =====
 App.modals.showSaveConfirmModal = function(message, onSave, onCancel) {
     if (!message) {
@@ -122,9 +182,6 @@ App.modals.showSaveConfirmModal = function(message, onSave, onCancel) {
     const modal = document.createElement('div');
     modal.className = 'save-confirm-modal';
     modal.innerHTML = `
-        <div class="save-confirm-header" id="saveConfirmHeader">
-            <span>${App.i18n.t('modal.messageTitle')}</span>
-        </div>
         <div class="save-confirm-body">
             <p>${App.nodes.escapeHtml(message)}</p>
         </div>
@@ -138,11 +195,11 @@ App.modals.showSaveConfirmModal = function(message, onSave, onCancel) {
     document.body.appendChild(overlay);
 
     // ===== ПЕРЕТАСКИВАНИЕ =====
-    const header = modal.querySelector('#saveConfirmHeader');
+    // Заголовка больше нет — окно можно тянуть за любую точку, кроме кнопок
     let isDragging = false;
     let offsetX, offsetY;
 
-    header.addEventListener('mousedown', function(e) {
+    modal.addEventListener('mousedown', function(e) {
         if (e.target.tagName === 'BUTTON') return;
         isDragging = true;
         const rect = modal.getBoundingClientRect();
