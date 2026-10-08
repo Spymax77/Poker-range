@@ -9,7 +9,12 @@ App.persistence = App.persistence || {};
 // ===== PERSIST ALL =====
 let persistTimer = null;
 
-App.persistence.persistAllNow = function(skipTables) {
+App.persistence.persistAllNow = function(skipTables, onlyTables) {
+    // skipTables — режим автосохранения по таймеру (структура/метаданные/цвета
+    // без таблиц). onlyTables — точечное сохранение: таблицы отправляются
+    // только для перечисленных узлов (создание узла — новый узел уходит на
+    // сервер сразу, а несохранённые правки прежнего диапазона остаются dirty
+    // до решения пользователя в диалоге переключения).
     // Если нет изменений — ничего не делаем
     if (!App.dirty || !App.dirty.hasDirty()) {
         return Promise.resolve();
@@ -23,6 +28,9 @@ App.persistence.persistAllNow = function(skipTables) {
     var dirty = App.dirty._raw;
     var promises = [];
     var missingTableData = false;
+    // Решение об отправке цветового ключа принимается в момент постановки
+    // в очередь (см. ниже) и используется при сбросе dirty-меток.
+    var colorsQueuedByMode = { editor: false, gto: false };
 
     for (var mi = 0; mi < ['editor', 'gto'].length; mi++) {
         var mode = ['editor', 'gto'][mi];
@@ -56,7 +64,21 @@ App.persistence.persistAllNow = function(skipTables) {
         // - dirty.colors         — автосохранение (создание/удаление цветов);
         // - dirty.colorsExplicit — ТОЛЬКО явное сохранение (правки hex/имени,
         //   ползунков, состава мультицвета — напрямую влияют на вид ячеек).
-        if (dirty.colors[mode] || (!skipTables && dirty.colorsExplicit[mode])) {
+        // Цветовой ключ хранится одним блобом на ветку (nextColorId +
+        // colorsPerNode + activePerNode) — частичной отправки не существует.
+        // В режиме onlyTables (создание узла) при несогласованных правках
+        // цветов (colorsExplicit) ключ НЕ отправляем вовсе: иначе «Нет» в
+        // диалоге переключения откатывало бы уже отправленные правки.
+        // Стартовая палитра нового узла в этом случае пересоздаётся после
+        // «Нет» (см. afterRollback в tree.js finishNodeCreation).
+        var colorsQueued;
+        if (onlyTables) {
+            colorsQueued = dirty.colors[mode] && !dirty.colorsExplicit[mode];
+        } else {
+            colorsQueued = dirty.colors[mode] || (!skipTables && dirty.colorsExplicit[mode]);
+        }
+        colorsQueuedByMode[mode] = colorsQueued;
+        if (colorsQueued) {
             var colorsData = {
                 nextColorId: branch.nextColorId,
                 colorsPerNode: branch.colorsPerNode,
@@ -70,6 +92,8 @@ App.persistence.persistAllNow = function(skipTables) {
             var dirtyTables = App.dirty.getDirtyTables(mode);
             for (var ti = 0; ti < dirtyTables.length; ti++) {
                 var nodeId = dirtyTables[ti];
+                // Точечное сохранение: чужие грязные таблицы не отправляем.
+                if (onlyTables && onlyTables.indexOf(Number(nodeId)) === -1) continue;
                 var tableId = getTableId(Number(nodeId));
                 var tableData = branch.cellStorage[tableId];
                 if (tableData) {
@@ -119,6 +143,24 @@ App.persistence.persistAllNow = function(skipTables) {
                 dirty.structure[md] = false;
                 dirty.colors[md] = false;
             }
+        } else if (onlyTables) {
+            // Точечное сохранение: сбрасываем только реально отправленные
+            // метки. Грязные таблицы остальных узлов остаются dirty — их
+            // судьбу решает пользователь в диалоге переключения («Да»/«Нет»).
+            // Цветовые метки сбрасываются только если ключ реально
+            // отправлялся (решение зафиксировано при постановке в очередь).
+            for (var mo = 0; mo < ['editor', 'gto'].length; mo++) {
+                var mdO = ['editor', 'gto'][mo];
+                dirty.metadata[mdO] = false;
+                dirty.structure[mdO] = false;
+                if (colorsQueuedByMode[mdO]) {
+                    dirty.colors[mdO] = false;
+                    dirty.colorsExplicit[mdO] = false;
+                }
+                for (var oi = 0; oi < onlyTables.length; oi++) {
+                    dirty.tables[mdO].delete(String(onlyTables[oi]));
+                }
+            }
         } else {
             App.dirty.clearDirty();
         }
@@ -141,12 +183,12 @@ App.persistence.persistAll = function() {
     }, 2000);
 };
 
-App.persistence.flushPersist = function() {
+App.persistence.flushPersist = function(onlyTables) {
     if (persistTimer) {
         clearTimeout(persistTimer);
         persistTimer = null;
     }
-    return App.persistence.persistAllNow();
+    return App.persistence.persistAllNow(false, onlyTables);
 };
 
 App.persistence.persistActiveTab = function(activeTab) {

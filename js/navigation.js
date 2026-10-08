@@ -2,7 +2,12 @@
 
 App.navigation = App.navigation || {};
 
-App.navigation.selectNode = function(nodeId) {
+// Непосредственное переключение активного узла без проверок. Публичный
+// App.navigation.selectNode вызывает его после прохождения проверки
+// несохранённых изменений; также используется вызывающими, которые сами
+// управляют сохранением (например, создание узла в tree.js — точечное
+// сохранение нового узла выполняется ДО переключения).
+App.navigation.selectNodeImmediate = function(nodeId) {
     let node = App.nodes.getNode(nodeId);
     App.state.selectedNodeId = nodeId;
     if (node && node.type === 'folder') {
@@ -41,6 +46,42 @@ App.navigation.selectNode = function(nodeId) {
     // ===== АНИМАЦИИ =====
     App.animations.constructorFade();
 }
+
+// Публичный выбор узла. Перед переключением на другой диапазон проверяет
+// несохранённые изменения. Раньше это был monkey-patch App.navigation.selectNode
+// из init.js: проверка встроена в навигацию, чтобы поведение не зависело от
+// порядка обёрток и порядка загрузки скриптов. Папки и повторный клик по
+// текущему узлу проходят без вопроса (ранний выход внутри selectNodeImmediate).
+App.navigation.selectNode = function(nodeId, opts) {
+    opts = opts || {};
+    const node = App.nodes.getNode(nodeId);
+    const isSwitch = !(node && node.type === 'folder')
+        && nodeId !== App.state.currentNodeId;
+    if (isSwitch && App.state.hasUnsavedChanges && App.auth && App.auth.isLoggedIn()) {
+        const current = App.nodes.getNode(App.state.currentNodeId);
+        const message = current
+            ? App.i18n.t('range.saveChangesNamedQuestion', { name: current.name })
+            : App.i18n.t('range.saveChangesQuestion');
+
+        // В гостевом режиме изменения живут в памяти: диалог не показываем
+        // (условие выше включает только авторизованных), loadFromStorage()
+        // для гостя не вызывается — загрузка могла затереть раскрашенную
+        // матрицу.
+        // Да — сохраняем и переключаемся, Нет — откатываемся и переключаемся
+        // (общие хелперы App.ui.saveAndContinue / App.ui.rollbackAndContinue).
+        // opts.afterRollback — хук для вызывающих, которым нужно доработать
+        // состояние после отката (например, создание узла: восстановление
+        // стартовой палитры, если цветовой ключ не отправлялся).
+        App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
+            App.navigation.selectNodeImmediate(nodeId);
+        }), App.ui.rollbackAndContinue(function() {
+            if (typeof opts.afterRollback === 'function') opts.afterRollback();
+            App.navigation.selectNodeImmediate(nodeId);
+        }));
+        return;
+    }
+    App.navigation.selectNodeImmediate(nodeId);
+};
 
 // ===== GTO РЕНДЕРИНГ =====
 App.navigation.renderGtoPage = function() {

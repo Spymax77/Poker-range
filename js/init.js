@@ -410,44 +410,9 @@ document.getElementById('tablePasteBtn')?.addEventListener('click', function() {
     App.clipboard.pasteRange(App.state.currentNodeId);
 });
 
-// ===== ПЕРЕКЛЮЧЕНИЕ ДИАПАЗОНА С ПРОВЕРКОЙ =====
-const originalSelectNode = App.navigation.selectNode;
-
-App.navigation.selectNode = function(nodeId) {
-    const targetNode = App.nodes.getNode(nodeId);
-    if (targetNode && targetNode.type === 'folder') {
-        originalSelectNode(nodeId);
-        return;
-    }
-    if (nodeId === App.state.currentNodeId) {
-        originalSelectNode(nodeId);
-        return;
-    }
-    if (App.state.hasUnsavedChanges) {
-        const node = App.nodes.getNode(App.state.currentNodeId);
-        const message = node
-    ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
-    : App.i18n.t('range.saveChangesQuestion');
-
-        // В гостевом режиме изменения живут в памяти. Не показываем диалог
-        // сохранения и не вызываем App.persistence.loadFromStorage(): загрузка гостевого
-        // состояния могла затереть раскрашенную матрицу.
-        if (!App.auth || !App.auth.isLoggedIn()) {
-            originalSelectNode(nodeId);
-            return;
-        }
-
-        // Да — сохраняем и переключаем узел, Нет — откатываемся и переключаем
-        // (общие хелперы App.ui.saveAndContinue / App.ui.rollbackAndContinue).
-        App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
-            originalSelectNode(nodeId);
-        }), App.ui.rollbackAndContinue(function() {
-            originalSelectNode(nodeId);
-        }));
-    } else {
-        originalSelectNode(nodeId);
-    }
-};
+// Проверка несохранённых изменений при переключении диапазона встроена
+// в App.navigation.selectNode (см. navigation.js) — monkey-patch здесь
+// больше не нужен.
 
 // ===== ПОДПИСКИ НА СОБЫТИЯ =====
 App.events.on('data:changed', App.refresh.allGrids);

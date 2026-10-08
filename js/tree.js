@@ -52,23 +52,54 @@ function generateUniqueNameFor(parentId, baseName) {
     return App.tree.generateUniqueName(baseName, existingNames);
 }
 
-// Единый «хвост» создания узла: dirty-метки → перерисовка → выбор узла
-// → стратегия сохранения (аккаунт — немедленная отправка, гость —
-// предупреждение о несохранённых изменениях).
+// Единый «хвост» создания узла: dirty-метки → перерисовка → выбор узла →
+// стратегия сохранения. При несохранённых правках прежнего диапазона
+// (аккаунт) новый узел точечно сохраняется ДО переключения: диалог
+// «Сохранить изменения?» на «Нет» откатывает состояние из хранилища, и
+// созданный узел обязан уже быть на сервере. Если правок нет —
+// переключение мгновенное, сохранение следует за ним (как раньше).
 // opts.table  — пометить таблицу узла изменённой (range/subrange);
 // opts.colors — пометить цвета изменёнными (создан стартовый цвет).
-function finishNodeCreation(newId, opts) {
+async function finishNodeCreation(newId, opts) {
     opts = opts || {};
     App.dirty.markStructureDirty();
     if (opts.table) App.dirty.markTableDirty(newId);
     if (opts.colors) App.dirty.markColorsDirty();
     App.refresh.all();
-    App.navigation.selectNode(newId);
-    if (App.auth && App.auth.isLoggedIn()) {
-        App.persistence.flushPersist();
-    } else {
+    const loggedIn = App.auth && App.auth.isLoggedIn();
+    const confirmNeeded = loggedIn && App.state.hasUnsavedChanges;
+    if (confirmNeeded) {
+        const results = await App.persistence.flushPersist([newId]);
+        const saveSucceeded = !results || results.every(function(result) {
+            return result && result.success !== false;
+        });
+        if (!saveSucceeded) {
+            App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
+        }
+    }
+    App.navigation.selectNode(newId, {
+        // «Нет» в диалоге откатывает состояние из хранилища. Если цветовой
+        // ключ не отправлялся (были несогласованные правки цветов),
+        // стартовая палитра нового узла осталась несохранённой —
+        // пересоздаём её, чтобы новый диапазон не остался без цветов.
+        afterRollback: function() {
+            var colors = App.state.colorsPerNode[getTableId(newId)];
+            if (!colors || !colors.length) {
+                initDefaultColor(newId);
+                if (App.dirty) App.dirty.markColorsDirty();
+            }
+        }
+    });
+    if (!loggedIn) {
         App.persistence.markUnsaved();
         App.persistence.notifyGuestUnsavedChanges();
+        return;
+    }
+    if (!confirmNeeded) {
+        // Обычный путь (без диалога): сохраняем после selectNode —
+        // метаданные уйдут с новым активным узлом (см. комментарий
+        // про порядок selectNode → flushPersist в clipboard.js).
+        App.persistence.flushPersist();
     }
 }
 
