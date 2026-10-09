@@ -282,6 +282,41 @@
     border-color: #D4AF37;
 }
 
+/* ===== ПОЛЕ ПАРОЛЯ С ПЕРЕКЛЮЧАТЕЛЕМ ВИДИМОСТИ (глаз) ===== */
+/* Контейнер, в который оборачивается input: нужен для абсолютного
+   позиционирования кнопки-глаза у правого края поля. */
+.password-wrap {
+    position: relative;
+    display: block;
+}
+
+/* Правый отступ, чтобы текст пароля не наезжал на иконку глаза */
+.password-wrap input {
+    padding-right: 40px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 5px;               /* совпадает с margin-top самого input */
+    right: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #8a8a8a;
+    cursor: pointer;
+    transition: color .2s;
+}
+
+.password-toggle:hover {
+    color: #e6edf5;
+}
+
 .auth-dialog-error {
     min-height: 18px;
     margin: 8px 0;

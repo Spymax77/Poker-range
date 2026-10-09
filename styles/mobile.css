@@ -872,7 +872,6 @@
     #gtoPage .matrix-wrapper .hand-cell,
     #constructorPage .matrix-wrapper .hand-cell {
         font-size: clamp(7px, 2.8vw, 10px);
-        border-radius: 3px;
     }
 }
 

@@ -140,11 +140,12 @@
     font-family: inherit;
 }
 .tab-btn:hover {
-    background: rgba(255,255,255,0.05);
+    background: transparent;
+    color: #D4AF37;
 }
 .tab-btn.active {
-    background: #3a3c43;
-    color: #dedede;
+    background: transparent;
+    color: #D4AF37;
 }
 
 /* Адаптив */
@@ -804,7 +805,7 @@
     gap: 4px;
     min-height: 45px;
 	margin: 0 10px;
-	border-block: 1px solid #454545;
+	border-block: 1px solid #2c3038;
 	flex-shrink: 0;
 }
 
@@ -871,7 +872,7 @@
 .divider {
     width: 1px;
     height: 24px;
-    background: #3d3f46;
+    background: #2c3038;
     margin: 0 4px;
     flex-shrink: 0;
 }
@@ -1296,7 +1297,7 @@
     gap: 12px;
     padding: 6px 12px;
     min-height: 45px;
-	border-block: 1px solid #454545;
+	border-block: 1px solid #2c3038;
 	margin: 0;
 	overflow: visible;
 }
@@ -1432,10 +1433,11 @@
 }
 
 /* ===== GTO ACTION BAR (полоса долей действий по комбо, между легендой и превью) =====
-   Высота 15px, ширина 490px (= ширине gtoActionLegend), деление на цветные
-   сегменты через linear-gradient по тем же данным, что в gtoActionLegend. */
+   Высота 15px, ширина 493px (= ширине матрицы 13×37px + 12×1px зазор и блоку
+   stats-action-legend), деление на цветные сегменты через linear-gradient
+   по тем же данным, что в stats-action-legend. */
 .stats-action-bar {
-    width: 490px;
+    width: 493px;
     height: 15px;
     flex: 0 0 auto;
     box-sizing: border-box;
@@ -1444,10 +1446,10 @@
     background: var(--cell-empty-bg);
 }
 
-/* ===== GTO CELL PREVIEW (серый квадрат 215x180 слева + колонка блоков действий справа, итоговая ширина 490px = ширине gtoActionLegend) ===== */
+/* ===== GTO CELL PREVIEW (серый квадрат 215x180 слева + колонка блоков действий справа, итоговая ширина 493px = ширине матрицы и stats-action-legend) ===== */
 .gto-cell-preview {
     position: relative;
-    width: 490px;
+    width: 493px;
     box-sizing: border-box;
     flex-shrink: 0;
     display: none;
@@ -1500,7 +1502,7 @@
 }
 
 /* Колонка прямоугольных блоков действий справа от квадрата.
-   Ширина заполняет остаток до 490px (490 - 215 - gap 3px). */
+   Ширина заполняет остаток до 493px (493 - 215 - gap 3px). */
 .gto-cell-preview__actions {
     display: flex;
     flex-direction: column;
@@ -1525,10 +1527,11 @@
 	
 }
 
-/* Цвет действия — такой же, каким закрашена ячейка (рейз/колл/и т.д.) */
+/* Цвет действия — такой же, каким закрашена ячейка (рейз/колл/и т.д.).
+   Размер 37×37 = размеру ячейки матрицы. */
 .gto-cell-preview__action-color {
-    width: 36px;
-    height: 36px;
+    width: 37px;
+    height: 37px;
     flex-shrink: 0;
     box-sizing: border-box;
 	border-radius: 4px;
@@ -2503,11 +2506,12 @@ body.dragging .tree-item.active .tree-actions-popup {
     background: #e6c84a;
 }
 .hand-cell.subrange-disabled {
-    background: transparent !important;
+    /* Явный фон страницы вместо прозрачности: под ячейками лежит фон
+       контейнера (цвет линий), и прозрачная ячейка просвечивала бы до него.
+       Рамки нет — границы даёт фон контейнера в зазорах, без задвоений. */
+    background: var(--bg-page) !important;
     cursor: default;
     pointer-events: none;
-	border: 1px dashed #454545;
-
 }
 .cell-overlay {
     position: absolute;
@@ -2517,7 +2521,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     background: var(--bg-page);
     pointer-events: none;
     z-index: 1;
-	border-radius: 4px 4px 0 0;
+	border-radius: 0;
     overflow: hidden;
     transition: transform 0.3s ease;
     transform-origin: top center;
@@ -2593,6 +2597,9 @@ body.dragging .tree-item.active .tree-actions-popup {
     overflow: hidden;
 	margin-top: 10px;
     gap: 2px;
+    /* Фон контейнера = цвет линий-разделителей (как у матрицы .hands-grid):
+       виден только в зазорах 2px между рядами. */
+    background: #22262c;
 }
 
 .stats-row {
@@ -2657,7 +2664,6 @@ body.dragging .tree-item.active .tree-actions-popup {
 .stats-cell--header {
     padding-bottom: 4px;
 	background: var(--cell-empty-bg);
-	border-radius: 2px;
 }
 
 .stats-cell--color {
@@ -2693,7 +2699,6 @@ body.dragging .tree-item.active .tree-actions-popup {
     width: 30px;
     height: 18px;
 	border: 1px solid #3d3f46;
-    border-radius: 2px;
 }
 
 .stats-color--fold {
@@ -2708,7 +2713,6 @@ body.dragging .tree-item.active .tree-actions-popup {
 .stats-cell--combos,
 .stats-cell--percent {
 	background: #3b3d42;
-	border-radius: 2px;
 	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
 }	
 	
@@ -2747,7 +2751,7 @@ body.dragging .tree-item.active .tree-actions-popup {
 }
 
 .stats-action-legend {
-    width: 490px;
+    width: 493px;
     height: 80px;
     flex: 0 0 auto;
     display: flex;

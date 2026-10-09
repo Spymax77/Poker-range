@@ -440,3 +440,48 @@ App.ui.openColorPicker = function(colorId, callback, anchorRect) {
     openPicker(colorId, callback, anchorRect);
 };
 })();
+
+// ===== ПЕРЕКЛЮЧЕНИЕ ВИДИМОСТИ ПАРОЛЯ (глаз в поле ввода) =====
+// Отдельный IIFE: НЕ зависит от DOM пикера (страница сброса пароля не
+// содержит элементов пикера, а IIFE пикера при их отсутствии выходит рано).
+(function() {
+    const EYE_OPEN_SVG =
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const EYE_OFF_SVG =
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+    // Оборачивает input[type=password] в контейнер .password-wrap и добавляет
+    // справа кнопку с иконкой глаза. По умолчанию пароль скрыт — глаз
+    // перечёркнут. Клик показывает символы (глаз открыт), повторный —
+    // снова прячет (глаз перечёркнут).
+    App.ui = App.ui || {};
+    App.ui.addPasswordToggle = function(input) {
+        if (!input || input.dataset.passwordToggle === 'true') return;
+        input.dataset.passwordToggle = 'true';
+
+        // Контейнер для позиционирования кнопки поверх правого края поля
+        const wrap = document.createElement('span');
+        wrap.className = 'password-wrap';
+        input.parentNode.insertBefore(wrap, input);
+        wrap.appendChild(input);
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'password-toggle';
+        toggle.setAttribute('aria-label', 'Показать пароль');
+        // Пароль скрыт — иконка перечёркнутого глаза
+        toggle.innerHTML = EYE_OFF_SVG;
+        wrap.appendChild(toggle);
+
+        toggle.addEventListener('click', function() {
+            const willShow = input.type === 'password';
+            input.type = willShow ? 'text' : 'password';
+            toggle.innerHTML = willShow ? EYE_OPEN_SVG : EYE_OFF_SVG;
+            toggle.setAttribute('aria-label', willShow ? 'Скрыть пароль' : 'Показать пароль');
+            // Возвращаем фокус в поле: пользователь обычно продолжает ввод/правку
+            input.focus();
+        });
+    };
+})();

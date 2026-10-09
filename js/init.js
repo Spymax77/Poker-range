@@ -122,6 +122,10 @@ function showAuthDialog(mode) {
 
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
+    // Глаз-переключатель видимости пароля во всех парольных полях формы
+    modal.querySelectorAll('input[type="password"]').forEach(function(input) {
+        App.ui.addPasswordToggle(input);
+    });
     modal.querySelector('.auth-dialog-close').addEventListener('click', function() { overlay.remove(); });
     modal.querySelectorAll('[data-auth-mode]').forEach(function(button) {
         button.addEventListener('click', function() { showAuthDialog(button.dataset.authMode); });
