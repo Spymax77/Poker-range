@@ -1,9 +1,13 @@
 import { getTableId } from './grid/grid-utils.js';
 
+// Палитра скриншота синхронизирована со styles/variables.css и стилями
+// матрицы (.hand-cell/.hands-grid) и таблицы статистики (.stats-table--details)
+// в styles/base.css и styles/components.css. При изменении стилей на экране —
+// править эти константы вручную.
 const COLORS = {
-    page: '#121212',
-    emptyCell: '#313338',
-    disabledBorder: '#454545',
+    page: '#1a1d21',            // --bg-page
+    divider: '#22262c',         // фон-линии .hands-grid / .stats-table--details
+    emptyCell: '#313338',       // --cell-empty-bg
     title: '#D4AF37',
     cellText: '#6c6c6c',
     coloredCellText: '#FFFFFF',
@@ -11,19 +15,20 @@ const COLORS = {
     statsHeader: '#313338',
     statsHeaderText: '#8a848a',
     statsText: '#a9afb5',
+    statsColorBorder: '#3d3f46', // .stats-color border
     watermark: '#a9afb5'
 };
 
 const GRID_SIZE = 13;
-const CELL_SIZE = 36;
-const CELL_GAP = 2;
+const CELL_SIZE = 37;  // .hand-cell: width/height 37px
+const CELL_GAP = 1;    // .hands-grid: gap 1px
 const GRID_WIDTH = GRID_SIZE * CELL_SIZE + (GRID_SIZE - 1) * CELL_GAP;
 const FONT_FAMILY = "Roboto, 'Helvetica Neue', sans-serif";
 const EXPORT_PADDING = 20;
 const TITLE_TOP_PADDING = 8;
 const TITLE_TEXT_OFFSET = 5;
 const TITLE_MATRIX_GAP = 0;
-const SECTION_GAP = 14;
+const SECTION_GAP = 10; // .stats-table--details: margin-top 10px
 const WATERMARK_BOTTOM_PADDING = 5;
 const WATERMARK_EXTRA_BOTTOM_SPACE = 7;
 
@@ -203,11 +208,23 @@ function drawStatsTable(ctx, x, y, width, rows) {
     const layout = getStatsLayout(ctx, width, rows);
     let rowY = y;
 
-    const drawCell = (cellX, cellY, cellWidth, cellHeight, fillStyle, lines, textColor, font) => {
-        drawRoundedRect(ctx, cellX, cellY, cellWidth, cellHeight, 2, fillStyle);
+    // Фон-линии контейнера .stats-table--details: виден в зазорах 2px
+    ctx.fillStyle = COLORS.divider;
+    ctx.fillRect(x, y, width, layout.totalHeight);
+
+    const drawCell = (cellX, cellY, cellWidth, cellHeight, fillStyle, lines, textColor, font, isHeader = false) => {
+        // Плоские ячейки без скругления (как в CSS .stats-table--details)
+        drawRoundedRect(ctx, cellX, cellY, cellWidth, cellHeight, 0, fillStyle);
         ctx.font = font;
         ctx.fillStyle = textColor;
+        // text-shadow как в CSS: у хедера 0 1px 2px rgba(0,0,0,.6), 0 0 8px rgba(0,0,0,.3);
+        // у обычных ячеек 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2)
+        ctx.save();
+        ctx.shadowColor = isHeader ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = isHeader ? 8 : 3;
+        ctx.shadowOffsetY = 1;
         drawTextLines(ctx, lines, cellX + cellWidth / 2, cellY + cellHeight / 2, 14);
+        ctx.restore();
     };
 
     const drawRow = (height, cells, isHeader = false) => {
@@ -221,7 +238,8 @@ function drawStatsTable(ctx, x, y, width, rows) {
                 isHeader ? COLORS.statsHeader : COLORS.statsCell,
                 cell.lines,
                 isHeader ? COLORS.statsHeaderText : COLORS.statsText,
-                isHeader ? `13px ${FONT_FAMILY}` : `13px ${FONT_FAMILY}`
+                `13px ${FONT_FAMILY}`,
+                isHeader
             );
             cellX += layout.columns[index] + layout.gap;
         });
@@ -242,11 +260,11 @@ function drawStatsTable(ctx, x, y, width, rows) {
 
         const colorCellX = x + 5;
         const colorCellY = rowY - layout.rowHeights[index] - layout.gap + (layout.rowHeights[index] - 18) / 2;
-        drawRoundedRect(ctx, colorCellX, colorCellY, 30, 18, 2, row.color);
-        ctx.strokeStyle = '#3d3f46';
+        // Свотч .stats-color: 30×18, без скругления, рамка 1px #3d3f46
+        drawRoundedRect(ctx, colorCellX, colorCellY, 30, 18, 0, row.color);
+        ctx.strokeStyle = COLORS.statsColorBorder;
         ctx.lineWidth = 1;
-        roundRectPath(ctx, colorCellX + 0.5, colorCellY + 0.5, 29, 17, 2);
-        ctx.stroke();
+        ctx.strokeRect(colorCellX + 0.5, colorCellY + 0.5, 29, 17);
     });
 
     return layout.totalHeight;
@@ -259,6 +277,10 @@ function drawMatrix(ctx, nodeId, state, x, y, showSubrangeOverlays = true) {
     const isSubrange = node?.type === 'subrange';
     const rowsData = globalThis.rowsData || [];
 
+    // Фон-линии контейнера .hands-grid: виден в зазорах 1px между ячейками
+    ctx.fillStyle = COLORS.divider;
+    ctx.fillRect(x, y, GRID_WIDTH, GRID_WIDTH);
+
     for (let row = 0; row < GRID_SIZE; row += 1) {
         for (let col = 0; col < GRID_SIZE; col += 1) {
             const cellX = x + col * (CELL_SIZE + CELL_GAP);
@@ -270,44 +292,24 @@ function drawMatrix(ctx, nodeId, state, x, y, showSubrangeOverlays = true) {
                 ? Math.max(0, Math.min(100, App.stats.getCellAvailabilityPercent(nodeId, row, col, true, state)))
                 : 100;
 
-            ctx.save();
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-            ctx.shadowBlur = 4;
-            ctx.shadowOffsetY = 2;
+            // Плоские ячейки без скругления и теней (как в CSS .hand-cell)
             const isAvailable = availability > 0;
             const fill = isAvailable
                 ? getProfileFillStyle(ctx, nodeColors, profile, cellX, cellY, CELL_SIZE)
-                : COLORS.page;
-            drawRoundedRect(ctx, cellX, cellY, CELL_SIZE, CELL_SIZE, 4, fill);
-            ctx.restore();
+                : COLORS.page; // .hand-cell.subrange-disabled: фон страницы, рамки нет
+            ctx.fillStyle = fill;
+            ctx.fillRect(cellX, cellY, CELL_SIZE, CELL_SIZE);
 
             if (showSubrangeOverlays && isSubrange && isAvailable && availability < 100) {
                 const overlayHeight = CELL_SIZE * (1 - availability / 100);
-                ctx.save();
-                roundRectPath(ctx, cellX, cellY, CELL_SIZE, CELL_SIZE, 4);
-                ctx.clip();
-                ctx.fillStyle = COLORS.page;
+                ctx.fillStyle = COLORS.page; // .cell-overlay: var(--bg-page)
                 ctx.fillRect(cellX, cellY, CELL_SIZE, overlayHeight);
-                ctx.restore();
             }
 
-            if (!isAvailable) {
-                ctx.save();
-                ctx.strokeStyle = COLORS.disabledBorder;
-                ctx.lineWidth = 1;
-                ctx.setLineDash([3, 2]);
-                roundRectPath(ctx, cellX + 0.5, cellY + 0.5, CELL_SIZE - 1, CELL_SIZE - 1, 4);
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            ctx.font = `13px ${FONT_FAMILY}`;
+            // Подпись руки: наследует font-size 14px от body, text-shadow нет
+            ctx.font = `14px ${FONT_FAMILY}`;
             ctx.fillStyle = profile && isAvailable ? COLORS.coloredCellText : COLORS.cellText;
-            ctx.shadowColor = profile && isAvailable ? 'rgba(0, 0, 0, 0.4)' : 'transparent';
-            ctx.shadowBlur = profile && isAvailable ? 3 : 0;
-            ctx.shadowOffsetY = profile && isAvailable ? 1 : 0;
             drawTextLines(ctx, [hand], cellX + CELL_SIZE / 2, cellY + CELL_SIZE / 2, 14);
-            ctx.shadowColor = 'transparent';
         }
     }
 }
