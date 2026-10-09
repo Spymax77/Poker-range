@@ -135,7 +135,6 @@
 .palette-color-box {
     width: 32px;
     height: 32px;
-    border-radius: 4px;
     cursor: pointer;
     flex-shrink: 0;
     transition: 0.1s;
@@ -196,7 +195,6 @@
     position: relative;
     width: 32px;
     height: 32px;
-    border-radius: 4px;
     border: 1px dashed #64625A;
     background: transparent;
     color: #8a848a;
@@ -322,7 +320,6 @@
 .multi-color-chip {
     width: 32px;
     height: 32px;
-    border-radius: 4px;
     cursor: pointer;
     flex-shrink: 0;
     transition: transform 0.15s;
@@ -388,7 +385,7 @@
 .chips-container {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     flex-wrap: wrap;
     flex-shrink: 0;
     min-width: 100px;      /* ← фиксированная ширина */
