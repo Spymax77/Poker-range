@@ -1,13 +1,16 @@
 /* ===== ЛОГОТИП В ШАПКЕ ===== */
 
+/* Шапка — grid 1fr auto 1fr: логотип слева, кнопки вкладок (GTO / Редактор /
+   Просмотр) строго по центру блока, панель аккаунта справа. Средняя колонка
+   auto + одинаковые боковые 1fr гарантируют точное центрирование кнопок
+   независимо от ширины логотипа и аватара. */
 .tabs {
     position: relative;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    gap: 30px;
     padding: 3px;
 	margin-bottom: 5px;
-    flex-wrap: wrap;
 }
 
 .tabs-toggle {
@@ -18,8 +21,27 @@
     display: none;
 }
 
+.logo-container {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+}
+
+.auth-panel {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+}
+
+/* Кнопки вкладок — центральная колонка шапки. Зазор 30px сохраняет прежний
+   интервал между кнопками (раньше он задавался gap-ом flex-шапки). */
 .tab-buttons {
-    display: contents;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    gap: 30px;
 }
 .toolbar-more-wrapper {
     position: relative;
@@ -130,7 +152,7 @@
 .tab-btn {
     background: transparent;
     border: none;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 500;
     padding: 8px 24px;
     border-radius: 8px;
@@ -2806,6 +2828,53 @@ body.dragging .tree-item.active .tree-actions-popup {
     white-space: normal;
     min-width: 0;
 	text-shadow: 0 1px 2px rgba(0,0,0,.45);
+}
+
+/* Динамический размер имени действия: блоки легенды растягиваются на всю
+   ширину контейнера, поэтому при малом количестве блоков (2–3) они становятся
+   длинными, и шрифт названия пропорционально увеличивается. При 4 блоках
+   действует базовый размер 18px из .stats-action-legend-block__name.
+   Мобильное переопределение (styles/mobile.css) перекрывает эти правила
+   фиксированными 15.4px за счёт порядка в каскаде. */
+.stats-action-legend--count-2 .stats-action-legend-block__name {
+    font-size: 26px;
+}
+
+.stats-action-legend--count-3 .stats-action-legend-block__name {
+    font-size: 22px;
+}
+
+/* Процент в блоке легенды — та же логика: при 2 блоках 22px, при 3 — 20px,
+   при 4 блоках действует базовый размер 16px из .stats-action-legend-block__percent.
+   Мобильное переопределение (styles/mobile.css) перекрывает эти правила
+   фиксированными 12.6px за счёт порядка в каскаде. */
+.stats-action-legend--count-2 .stats-action-legend-block__percent {
+    font-size: 22px;
+}
+
+.stats-action-legend--count-3 .stats-action-legend-block__percent {
+    font-size: 20px;
+}
+
+/* Значение и подпись combos — та же логика динамического масштаба:
+   при 2 блоках 18px/16px, при 3 — 16px/14px, при 4 блоках действуют
+   базовые размеры 15px и 13px из .stats-action-legend-block__combos-number
+   и .stats-action-legend-block__combos-label. Мобильное переопределение
+   (styles/mobile.css) перекрывает эти правила за счёт порядка в каскаде. */
+.stats-action-legend--count-2 .stats-action-legend-block__combos-number {
+    font-size: 18px;
+}
+
+.stats-action-legend--count-2 .stats-action-legend-block__combos-label {
+    font-size: 16px;
+}
+
+.stats-action-legend--count-3 .stats-action-legend-block__combos-number {
+    font-size: 16px;
+}
+
+.stats-action-legend--count-3 .stats-action-legend-block__combos-label {
+    font-size: 14px;
 }
 
 .stats-action-legend-block__bottom {

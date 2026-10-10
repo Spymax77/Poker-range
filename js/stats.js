@@ -256,6 +256,10 @@ App.stats.renderActionLegend = function(nodeId, branch, containerId) {
     const blocks = sorted.map(([, data]) => ({ color: data.color, name: data.name, combos: data.combos }));
     if (foldCombos > 0) blocks.push({ color: 'var(--cell-empty-bg)', name: 'Fold', combos: foldCombos, isFold: true });
     const percentages = App.stats.getRoundedRangePercentages(stats);
+    // Динамический размер шрифта названия действия: чем меньше блоков в легенде,
+    // тем крупнее шрифт (2 блока — 26px, 3 — 22px, 4 и больше — базовые 18px).
+    element.classList.remove('stats-action-legend--count-2', 'stats-action-legend--count-3', 'stats-action-legend--count-4');
+    element.classList.add(`stats-action-legend--count-${Math.min(Math.max(blocks.length, 2), 4)}`);
     blocks.forEach((block, index) => {
         const div = document.createElement('div');
         div.className = 'stats-action-legend-block';
