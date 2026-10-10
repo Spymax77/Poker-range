@@ -19,7 +19,7 @@ App.paint.updateCellStyle = function(cell, pid) {
     // Плоская заливка слоями вместо градиента (см. App.colors.applyCellFill)
     if (App.colors.applyCellFill(cell, App.state.currentNodeId, prof)) {
         cell.style.color = "#FFFFFF";
-        cell.style.textShadow = "0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2)";
+        cell.style.textShadow = "0 1px 2px rgba(0,0,0,.45)";
     } else {
         cell.removeAttribute("style");
     }

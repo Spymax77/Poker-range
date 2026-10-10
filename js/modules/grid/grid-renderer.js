@@ -90,7 +90,7 @@ if (prof) {
     // градиенты иначе, чем плоский цвет — см. App.colors.applyCellFill)
     App.colors.applyCellFill(cell, nodeId, prof);
     cell.style.color = '#FFFFFF';
-    cell.style.textShadow = '0 1px 1px rgba(0, 0, 0, 0.4), 0 0 3px rgba(0, 0, 0, 0.2)';
+    cell.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.45)';
 }
 
 cell.onmouseenter = () => {
@@ -103,25 +103,26 @@ cell.onmouseenter = () => {
         
         // Если ячейка уже содержит активный профиль → затемнение
         // (как раньше: собственная заливка скрывается, остаётся серый фон
-        // .hand-cell с opacity 0.7)
+        // .hand-cell с opacity 0.7). Затемняем только слой заливки —
+        // filter на ячейке затемнял и текст шрифта.
         if (currentPid === activeProfileId) {
             requestAnimationFrame(() => {
                 const fill = cell.querySelector(':scope > .cell-fill');
                 if (fill) fill.style.display = 'none';
-                cell.style.opacity = "0.7";
                 cell.style.color = "#FFFFFF";
             });
         } else if (activeProfileId) {
             // Во всех остальных случаях (пустая ИЛИ с другим профилем) → превью
             // активного профиля: временно заменяем сегменты заливки на сегменты
-            // активного профиля + затемнение фильтром
+            // активного профиля + затемнение фильтром ТОЛЬКО слоя заливки
+            // (фильтр на ячейке затемнял и текст — см. brightness на .cell-fill)
             const activeProf = App.colors.getColorsForNode(nodeId).find(p => p.id === activeProfileId);
             if (activeProf) {
                 requestAnimationFrame(() => {
-                    App.colors.applyCellFill(cell, nodeId, activeProf);
+                    const fill = App.colors.applyCellFill(cell, nodeId, activeProf);
                     cell.style.color = '#FFFFFF';
-                    cell.style.filter = 'brightness(0.7)';
-                    cell.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.6), 0 0 8px rgba(0, 0, 0, 0.3)';
+                    if (fill) fill.style.filter = 'brightness(0.7)';
+                    cell.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.45)';
                 });
             }
         }
@@ -133,10 +134,14 @@ cell.onmouseenter = () => {
         requestAnimationFrame(() => {
             cell.style.filter = '';
             cell.style.opacity = '';
+            // Сбрасываем затемнение слоя заливки (см. hover-превью выше) —
+            // applyCellFill переиспользует слой и не чистит его filter
+            const hoverFill = cell.querySelector(':scope > .cell-fill');
+            if (hoverFill) hoverFill.style.filter = '';
             if (isColored && ownProf) {
                 App.colors.applyCellFill(cell, nodeId, ownProf);
                 cell.style.color = '#FFFFFF';
-                cell.style.textShadow = '0 1px 1px rgba(0, 0, 0, 0.4), 0 0 3px rgba(0, 0, 0, 0.2)';
+                cell.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.45)';
             } else {
                 App.colors.applyCellFill(cell, nodeId, null);
                 cell.removeAttribute("style");

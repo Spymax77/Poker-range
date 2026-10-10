@@ -148,6 +148,29 @@ html, body {
     background: #22262c;
     width: auto;
     margin: 0;
+    /* Скругление внешних углов контейнера (фон-линий). Специально БЕЗ
+       overflow: hidden — иначе box-shadow золотой рамки закреплённой ячейки
+       срезается по всем краям матрицы. Углы скругляют сами угловые ячейки
+       (см. правила ниже). */
+    border-radius: 8px;
+}
+
+/* Угловые ячейки матрицы: скругление только внешнего угла, чтобы
+   фигурная рамка закреплённой ячейки повторяла скругление матрицы
+   (box-shadow следует за border-radius). В сетке ровно 169 ячеек:
+   first-child = [0][0], nth-child(13) = [0][12], nth-child(157) = [12][0],
+   last-child = [12][12]. */
+.hands-grid .hand-cell:first-child {
+    border-top-left-radius: 8px;
+}
+.hands-grid .hand-cell:nth-child(13) {
+    border-top-right-radius: 8px;
+}
+.hands-grid .hand-cell:nth-child(157) {
+    border-bottom-left-radius: 8px;
+}
+.hands-grid .hand-cell:last-child {
+    border-bottom-right-radius: 8px;
 }
 
 .hand-cell {
@@ -228,6 +251,13 @@ html, body {
     background: rgba(0, 0, 0, 0.25);
 }
 
+/* При превью (наведении) текст незакрашенной ячейки — как у заполненной:
+   белый с той же тенью (см. такой же фикс для конструктора ниже). */
+#gtoGrid .hand-cell:hover {
+    color: #FFFFFF;
+    text-shadow: 0 1px 2px rgba(0,0,0,.45);
+}
+
 /* ===== GTO: ЯЧЕЙКА, ЗАКРЕПЛЁННАЯ ДЛЯ ПОСТОЯННОЙ ДЕМОНСТРАЦИИ gtoCellPreview =====
    Ставится по клику (см. toggleGtoCellPin в js/modules/grid/grid-preview.js). Обводка поверх ::after
    затемнения, чтобы выделение было видно и без наведения мышью. */
@@ -240,6 +270,14 @@ html, body {
 #gtoGrid .hand-cell.gto-cell-pinned::after,
 #constructorGrid .hand-cell.gto-cell-pinned::after {
     background: rgba(0, 0, 0, 0.25);
+}
+
+/* Текст закреплённой незакрашенной ячейки — тоже белый, как у заполненной
+   (затемнение ::after у закреплённой ячейки постоянно). */
+#gtoGrid .hand-cell.gto-cell-pinned,
+#constructorGrid .hand-cell.gto-cell-pinned {
+    color: #FFFFFF;
+    text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 /* Тот же эффект для конструктора в режиме анализа. Отдельным правилом, потому что
@@ -272,6 +310,14 @@ html, body {
 
 #constructorPage.analysis-mode #constructorGrid .hand-cell:hover::after {
     background: rgba(0, 0, 0, 0.25);
+}
+
+/* При превью (наведении) текст незакрашенной ячейки — как у заполненной:
+   белый с той же тенью, а не серый #6c6c6c из базового .hand-cell,
+   который выглядит затемнённым на фоне затемняющего слоя. */
+#constructorPage.analysis-mode #constructorGrid .hand-cell:hover {
+    color: #FFFFFF;
+    text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 

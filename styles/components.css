@@ -1438,10 +1438,13 @@
    по тем же данным, что в stats-action-legend. */
 .stats-action-bar {
     width: 493px;
-    height: 15px;
+    height: 12px;
     flex: 0 0 auto;
     box-sizing: border-box;
-    border-radius: 3px;
+    /* Нижняя часть общего блока "легенда + полоса": скругление только снизу,
+       отступ -2px + gap колонки 6px = зазор 4px от легенды. */
+    border-radius: 0 0 8px 8px;
+    margin-top: -2px;
     overflow: hidden;
     background: var(--cell-empty-bg);
 }
@@ -1454,8 +1457,12 @@
     flex-shrink: 0;
     display: none;
     align-items: flex-start;
-    gap: 3px;
-	margin-top: 20px;
+    gap: 2px;
+	margin-top: 14px;
+    /* Скругление только у контейнера: угловые блоки обрезаются радиусом
+       через overflow, сами блоки квадратные (как у легенды/матрицы). */
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .gto-cell-preview.active {
@@ -1471,34 +1478,36 @@
     height: 150px;
     flex-shrink: 0;
     background: #3b3d42;
+    border: 1px solid rgba(255, 255, 255, .06);
     box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-	border-radius: 4px;
+	border-radius: 0;
 }
 
 .gto-cell-preview__hand {
     font-size: 90px;
-    color: #a9afb5;
+    color: #e8ecf1;
     font-weight: 600;
     line-height: 1;
     text-align: center;
-	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
+	text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 /* Количество комбо для конкретной руки (с учётом рекурсивной родительской
    закраски), в правом нижнем углу квадрата */
 .gto-cell-preview__combos {
     position: absolute;
-    right: 10px;
+    right: 8px;
     bottom: 8px;
-    font-size: 15px;
+    font-size: 18px;
+    font-weight: 400;
     color: #a9afb5;
     line-height: 1;
     white-space: nowrap;
-	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
+	text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 /* Колонка прямоугольных блоков действий справа от квадрата.
@@ -1506,7 +1515,7 @@
 .gto-cell-preview__actions {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
     flex: 1 1 auto;
     min-width: 0;
 }
@@ -1522,9 +1531,9 @@
     width: 100%;
     background: transparent;
     box-sizing: border-box;
-    gap: 3px;
+    gap: 2px;
     overflow: hidden;
-	
+
 }
 
 /* Цвет действия — такой же, каким закрашена ячейка (рейз/колл/и т.д.).
@@ -1534,7 +1543,7 @@
     height: 37px;
     flex-shrink: 0;
     box-sizing: border-box;
-	border-radius: 4px;
+	border-radius: 0;
 }
 
 /* Блок с названием действия и процентом — серый, как квадрат слева.
@@ -1544,6 +1553,7 @@
     min-width: 0;
     height: 100%;
     background: #3b3d42;
+    border: 1px solid rgba(255, 255, 255, .06);
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -1551,29 +1561,32 @@
     gap: 6px;
     padding: 0 8px;
     overflow: hidden;
-	border-radius: 4px;
+	border-radius: 0;
 }
 
 /* Название действия */
 .gto-cell-preview__action-name {
     flex: 1 1 auto;
     min-width: 0;
-    font-size: 18px;
+    font-size: 15px;
+    font-weight: 500;
     color: #ffffff;
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
+	text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 /* Процент действия */
 .gto-cell-preview__action-percent {
     flex-shrink: 0;
-    font-size: 18px;
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
     color: #ffffff;
     text-align: right;
-	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
+	text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 /* Название руки */
@@ -2560,7 +2573,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 6px; /* как .constructor-legend-col — единый зазор 4px до полосы */
     flex: 0 0 auto;
 }
 
@@ -2600,6 +2613,9 @@ body.dragging .tree-item.active .tree-actions-popup {
     /* Фон контейнера = цвет линий-разделителей (как у матрицы .hands-grid):
        виден только в зазорах 2px между рядами. */
     background: #22262c;
+    /* Скругление внешних углов контейнера — угловые ячейки обрезаются
+       радиусом (согласовано с .hands-grid и легендой). */
+    border-radius: 8px;
 }
 
 .stats-row {
@@ -2713,7 +2729,7 @@ body.dragging .tree-item.active .tree-actions-popup {
 .stats-cell--combos,
 .stats-cell--percent {
 	background: #3b3d42;
-	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
+	text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }	
 	
 /* ===== КОНСТРУКТОР: РЕЖИМ АНАЛИЗА (реплицирует GTO-макет) ===== */
@@ -2736,7 +2752,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     display: none;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 6px;
     flex: 0 0 auto;
 }
 
@@ -2755,7 +2771,12 @@ body.dragging .tree-item.active .tree-actions-popup {
     height: 80px;
     flex: 0 0 auto;
     display: flex;
-    gap: 3px;
+    gap: 2px;
+    /* Скругление только сверху: нижние углы "продолжает" полоса
+       .stats-action-bar — легенда + полоса читаются как один общий блок
+       (согласовано с .hands-grid и .stats-table--details). */
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
 }
 
 .stats-action-legend-block {
@@ -2763,10 +2784,11 @@ body.dragging .tree-item.active .tree-actions-popup {
     height: 100%;
     min-width: 0;
     min-height: 0;
-    border-radius: 4px;
+    border-radius: 0;
     position: relative;
     box-sizing: border-box;
-    padding: 6px 6px;
+    border: 1px solid rgba(255, 255, 255, .07);
+    padding: 8px 9px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -2774,7 +2796,8 @@ body.dragging .tree-item.active .tree-actions-popup {
 }
 
 .stats-action-legend-block__name {
-    font-size: 22px;
+    font-size: 18px;
+    font-weight: 600;
     color: #ffffff;
     line-height: 1.1;
     text-align: left;
@@ -2782,31 +2805,33 @@ body.dragging .tree-item.active .tree-actions-popup {
     word-break: normal;
     white-space: normal;
     min-width: 0;
-	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
+	text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 .stats-action-legend-block__bottom {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: auto auto;
+    justify-content: space-between;
     align-items: end;
-    gap: 4px;
+    column-gap: 8px;
     min-width: 0;
     min-height: 0;
 }
 
 .stats-action-legend-block__percent {
-    font-size: 18px;
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
     color: #ffffff;
     text-align: left;
     align-self: end;
+    white-space: nowrap;
     overflow-wrap: normal;
     word-break: normal;
-    white-space: normal;
     min-width: 0;
     min-height: 0;
     max-width: 100%;
-	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
-	
+	text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 .stats-action-legend-block__combos {
@@ -2825,26 +2850,30 @@ body.dragging .tree-item.active .tree-actions-popup {
 }
 
 .stats-action-legend-block__combos-number {
-    font-size: 18px;
+    font-size: 15px;
+    font-weight: 500;
     color: #ffffff;
-	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
+    white-space: nowrap;
+	text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 .stats-action-legend-block__combos-label {
-    font-size: 15px;
+    font-size: 13px;
+    font-weight: 400;
     color: #ffffff;
-	text-shadow: 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2);
+	text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 .stats-action-legend-block--fold {
-    border: 1px solid #3d3f46;
+    border: 1px solid rgba(255, 255, 255, .12);
     box-sizing: border-box;
 }
 .stats-action-legend-block--fold .stats-action-legend-block__name,
 .stats-action-legend-block--fold .stats-action-legend-block__percent,
 .stats-action-legend-block--fold .stats-action-legend-block__combos-number,
 .stats-action-legend-block--fold .stats-action-legend-block__combos-label {
-    color: #a9afb5;
+    color: #e8ecf1;
+    text-shadow: none;
 }
 
 /* ===== СТИЛИ КНОПОК-ТОГГЛОВ (ПРОСМОТР) ===== */

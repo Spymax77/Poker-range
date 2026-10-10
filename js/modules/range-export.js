@@ -23,6 +23,7 @@ const GRID_SIZE = 13;
 const CELL_SIZE = 37;  // .hand-cell: width/height 37px
 const CELL_GAP = 1;    // .hands-grid: gap 1px
 const GRID_WIDTH = GRID_SIZE * CELL_SIZE + (GRID_SIZE - 1) * CELL_GAP;
+const CONTAINER_RADIUS = 8; // .hands-grid / .stats-table--details: border-radius 8px
 const FONT_FAMILY = "Roboto, 'Helvetica Neue', sans-serif";
 const EXPORT_PADDING = 20;
 const TITLE_TOP_PADDING = 8;
@@ -208,6 +209,12 @@ function drawStatsTable(ctx, x, y, width, rows) {
     const layout = getStatsLayout(ctx, width, rows);
     let rowY = y;
 
+    // Скругление контейнера (.stats-table--details: border-radius 8px +
+    // overflow hidden) — угловые ячейки обрезаются радиусом, как на странице.
+    ctx.save();
+    roundRectPath(ctx, x, y, width, layout.totalHeight, CONTAINER_RADIUS);
+    ctx.clip();
+
     // Фон-линии контейнера .stats-table--details: виден в зазорах 2px
     ctx.fillStyle = COLORS.divider;
     ctx.fillRect(x, y, width, layout.totalHeight);
@@ -217,11 +224,11 @@ function drawStatsTable(ctx, x, y, width, rows) {
         drawRoundedRect(ctx, cellX, cellY, cellWidth, cellHeight, 0, fillStyle);
         ctx.font = font;
         ctx.fillStyle = textColor;
-        // text-shadow как в CSS: у хедера 0 1px 2px rgba(0,0,0,.6), 0 0 8px rgba(0,0,0,.3);
-        // у обычных ячеек 0 1px 1px rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.2)
+        // text-shadow как в CSS (однослойная, без "ореола"): у хедера 0 1px 2px rgba(0,0,0,.6), 0 0 8px rgba(0,0,0,.3);
+        // у обычных ячеек 0 1px 2px rgba(0,0,0,.45)
         ctx.save();
-        ctx.shadowColor = isHeader ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.4)';
-        ctx.shadowBlur = isHeader ? 8 : 3;
+        ctx.shadowColor = isHeader ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.45)';
+        ctx.shadowBlur = isHeader ? 8 : 2;
         ctx.shadowOffsetY = 1;
         drawTextLines(ctx, lines, cellX + cellWidth / 2, cellY + cellHeight / 2, 14);
         ctx.restore();
@@ -267,6 +274,8 @@ function drawStatsTable(ctx, x, y, width, rows) {
         ctx.strokeRect(colorCellX + 0.5, colorCellY + 0.5, 29, 17);
     });
 
+    ctx.restore();
+
     return layout.totalHeight;
 }
 
@@ -277,7 +286,12 @@ function drawMatrix(ctx, nodeId, state, x, y, showSubrangeOverlays = true) {
     const isSubrange = node?.type === 'subrange';
     const rowsData = globalThis.rowsData || [];
 
-    // Фон-линии контейнера .hands-grid: виден в зазорах 1px между ячейками
+    // Фон-линии контейнера .hands-grid: виден в зазорах 1px между ячейками.
+    // Весь блок рисуется внутри clip со скруглением (.hands-grid:
+    // border-radius 8px + overflow hidden) — угловые ячейки обрезаются радиусом.
+    ctx.save();
+    roundRectPath(ctx, x, y, GRID_WIDTH, GRID_WIDTH, CONTAINER_RADIUS);
+    ctx.clip();
     ctx.fillStyle = COLORS.divider;
     ctx.fillRect(x, y, GRID_WIDTH, GRID_WIDTH);
 
@@ -306,12 +320,25 @@ function drawMatrix(ctx, nodeId, state, x, y, showSubrangeOverlays = true) {
                 ctx.fillRect(cellX, cellY, CELL_SIZE, overlayHeight);
             }
 
-            // Подпись руки: наследует font-size 14px от body, text-shadow нет
+            // Подпись руки: наследует font-size 14px от body. Тень — как на
+            // живой странице (paint.js/grid-renderer.js): у заполненных ячеек
+            // 0 1px 2px rgba(0,0,0,.45), у пустых тени нет.
             ctx.font = `14px ${FONT_FAMILY}`;
             ctx.fillStyle = profile && isAvailable ? COLORS.coloredCellText : COLORS.cellText;
-            drawTextLines(ctx, [hand], cellX + CELL_SIZE / 2, cellY + CELL_SIZE / 2, 14);
+            if (profile && isAvailable) {
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+                ctx.shadowBlur = 2;
+                ctx.shadowOffsetY = 1;
+                drawTextLines(ctx, [hand], cellX + CELL_SIZE / 2, cellY + CELL_SIZE / 2, 14);
+                ctx.restore();
+            } else {
+                drawTextLines(ctx, [hand], cellX + CELL_SIZE / 2, cellY + CELL_SIZE / 2, 14);
+            }
         }
     }
+
+    ctx.restore();
 }
 
 function drawTitle(ctx, title, x, y, width) {
