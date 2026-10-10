@@ -17,10 +17,19 @@
 
 @media (max-width: 849px) {
     /* Легенда действий в анализе редактора и GTO: на мобильном уменьшаем
-       типографику до 70% от desktop-размера. */
-    .stats-action-legend .stats-action-legend-block__name,
-    .stats-action-legend .stats-action-legend-block__percent {
+       типографику до 70% от desktop-размера. Проценты — отдельным, меньшим
+       размером: в узких блоках 15.4px «наезжали» на значение combos. */
+    .stats-action-legend .stats-action-legend-block__name {
         font-size: 15.4px;
+    }
+
+    .stats-action-legend .stats-action-legend-block__percent {
+        font-size: 12.6px;
+    }
+
+    /* Паддинги блоков легенды: сдвигаем текст ближе к краям блока. */
+    .stats-action-legend .stats-action-legend-block {
+        padding: 4px 4px;
     }
 
     .stats-action-legend .stats-action-legend-block__combos-number {
@@ -479,7 +488,10 @@
     #gtoPage .gto-legend-col .stats-action-bar,
     #gtoPage .gto-legend-col .gto-cell-preview {
         width: 100% !important;
-        flex: 0 0 100%;
+        /* flex-basis: auto — колонка легенды это column flex-контейнер
+           с авто-высотой, поэтому basis 100% резолвится в 0 и полоса
+           (.stats-action-bar, overflow: hidden) схлопывается по высоте. */
+        flex: 0 0 auto;
         max-width: 100%;
         min-width: 0;
         align-self: stretch;
@@ -727,7 +739,10 @@
     #constructorPage.analysis-mode .constructor-legend-col .stats-action-bar,
     #constructorPage.analysis-mode .constructor-legend-col .gto-cell-preview {
         width: 100% !important;
-        flex: 0 0 100%;
+        /* flex-basis: auto — колонка легенды это column flex-контейнер
+           с авто-высотой, поэтому basis 100% резолвится в 0 и полоса
+           (.stats-action-bar, overflow: hidden) схлопывается по высоте. */
+        flex: 0 0 auto;
         max-width: 100%;
         min-width: 0;
         align-self: stretch;
