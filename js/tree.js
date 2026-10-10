@@ -451,6 +451,16 @@ let p = App.nodes.getNode(n.parentId);
             App.dirty.markColorsDirty();
         }
 
+        // Несохранённые правки могли относиться только к удаляемому диапазону:
+        // любое переключение между диапазонами разряжает флаг диалогом
+        // «Сохранить изменения?», так что грязным бывает лишь текущий узел.
+        // Вместе с узлом его правки исчезли — снимаем флаг, иначе при
+        // перескоке на соседний диапазон (и при следующем переключении)
+        // выскакивал фантомный «Сохранить изменения?» об уже удалённом узле.
+        // Dirty-метки structure/colors самого удаления не трогаем — это другой
+        // механизм, они уходят на сервер автосохранением ниже.
+        App.persistence.clearUnsaved();
+
         // Поиск нового активного диапазона в редакторе
         const activeExists = !!App.nodes.getNode(App.state.currentNodeId);
         if (!activeExists) {
@@ -460,7 +470,7 @@ let p = App.nodes.getNode(n.parentId);
             const foundRange = findFallbackActiveRange(neighbourRange);
 
             if (foundRange) {
-                App.navigation.selectNode(foundRange.id);
+                App.navigation.selectNode(foundRange.id, { skipUnsavedCheck: true });
             } else {
                 App.state.currentNodeId = null;
             }

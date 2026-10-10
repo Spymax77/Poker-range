@@ -229,9 +229,13 @@ document.getElementById('authLogoutItem')?.addEventListener('click', function() 
     }
 
     const node = App.nodes.getNode(App.state.currentNodeId);
-    const message = node
-        ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
-        : App.i18n.t('range.saveChangesQuestion');
+    // Голый fallback «Сохранить изменения?» (без имени) удалён: если текущий
+    // диапазон не существует, спрашивать не о чем — выходим без сохранения.
+    if (!node) {
+        logout();
+        return;
+    }
+    const message = App.i18n.t('range.saveChangesNamedQuestion', { name: node.name });
 
     // Да — сохраняем перед выходом из аккаунта; при провале сохранения хелпер
     // покажет range.saveFailed и выход из аккаунта не произойдёт.
@@ -731,18 +735,21 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
         // ===== ПРОВЕРКА ПРИ ПЕРЕКЛЮЧЕНИИ НА ПРОСМОТР =====
         if (page === "work" && App.state.hasUnsavedChanges && App.auth && App.auth.isLoggedIn()) {
             const node = App.nodes.getNode(App.state.currentNodeId);
-            const message = node
-                ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
-                : App.i18n.t('range.saveChangesQuestion');
+            // Голый fallback «Сохранить изменения?» (без имени) удалён: если
+            // текущий диапазон не существует, спрашивать не о чем — переключаем
+            // вкладку молча.
+            if (node) {
+                const message = App.i18n.t('range.saveChangesNamedQuestion', { name: node.name });
 
-            // Да — сохраняем изменения перед переключением вкладки, Нет —
-            // откатываемся и переключаем (App.ui.saveAndContinue / rollbackAndContinue).
-            App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
-                App.navigation.switchTab(page);
-            }), App.ui.rollbackAndContinue(function() {
-                App.navigation.switchTab(page);
-            }));
-            return;
+                // Да — сохраняем изменения перед переключением вкладки, Нет —
+                // откатываемся и переключаем (App.ui.saveAndContinue / rollbackAndContinue).
+                App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
+                    App.navigation.switchTab(page);
+                }), App.ui.rollbackAndContinue(function() {
+                    App.navigation.switchTab(page);
+                }));
+                return;
+            }
         }
 
         App.navigation.switchTab(page);

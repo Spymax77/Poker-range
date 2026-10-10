@@ -8,18 +8,20 @@ App.clipboard.duplicateRange = function(nodeId) {
     // ===== 1. ПРОВЕРКА НА НЕСОХРАНЁННЫЕ ИЗМЕНЕНИЯ =====
     if (App.state.hasUnsavedChanges) {
         const node = App.nodes.getNode(App.state.currentNodeId);
-        const message = node
-            ? App.i18n.t('range.saveChangesNamedQuestion', { name: node.name })
-            : App.i18n.t('range.saveChangesQuestion');
+        // Голый fallback «Сохранить изменения?» (без имени) удалён: если
+        // текущий диапазон не существует, спрашивать не о чем — дублируем молча.
+        if (node) {
+            const message = App.i18n.t('range.saveChangesNamedQuestion', { name: node.name });
 
-        // Да — сохраняем, Нет — откатываемся (общие хелперы App.ui.saveAndContinue /
-        // App.ui.rollbackAndContinue, определены в init.js).
-        App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
-            App.clipboard.createCopyAndFinalize(original);
-        }), App.ui.rollbackAndContinue(function() {
-            App.clipboard.createCopyAndFinalize(original);
-        }));
-        return;
+            // Да — сохраняем, Нет — откатываемся (общие хелперы App.ui.saveAndContinue /
+            // App.ui.rollbackAndContinue, определены в init.js).
+            App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
+                App.clipboard.createCopyAndFinalize(original);
+            }), App.ui.rollbackAndContinue(function() {
+                App.clipboard.createCopyAndFinalize(original);
+            }));
+            return;
+        }
     }
 
     // ===== 2. ЕСЛИ ИЗМЕНЕНИЙ НЕТ — СОЗДАЁМ КОПИЮ =====
