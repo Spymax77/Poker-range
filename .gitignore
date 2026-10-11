@@ -1,6 +1,7 @@
 api/
 tests/
 gto/
+userscript/
 *.out
 .clinerules
 cline_mcp_settings.json
