@@ -73,7 +73,11 @@ App.ui.rollbackAndContinue = function(onSuccess) {
 
 function showAuthDialog(mode) {
     const oldOverlay = document.querySelector('.auth-dialog-overlay');
-    if (oldOverlay) oldOverlay.remove();
+    if (oldOverlay) {
+        // Снимаем слушатель клавиш старого диалога (см. dialogKeys ниже).
+        if (oldOverlay._dialogKeys) oldOverlay._dialogKeys.abort();
+        oldOverlay.remove();
+    }
 
     const overlay = document.createElement('div');
     overlay.className = 'auth-dialog-overlay';
@@ -118,7 +122,15 @@ function showAuthDialog(mode) {
             <button type="button" class="auth-link" data-auth-mode="register">${App.i18n.t('auth.register')}</button>`;
     }
 
-    modal.innerHTML = '<button type="button" class="auth-dialog-close" aria-label="' + App.i18n.t('auth.close') + '">&times;</button>' + formHtml;
+    modal.innerHTML = formHtml;
+    // Кнопку закрытия собираем DOM-ом: aria-label через setAttribute,
+    // а не конкатенацией в HTML-строку (кавычки в переводе её бы ломали).
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'auth-dialog-close';
+    closeBtn.setAttribute('aria-label', App.i18n.t('auth.close'));
+    closeBtn.innerHTML = '&times;';
+    modal.prepend(closeBtn);
 
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
@@ -126,7 +138,53 @@ function showAuthDialog(mode) {
     modal.querySelectorAll('input[type="password"]').forEach(function(input) {
         App.ui.addPasswordToggle(input);
     });
-    modal.querySelector('.auth-dialog-close').addEventListener('click', function() { overlay.remove(); });
+    // Контроллер слушателя клавиш: живёт на document, чтобы ловить Escape/Tab
+    // и когда фокус вне диалога; снимается при закрытии или смене режима.
+    const dialogKeys = new AbortController();
+
+    function closeDialog() {
+        dialogKeys.abort();
+        overlay.remove();
+    }
+
+    modal.querySelector('.auth-dialog-close').addEventListener('click', closeDialog);
+
+    // Escape — закрыть диалог; Tab зацикливается внутри него, фокус не должен
+    // уходить под оверлей.
+    document.addEventListener('keydown', function(e) {
+        if (!overlay.isConnected) {
+            dialogKeys.abort();
+            return;
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeDialog();
+            return;
+        }
+        if (e.key === 'Tab') {
+            const focusables = modal.querySelectorAll(
+                'button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])'
+            );
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
+    }, { signal: dialogKeys.signal });
+
+    // Ссылка на контроллер — чтобы снять слушатель при переключении режима
+    // (showAuthDialog удаляет старый оверлей в начале).
+    overlay._dialogKeys = dialogKeys;
+
+    // Фокус в первое поле формы при открытии диалога.
+    const firstInput = modal.querySelector('input');
+    if (firstInput) firstInput.focus();
     modal.querySelectorAll('[data-auth-mode]').forEach(function(button) {
         button.addEventListener('click', function() { showAuthDialog(button.dataset.authMode); });
     });
@@ -137,20 +195,28 @@ function showAuthDialog(mode) {
         const submit = modal.querySelector('.auth-submit');
         submit.disabled = true;
         errorElement.textContent = '';
-        let result;
-        if (isForgot) {
-            result = await App.auth.forgotPassword(form.get('email'));
-        } else if (isRegister) {
-            result = await App.auth.register(form.get('login'), form.get('email'), form.get('password'), form.get('passwordConfirm'));
-        } else {
-            result = await App.auth.login(form.get('login'), form.get('password'));
-        }
-        submit.disabled = false;
-        if (result && result.success) {
-            overlay.remove();
-            if (isForgot) App.modals.showFloatingModal(result.message || App.i18n.t('auth.forgotSent'));
-        } else {
-            errorElement.textContent = (result && (result.error || result.message)) || App.i18n.t('auth.operationFailed');
+        try {
+            let result;
+            if (isForgot) {
+                result = await App.auth.forgotPassword(form.get('email'));
+            } else if (isRegister) {
+                result = await App.auth.register(form.get('login'), form.get('email'), form.get('password'), form.get('passwordConfirm'));
+            } else {
+                result = await App.auth.login(form.get('login'), form.get('password'));
+            }
+            if (result && result.success) {
+                closeDialog();
+                if (isForgot) App.modals.showFloatingModal(result.message || App.i18n.t('auth.forgotSent'));
+            } else {
+                errorElement.textContent = (result && (result.error || result.message)) || App.i18n.t('auth.operationFailed');
+            }
+        } catch (error) {
+            // Исключение из App.auth.* не должно оставлять форму «зависшей»
+            // с заблокированной кнопкой — показываем ошибку.
+            console.error('Ошибка авторизации:', error);
+            errorElement.textContent = App.i18n.t('auth.operationFailed');
+        } finally {
+            submit.disabled = false;
         }
     });
 }
