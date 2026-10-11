@@ -13,7 +13,8 @@
     white-space: nowrap;
 }
 
-.save-status.saving { color: #d4af37; }
+.save-status.saving,
+.save-status.loading { color: #d4af37; }
 .save-status.saved {
     color: #79a65a;
     animation: pulseSaved 1.2s ease-out;

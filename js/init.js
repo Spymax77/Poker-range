@@ -2,7 +2,9 @@
 
 App.events.on('storage:loading', function() {
     const status = document.getElementById('saveStatus');
-    if (status) { status.textContent = App.i18n.t('status.loading'); status.className = 'save-status saving'; }
+    // Отдельный класс loading (не saving): иначе при смене языка статус
+    // загрузки переписывался бы текстом «Сохранение…» (см. languagechange ниже).
+    if (status) { status.textContent = App.i18n.t('status.loading'); status.className = 'save-status loading'; }
 });
 App.events.on('storage:saving', function() {
     const status = document.getElementById('saveStatus');
@@ -23,7 +25,9 @@ App.events.on('storage:error', function() {
 
 document.addEventListener('languagechange', function () {
     const status = document.getElementById('saveStatus');
-    if (status && status.classList.contains('saving')) {
+    if (status && status.classList.contains('loading')) {
+        status.textContent = App.i18n.t('status.loading');
+    } else if (status && status.classList.contains('saving')) {
         status.textContent = App.i18n.t('status.saving');
     } else if (status && status.classList.contains('saved')) {
         status.textContent = App.i18n.t('status.synced');
