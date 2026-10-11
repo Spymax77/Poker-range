@@ -14,11 +14,15 @@ App.tree.generateUniqueName = function(baseName, existingNames) {
     if (!existingNames.includes(baseName)) {
         return baseName;
     }
-    let counter = 2;
-    while (existingNames.includes(`${baseName} (${counter})`)) {
+    // Имя с числовым суффиксом " (N)" продолжаем серию ("X (2)" → "X (3)"),
+    // а не плодим вложенные суффиксы вида "X (2) (2)"
+    const m = /^(.*) \((\d+)\)$/.exec(String(baseName));
+    const stem = m ? m[1] : baseName;
+    let counter = m ? parseInt(m[2], 10) + 1 : 2;
+    while (existingNames.includes(`${stem} (${counter})`)) {
         counter++;
     }
-    return `${baseName} (${counter})`;
+    return `${stem} (${counter})`;
 }
 
 // ============================================================
@@ -74,48 +78,57 @@ function generateUniqueNameFor(parentId, baseName) {
 // opts.colors — пометить цвета изменёнными (создан стартовый цвет).
 async function finishNodeCreation(newId, opts) {
     opts = opts || {};
-    App.dirty.markStructureDirty();
-    if (opts.table) App.dirty.markTableDirty(newId);
-    if (opts.colors) App.dirty.markColorsDirty();
-    App.refresh.all();
-    const loggedIn = App.auth && App.auth.isLoggedIn();
-    const confirmNeeded = loggedIn && App.state.hasUnsavedChanges;
-    if (confirmNeeded) {
-        const results = await App.persistence.flushPersist([newId]);
-        const saveSucceeded = !results || results.every(function(result) {
-            return result && result.success !== false;
-        });
-        if (!saveSucceeded) {
-            App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
-        }
-    }
-    const selectOpts = {};
-    if (opts.colors) {
-        // «Нет» в диалоге откатывает состояние из хранилища. Если цветовой
-        // ключ не отправлялся (были несогласованные правки цветов),
-        // стартовая палитра нового узла осталась несохранённой —
-        // пересоздаём её, чтобы новый диапазон не остался без цветов.
-        // Хук нужен только узлам со стартовой палитрой (range/subrange):
-        // у папки цветов нет, и создавать их после отката не нужно.
-        selectOpts.afterRollback = function() {
-            var colors = App.state.colorsPerNode[App.grid.getTableId(newId)];
-            if (!colors || !colors.length) {
-                initDefaultColor(newId);
-                if (App.dirty) App.dirty.markColorsDirty();
+    try {
+        App.dirty.markStructureDirty();
+        if (opts.table) App.dirty.markTableDirty(newId);
+        if (opts.colors) App.dirty.markColorsDirty();
+        App.refresh.all();
+        const loggedIn = App.auth && App.auth.isLoggedIn();
+        const confirmNeeded = loggedIn && App.state.hasUnsavedChanges;
+        if (confirmNeeded) {
+            const results = await App.persistence.flushPersist([newId]);
+            const saveSucceeded = !results || results.every(function(result) {
+                return result && result.success !== false;
+            });
+            if (!saveSucceeded) {
+                App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
             }
-        };
-    }
-    App.navigation.selectNode(newId, selectOpts);
-    if (!loggedIn) {
-        App.persistence.markUnsaved();
-        App.persistence.notifyGuestUnsavedChanges();
-        return;
-    }
-    if (!confirmNeeded) {
-        // Обычный путь (без диалога): сохраняем после selectNode —
-        // метаданные уйдут с новым активным узлом (см. комментарий
-        // про порядок selectNode → flushPersist в clipboard.js).
-        App.persistence.flushPersist();
+        }
+        const selectOpts = {};
+        if (opts.colors) {
+            // «Нет» в диалоге откатывает состояние из хранилища. Если цветовой
+            // ключ не отправлялся (были несогласованные правки цветов),
+            // стартовая палитра нового узла осталась несохранённой —
+            // пересоздаём её, чтобы новый диапазон не остался без цветов.
+            // Хук нужен только узлам со стартовой палитрой (range/subrange):
+            // у папки цветов нет, и создавать их после отката не нужно.
+            selectOpts.afterRollback = function() {
+                var colors = App.state.colorsPerNode[App.grid.getTableId(newId)];
+                if (!colors || !colors.length) {
+                    initDefaultColor(newId);
+                    if (App.dirty) App.dirty.markColorsDirty();
+                }
+            };
+        }
+        App.navigation.selectNode(newId, selectOpts);
+        if (!loggedIn) {
+            App.persistence.markUnsaved();
+            App.persistence.notifyGuestUnsavedChanges();
+            return;
+        }
+        if (!confirmNeeded) {
+            // Обычный путь (без диалога): сохраняем после selectNode —
+            // метаданные уйдут с новым активным узлом (см. комментарий
+            // про порядок selectNode → flushPersist в clipboard.js).
+            App.persistence.flushPersist();
+        }
+    } catch (error) {
+        // finishNodeCreation вызывается «fire-and-forget» (промис никто не
+        // ждёт): без обработчика любое исключение — например, отказ
+        // flushPersist — стало бы unhandled rejection. Сообщаем о проблеме
+        // сохранения и не роняем дальнейшую работу.
+        console.error('finishNodeCreation:', error);
+        App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
     }
 }
 
@@ -209,8 +222,11 @@ App.tree.deleteNode = function(nodeId) {
             const matrix = App.state.cellStorage[tid];
             if (!matrix) return false;
             for (let i = 0; i < 13; i++) {
+                const row = matrix[i];
+                if (!row) continue; // битая/неполная матрица — строку пропускаем
                 for (let j = 0; j < 13; j++) {
-                    if (matrix[i][j] !== null) return true;
+                    // != null: undefined (неполная загрузка/импорт) тоже «пусто»
+                    if (row[j] != null) return true;
                 }
             }
             return false;
@@ -262,8 +278,11 @@ App.tree.deleteNode = function(nodeId) {
 
         if (matrix) {
             for (let i = 0; i < 13; i++) {
+                const row = matrix[i];
+                if (!row) continue; // битая/неполная матрица — строку пропускаем
                 for (let j = 0; j < 13; j++) {
-                    if (matrix[i][j] !== null) {
+                    // != null: undefined (неполная загрузка/импорт) тоже «пусто»
+                    if (row[j] != null) {
                         isFilled = true;
                         break;
                     }
@@ -498,13 +517,20 @@ let p = App.nodes.getNode(n.parentId);
             }
         }
 
-        // Поиск нового активного диапазона в просмотре
-        App.state.workLevels = App.state.workLevels.filter(lvl => lvl.parentNodeId !== id);
+        // Поиск нового активного диапазона в просмотре.
+        // Убираем уровни просмотра, указывающие на узлы удалённого поддерева:
+        // parentNodeId мог быть не только самим id, но и любой вложенной
+        // папкой/узлом внутри него — такие уровни-сироты раньше оставались
+        // жить (фильтр был только по верхнему id). Корневой уровень
+        // (parentNodeId === null) оставляем всегда.
+        App.state.workLevels = App.state.workLevels.filter(lvl =>
+            lvl.parentNodeId === null || App.nodes.getNode(lvl.parentNodeId)
+        );
         const workActiveExists = !!App.nodes.getNode(App.state.workDisplayNodeId);
         if (!workActiveExists) {
             const foundRange = findFallbackActiveRange(neighbourRange);
             App.state.workDisplayNodeId = foundRange ? foundRange.id : null;
-            App.persistence.persistAll();
+            // persistAll здесь не нужен: сохранение единообразно ниже
         }
 
         if (!App.state.workLevels.length) {
@@ -524,12 +550,16 @@ App.tree.startInlineRename = function(nodeId) {
     const node = App.nodes.getNode(nodeId);
     if (!node) return;
     
-    // Ищем элемент в дереве по data-node-id
-    const treeItems = document.querySelectorAll('.tree-item-name');
+    // Ищем элемент по data-node-id ТОЛЬКО в своём дереве: искать по всему
+    // документу нельзя — числовые id веток editor/gto пересекаются, и input
+    // мог попасть в чужое дерево. Сравниваем id как строки — parseInt
+    // ломает нечисловые id.
+    const treeId = App.currentMode === 'gto' ? 'gtoTree' : 'constructorTree';
+    const treeItems = document.querySelectorAll(`#${treeId} .tree-item-name`);
     let targetElement = null;
     
     for (let el of treeItems) {
-        if (parseInt(el.dataset.nodeId) === nodeId) {
+        if (String(el.dataset.nodeId) === String(nodeId)) {
             targetElement = el;
             break;
         }
@@ -595,7 +625,16 @@ App.tree.finishInlineRename = function(save) {
     if (!App.state.renameInput || App.state.renameNodeId === null) return;
     
     const node = App.nodes.getNode(App.state.renameNodeId);
-    if (!node) return;
+    if (!node) {
+        // Узел исчез, пока input был открыт (например, удалён): сбрасываем
+        // состояние переименования, иначе оно «залипнет» до следующего
+        // старта, а input останется висеть в DOM
+        App.state.renameInput = null;
+        App.state.renameNodeId = null;
+        App.state.renameOldName = '';
+        App.refresh.all();
+        return;
+    }
     
     const newName = App.state.renameInput.value.trim();
     
@@ -673,8 +712,10 @@ App.tree.createChildNode = function(parentId, type) {
         baseName = 'Новый диапазон';
     } else if (type === 'subrange') {
         baseName = 'Поддиапазон';
+    } else {
+        // Неизвестный тип — имя-заглушка, чтобы имя не стало «undefined»
+        baseName = 'Новый узел';
     }
-    const newName = generateUniqueNameFor(parentId, baseName);
 
     // ============================================================
     // ДЛЯ ПОДДИАПАЗОНА — ПОКАЗЫВАЕМ ДИАЛОГ, ПОТОМ СОЗДАЁМ
@@ -682,7 +723,11 @@ App.tree.createChildNode = function(parentId, type) {
     if (type === 'subrange') {
         App.modals.showComponentSelectionDialog(parentId, function(selectedIndex) {
             if (selectedIndex !== -1) {
-                // ✅ ПОЛЬЗОВАТЕЛЬ ВЫБРАЛ → СОЗДАЁМ УЗЕЛ
+                // ✅ ПОЛЬЗОВАТЕЛЬ ВЫБРАЛ → СОЗДАЁМ УЗЕЛ.
+                // Имя генерируем ПОСЛЕ закрытия диалога: пока он открыт,
+                // могли создаться другие узлы — уникальность считаем по
+                // состоянию на момент создания
+                const newName = generateUniqueNameFor(parentId, baseName);
                 const newId = App.state.nextNodeId++;
                 const newNode = {
                     id: newId,
@@ -708,6 +753,7 @@ App.tree.createChildNode = function(parentId, type) {
     // ============================================================
     // ДЛЯ ПАПОК И ДИАПАЗОНОВ — СОЗДАЁМ СРАЗУ
     // ============================================================
+    const newName = generateUniqueNameFor(parentId, baseName);
     let newId = App.state.nextNodeId++;
     let newNode = {
         id: newId,
@@ -1277,7 +1323,7 @@ App.tree.renderTreeNode = function(parentContainer, node, activeNodeId, editable
 App.tree.refreshTreeOnly = function() {
     if (App.currentMode === 'gto') {
         App.navigation.renderGtoPage();
-    } else if (document.getElementById("constructorPage").classList.contains("active-page")) {
+    } else if (document.getElementById("constructorPage")?.classList.contains("active-page")) {
         App.tree.renderTree("constructorTree", App.state.selectedNodeId || App.state.currentNodeId, true, App.navigation.selectNode);
     }
 }
