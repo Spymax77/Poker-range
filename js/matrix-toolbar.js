@@ -118,6 +118,11 @@ document.getElementById('tablePasteBtn')?.addEventListener('click', App.matrixTo
 // т.к. её нужно вызывать не только по клику, но и при восстановлении
 // состояния после F5 / возврата на вкладку конструктора.
 App.matrixToolbar.onEditorModeClick = function() {
+    // Три кнопки режима взаимоисключающие: закрываем панель тренировки,
+    // если она открыта (клик по «Редактор» = вернуться в режим редактора).
+    if (App.trainer && typeof App.trainer.isSetupVisible === 'function' && App.trainer.isSetupVisible()) {
+        App.trainer.toggleSetup();
+    }
     if (!App.state.analysisMode) return;
     App.state.analysisMode = false;
     App.grid.refreshConstructorAnalysisMode();
@@ -127,6 +132,11 @@ App.matrixToolbar.onEditorModeClick = function() {
 document.getElementById('editorModeBtn')?.addEventListener('click', App.matrixToolbar.onEditorModeClick);
 
 App.matrixToolbar.onAnalysisModeClick = function() {
+    // Три кнопки режима взаимоисключающие: закрываем панель тренировки,
+    // если она открыта (клик по «Анализ» = показать легенду).
+    if (App.trainer && typeof App.trainer.isSetupVisible === 'function' && App.trainer.isSetupVisible()) {
+        App.trainer.toggleSetup();
+    }
     if (App.state.analysisMode) return;
     App.state.analysisMode = true;
     App.grid.refreshConstructorAnalysisMode();
@@ -134,6 +144,12 @@ App.matrixToolbar.onAnalysisModeClick = function() {
     App.persistence.persistAll();
 };
 document.getElementById('analysisModeBtn')?.addEventListener('click', App.matrixToolbar.onAnalysisModeClick);
+
+// ===== КНОПКА "ТРЕНИРОВКА" (панель настройки, см. js/modules/trainer/) =====
+App.matrixToolbar.onTrainingModeClick = function() {
+    App.trainer.toggleSetup();
+};
+document.getElementById('trainingModeBtn')?.addEventListener('click', App.matrixToolbar.onTrainingModeClick);
 
 
 App.matrixToolbar.onClearClick = function() {

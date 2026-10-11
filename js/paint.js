@@ -51,7 +51,9 @@ App.paint.handlePaintStart = function(e) {
     // В режиме анализа конструктора клики по ячейкам управляют только
     // закреплением превью (см. grid.js toggleConstructorCellPin), рисование отключено.
     if (App.state.analysisMode) return;
-    
+    // В режиме тренировки рисование отключено (класс ставит trainer-ui.js).
+    if (document.body.classList.contains('training-setup')) return;
+
     const cell = e.target.closest('.hand-cell');
     if (!cell) return;
     e.preventDefault();
@@ -75,7 +77,12 @@ App.paint.handlePaintMove = function(e) {
         App.state.painting = false;
         return;
     }
-    
+    // В режиме тренировки рисование отключено (класс ставит trainer-ui.js).
+    if (document.body.classList.contains('training-setup')) {
+        App.state.painting = false;
+        return;
+    }
+
     const cell = e.target.closest('.hand-cell');
     if (!cell) return;
     const row = parseInt(cell.getAttribute('data-row'));

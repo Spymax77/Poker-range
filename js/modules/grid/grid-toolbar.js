@@ -45,9 +45,12 @@ export function refreshConstructorAnalysisMode() {
     // диапазону/поддиапазону.
     const branch = App.editor;
     const currentNodeId = branch.currentNodeId;
+    // Три кнопки режима — взаимоисключающие: редактор / анализ / тренировка.
+    const isTraining = !!(App.trainer && App.trainer.isSetupVisible && App.trainer.isSetupVisible());
     document.getElementById('constructorPage')?.classList.toggle('analysis-mode', isAnalysis);
-    document.getElementById('editorModeBtn')?.classList.toggle('active', !isAnalysis);
+    document.getElementById('editorModeBtn')?.classList.toggle('active', !isAnalysis && !isTraining);
     document.getElementById('analysisModeBtn')?.classList.toggle('active', isAnalysis);
+    document.getElementById('trainingModeBtn')?.classList.toggle('active', isTraining);
 
     // Кнопки редактирования диапазона в тулбаре таблицы гасим/возвращаем вместе
     // с режимом (см. updateConstructorToolbarState выше).

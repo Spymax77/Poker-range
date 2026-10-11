@@ -13,6 +13,8 @@
     flex-direction: row;
     gap: 4px;
     margin: 0;
+    width: auto;
+    align-items: center;
 }
 
 @media (max-width: 849px) {
@@ -818,6 +820,7 @@
         flex-direction: row;
         gap: 3px;
         min-width: 0;
+        width: auto;
         z-index: auto;
     }
 

@@ -97,6 +97,11 @@ cell.onmouseenter = () => {
     if (Date.now() < cell.blockUntil) {
         return;
     }
+    // В режиме тренировки матрица «заморожена» для рисования (кисть гасится в
+    // paint.js по классу training-setup), поэтому и hover-превью будущей
+    // закраски активным профилем не показываем — иначе оно вводит в заблуждение
+    // (кажется, что ячейку можно закрасить, но клик ничего не делает).
+    if (document.body.classList.contains('training-setup')) return;
     if (containerId === "constructorGrid" && !App.state.analysisMode && !App.state.painting && !cell.justChanged) {
         const activeProfileId = App.colors.getActiveForNode(nodeId);
         const currentPid = App.grid.getCellProfile(nodeId, i, j);
