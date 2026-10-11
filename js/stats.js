@@ -30,7 +30,7 @@ App.stats.getCellAvailabilityPercent = function(nodeId, i, j, recursive = true, 
     const node = nodes.find(item => item.id === nodeId) || App.nodes.getNode(nodeId);
     if (!node || node.type !== 'subrange') return 100;
     if (node.parentId === null) return 0;
-    const parentTableId = getTableId(node.parentId);
+    const parentTableId = App.grid.getTableId(node.parentId);
     const parentMatrix = data.cellStorage[parentTableId];
     if (!parentMatrix) return 0;
     const parentPid = parentMatrix[i][j];
@@ -66,9 +66,9 @@ App.stats.getCellAvailabilityPercent = function(nodeId, i, j, recursive = true, 
 
 App.stats.countTotalCombos = function(nodeId, branch = null) {
     const data = branch || App.state;
-    const matrix = data.cellStorage[getTableId(nodeId)];
+    const matrix = data.cellStorage[App.grid.getTableId(nodeId)];
     if (!matrix) return 0;
-    const colors = data.colorsPerNode[getTableId(nodeId)] || [];
+    const colors = data.colorsPerNode[App.grid.getTableId(nodeId)] || [];
     let total = 0;
     for (let i = 0; i < 13; i++) for (let j = 0; j < 13; j++) {
         const profileId = matrix[i][j];
@@ -88,7 +88,7 @@ App.stats.countTotalCombos = function(nodeId, branch = null) {
 
 App.stats.computeColorStats = function(nodeId, branch) {
     if (!nodeId || !branch) return null;
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     const matrix = branch.cellStorage[tableId];
     const colors = branch.colorsPerNode[tableId] || [];
     if (!matrix) return null;
@@ -103,9 +103,9 @@ App.stats.computeColorStats = function(nodeId, branch) {
         // задают лишь subrange-предки. Range и папки выше — структурная вложенность,
         // а не ограничение (эталон семантики — getCellAvailabilityPercent ниже по файлу).
         while (node && node.type === 'subrange' && node.parentId !== null) {
-            const parentMatrix = branch.cellStorage[getTableId(node.parentId)];
+            const parentMatrix = branch.cellStorage[App.grid.getTableId(node.parentId)];
             if (!parentMatrix) break;
-            const parentColors = branch.colorsPerNode[getTableId(node.parentId)] || [];
+            const parentColors = branch.colorsPerNode[App.grid.getTableId(node.parentId)] || [];
             const parentPid = parentMatrix[row][col];
             if (parentPid === null || parentPid === undefined) return 0;
             const parentColor = parentColors.find(color => color.id === parentPid);

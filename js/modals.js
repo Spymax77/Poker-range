@@ -247,7 +247,7 @@ App.modals.showComponentSelectionDialog = function(parentNodeId, callback) {
         return;
     }
 
-    const tableId = getTableId(parentNodeId);
+    const tableId = App.grid.getTableId(parentNodeId);
     const colors = App.state.colorsPerNode[tableId] || [];
     
     // Находим все мультицветы в родителе

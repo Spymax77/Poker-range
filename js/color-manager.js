@@ -12,7 +12,7 @@
 
 App.colors = App.colors || {};
 App.colors.getColorsForNode = function(nodeId) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     if (!tableId) return [];
     return App.state.colorsPerNode[tableId] || [];
 }
@@ -21,19 +21,19 @@ App.colors.getSimpleColors = function(nodeId) {
     return all.filter(c => c.type === 'simple' || (!c.type && c.color));
 }
 App.colors.setColorsForNode = function(nodeId, colors) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     if (!tableId) return;
     App.state.colorsPerNode[tableId] = colors;
 }
 
 App.colors.getActiveForNode = function(nodeId) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     if (!tableId) return null;
     return App.state.activePerNode[tableId] || null;
 }
 
 App.colors.setActiveForNode = function(nodeId, colorId) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     if (!tableId) return;
     if (colorId === null) {
         delete App.state.activePerNode[tableId];
@@ -192,7 +192,7 @@ App.colors.getContrast = function(hex) {
 // ============================================================
 
 App.colors.createSimpleColor = function(nodeId, name, hex) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     if (!tableId) return null;
     if (!App.state.colorsPerNode[tableId]) App.state.colorsPerNode[tableId] = [];
     
@@ -234,7 +234,7 @@ if (!finalName) {
 }
 
 App.colors.createMultiColor = function(nodeId, components, boundaries) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     if (!tableId) return null;
     if (!App.state.colorsPerNode[tableId]) App.state.colorsPerNode[tableId] = [];
     
@@ -262,7 +262,7 @@ App.colors.createMultiColor = function(nodeId, components, boundaries) {
 }
 
 App.colors.deleteColor = function(nodeId, colorId) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     if (!tableId) return false;
     const colorsList = App.state.colorsPerNode[tableId] || [];
     
@@ -305,7 +305,7 @@ App.colors.proceedDeleteColor = function(nodeId, tableId, colorId) {
     }
     
     // Очищаем ячейки, где использовался этот цвет
-    const matrix = App.state.cellStorage[getTableId(nodeId)];
+    const matrix = App.state.cellStorage[App.grid.getTableId(nodeId)];
     let clearedCells = 0;
     if (matrix) {
         for (let i = 0; i < 13; i++) {
@@ -335,7 +335,7 @@ App.colors.proceedDeleteColor = function(nodeId, tableId, colorId) {
 }
 
 App.colors.isColorUsedInMatrix = function(nodeId, colorId) {
-    const tid = getTableId(nodeId);
+    const tid = App.grid.getTableId(nodeId);
     const matrix = App.state.cellStorage[tid];
     if (!matrix) return false;
     
@@ -354,7 +354,7 @@ App.colors.isColorUsedInMatrix = function(nodeId, colorId) {
 // в ячейке. Простые цвета дополнительно сохраняются, если на них ссылается
 // оставшийся используемый мультицвет.
 App.colors.removeUnusedColors = function(nodeId) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     const colors = App.state.colorsPerNode[tableId] || [];
     const matrix = App.state.cellStorage[tableId];
     if (!matrix || colors.length === 0) return { removed: 0 };

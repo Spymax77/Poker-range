@@ -4,12 +4,12 @@
 
 App.comments = App.comments || {};
 App.comments.getComments = function(nodeId) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     return App.state.commentsPerNode[tableId] || '';
 }
 
 App.comments.setComments = function(nodeId, text) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     App.state.commentsPerNode[tableId] = text;
     // Комментарии хранятся в ключе структуры (commentsPerNode внутри
     // poker_range_structure_*) — без этой метки App.persistence.persistAll не сохранял

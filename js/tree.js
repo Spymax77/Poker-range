@@ -20,7 +20,7 @@ App.tree.generateUniqueName = function(baseName, existingNames) {
 // Стартовая палитра нового диапазона/поддиапазона: один простой
 // цвет "Raise", он же становится активным цветом узла.
 function initDefaultColor(nodeId) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     App.state.colorsPerNode[tableId] = [];
     const colorId = App.state.nextColorId++;
     App.state.colorsPerNode[tableId].push({
@@ -83,7 +83,7 @@ async function finishNodeCreation(newId, opts) {
         // стартовая палитра нового узла осталась несохранённой —
         // пересоздаём её, чтобы новый диапазон не остался без цветов.
         afterRollback: function() {
-            var colors = App.state.colorsPerNode[getTableId(newId)];
+            var colors = App.state.colorsPerNode[App.grid.getTableId(newId)];
             if (!colors || !colors.length) {
                 initDefaultColor(newId);
                 if (App.dirty) App.dirty.markColorsDirty();
@@ -189,7 +189,7 @@ App.tree.deleteNode = function(nodeId) {
 
         // Вспомогательная функция: проверка, есть ли профили в матрице
         function hasProfilesInMatrix(rangeId) {
-            const tid = getTableId(rangeId);
+            const tid = App.grid.getTableId(rangeId);
             const matrix = App.state.cellStorage[tid];
             if (!matrix) return false;
             for (let i = 0; i < 13; i++) {
@@ -240,7 +240,7 @@ App.tree.deleteNode = function(nodeId) {
     }
 	    // ===== ПРАВИЛО 3: проверка на заполненность диапазона =====
     if (node.type === 'range' || node.type === 'subrange') {
-        const tid = getTableId(node.id);
+        const tid = App.grid.getTableId(node.id);
         const matrix = App.state.cellStorage[tid];
         let isFilled = false;
 
@@ -411,7 +411,7 @@ App.tree.deleteNode = function(nodeId) {
             }
             App.nodes.removeNode(currentId);
 
-const tableId = getTableId(currentId);
+const tableId = App.grid.getTableId(currentId);
 delete App.state.cellStorage[tableId];
 
 // Цвета, активный профиль и комментарии удалённого узла тоже удаляем:
@@ -848,7 +848,7 @@ App.tree.getSubrangeColor = function(node) {
     const parent = App.nodes.getNode(node.parentId);
     if (!parent) return null;
     
-    const tableId = getTableId(parent.id);
+    const tableId = App.grid.getTableId(parent.id);
     const colors = App.state.colorsPerNode[tableId] || [];
     
     // Берём только простые цвета (selectedComponentIndex — это индекс среди них)

@@ -89,7 +89,7 @@
                 result.selectedComponentIndex = node.selectedComponentIndex;
             }
             if (node.type === 'range' || node.type === 'subrange') {
-                const tableId = getTableId(node.id);
+                const tableId = App.grid.getTableId(node.id);
                 const colors = App.state.colorsPerNode[tableId] || [];
                 
                 // ===== ЭКСПОРТ ЦВЕТОВ (ОПТИМИЗИРОВАННЫЙ) =====
@@ -249,7 +249,7 @@
                         if (type === 'range' || type === 'subrange') {
                             // 1. СОЗДАЁМ ТАБЛИЦУ
                             App.grid.ensureTable(newId);
-                            const tableId = getTableId(newId);
+                            const tableId = App.grid.getTableId(newId);
                             
                             // 2. ВОССТАНАВЛИВАЕМ ЦВЕТА
                             if (importedNode.colors) {
@@ -324,7 +324,7 @@
                             
                             // ===== 3. ВОССТАНАВЛИВАЕМ ЗАПОЛНЕННЫЕ ЯЧЕЙКИ (С ПОДДЕРЖКОЙ ОБОИХ ФОРМАТОВ) =====
                             if (importedNode.cells) {
-                                const currentTableId = getTableId(newId);
+                                const currentTableId = App.grid.getTableId(newId);
                                 const currentMatrix = App.state.cellStorage[currentTableId];
                                 if (currentMatrix) {
                                     if (Array.isArray(importedNode.cells)) {
@@ -416,7 +416,7 @@
         }
 
         if (node.type === 'range' || node.type === 'subrange') {
-            const tableId = getTableId(node.id);
+            const tableId = App.grid.getTableId(node.id);
             const colors = App.gto.colorsPerNode[tableId] || [];
 
             if (colors.length > 0) {
@@ -499,7 +499,7 @@
 
         if (type === 'range' || type === 'subrange') {
             // 1. СОЗДАЁМ ТАБЛИЦУ
-            const tableId = getTableId(newId);
+            const tableId = App.grid.getTableId(newId);
             App.editor.cellStorage[tableId] = Array(13).fill().map(() => Array(13).fill(null));
 
             // 2. ВОССТАНАВЛИВАЕМ ЦВЕТА

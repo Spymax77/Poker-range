@@ -104,7 +104,7 @@ App.navigation.renderGtoPage = function() {
         App.colors.renderAllColors(App.gto.currentNodeId, true);
 
         // Всё остальное показываем только когда матрица уже загружена
-        const hasTable = App.gto.currentNodeId && App.state.cellStorage[getTableId(App.gto.currentNodeId)];
+        const hasTable = App.gto.currentNodeId && App.state.cellStorage[App.grid.getTableId(App.gto.currentNodeId)];
 
         // Название диапазона
         const nameEl = document.getElementById("gtoRangeName");

@@ -70,8 +70,8 @@ App.clipboard.createCopyAndFinalize = function(original) {
     }
 
     // ===== 3. Копируем данные =====
-    const sourceId = getTableId(original.id);
-    const targetId = getTableId(newId);
+    const sourceId = App.grid.getTableId(original.id);
+    const targetId = App.grid.getTableId(newId);
 
     // 3.1 Копируем матрицу
     const originalTable = App.state.cellStorage[sourceId];
@@ -172,7 +172,7 @@ App.clipboard.copyRange = function(nodeId) {
         return;
     }
 
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     
     // Копируем матрицу (глубокое копирование)
     const matrix = App.state.cellStorage[tableId];
@@ -222,7 +222,7 @@ App.clipboard.pasteRange = function(nodeId) {
         return;
     }
 
-    const targetTableId = getTableId(nodeId);
+    const targetTableId = App.grid.getTableId(nodeId);
     
     // Проверяем, пустой ли целевой диапазон
     const targetMatrix = App.state.cellStorage[targetTableId];
@@ -262,7 +262,7 @@ App.clipboard.pasteRange = function(nodeId) {
 App.clipboard.executePaste = function(nodeId) {
     if (!App.state.clipboardRangeData) return;
 
-    const targetTableId = getTableId(nodeId);
+    const targetTableId = App.grid.getTableId(nodeId);
     
     // 1. Копируем цвета с новыми ID и создаем colorMap
     const sourceColors = App.state.clipboardRangeData.colors || [];

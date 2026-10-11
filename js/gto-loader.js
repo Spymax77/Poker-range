@@ -154,7 +154,7 @@ function convertGtoJson(jsonArray) {
 
     function processItem(item, parentId) {
         const nodeId = nextNodeId++;
-        const tableId = getTableId(nodeId);
+        const tableId = App.grid.getTableId(nodeId);
 
         // === Рекурсивно обрабатываем детей ===
         const childrenIds = [];

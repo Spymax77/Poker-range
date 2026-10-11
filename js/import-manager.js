@@ -130,7 +130,7 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
 
     const overwriteCheck = document.getElementById('importOverwriteCheck');
     if (overwriteCheck && overwriteCheck.checked) {
-        const tid = getTableId(nodeId);
+        const tid = App.grid.getTableId(nodeId);
         if (App.state.cellStorage[tid]) {
             for (let i = 0; i < 13; i++) {
                 for (let j = 0; j < 13; j++) {
@@ -188,7 +188,7 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
 
                 let finalColorId;
 
-                const tid = getTableId(nodeId);
+                const tid = App.grid.getTableId(nodeId);
                 const matrix = App.state.cellStorage[tid];
                 const currentPid = matrix ? matrix[row][col] : null;
 
@@ -277,7 +277,7 @@ App.importManager.applyImportToMatrix = function(nodeId, text, colorId) {
                             continue;
                         }
 
-                        const tid = getTableId(nodeId);
+                        const tid = App.grid.getTableId(nodeId);
                         const matrix = App.state.cellStorage[tid];
                         const currentPid = matrix ? matrix[row][col] : null;
 
@@ -459,7 +459,7 @@ App.importManager.showImportWindow = function() {
     document.addEventListener('keydown', App.importManager.handleImportHotkeys);
 
     // ===== УСТАНАВЛИВАЕМ ЦВЕТА ДЛЯ ОБОИХ ПОЛЕЙ =====
-    const tableId = getTableId(App.state.currentNodeId);
+    const tableId = App.grid.getTableId(App.state.currentNodeId);
     const colors = App.state.colorsPerNode[tableId] || [];
     const simpleColors = colors.filter(c => c.type === 'simple' || (!c.type && c.color));
 
@@ -557,7 +557,7 @@ App.importManager.showImportWindow = function() {
 // ===== ВЫБОР ЦВЕТА В ОКНЕ ИМПОРТА =====
 // Запись выбранного цвета в selectedColorId импорта через общий попап списка цветов
 App.importManager.showColorPickerForImport = function(index, anchor) {
-    const tableId = getTableId(App.state.currentNodeId);
+    const tableId = App.grid.getTableId(App.state.currentNodeId);
     const colors = App.state.colorsPerNode[tableId] || [];
     const simpleColors = colors.filter(c => c.type === 'simple' || (!c.type && c.color));
 
@@ -583,7 +583,7 @@ App.importManager.updateImportColorDisplay = function(index, color, name) {
 
 // ===== ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ЯЧЕЙКИ ПЕРЕД СОЗДАНИЕМ МУЛЬТИЦВЕТА =====
 App.importManager.getOrCreateMultiColorForCell = function(nodeId, row, col, colorId, percent) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     const matrix = App.state.cellStorage[tableId];
     if (!matrix) return null;
     if (!App.importManager.isDisplayablePercent(percent)) return null;
@@ -659,7 +659,7 @@ newColor.boundaries = newBoundaries;
 
 // ===== ДЕДУПЛИКАЦИЯ МУЛЬТИЦВЕТОВ =====
 App.importManager.deduplicateMultiColors = function(nodeId) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     const colors = App.state.colorsPerNode[tableId] || [];
     const matrix = App.state.cellStorage[tableId];
     if (!matrix) return;
@@ -707,7 +707,7 @@ App.importManager.deduplicateMultiColors = function(nodeId) {
 
 // ===== УДАЛЕНИЕ НЕИСПОЛЬЗУЕМЫХ МУЛЬТИЦВЕТОВ =====
 App.importManager.removeUnusedMultiColors = function(nodeId) {
-    const tableId = getTableId(nodeId);
+    const tableId = App.grid.getTableId(nodeId);
     const matrix = App.state.cellStorage[tableId];
     if (!matrix) return;
 

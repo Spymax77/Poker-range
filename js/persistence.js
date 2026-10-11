@@ -94,7 +94,7 @@ App.persistence.persistAllNow = function(skipTables, onlyTables) {
                 var nodeId = dirtyTables[ti];
                 // Точечное сохранение: чужие грязные таблицы не отправляем.
                 if (onlyTables && onlyTables.indexOf(Number(nodeId)) === -1) continue;
-                var tableId = getTableId(Number(nodeId));
+                var tableId = App.grid.getTableId(Number(nodeId));
                 var tableData = branch.cellStorage[tableId];
                 if (tableData) {
                     promises.push(App.storage.saveTable(mode, Number(nodeId), {
@@ -323,7 +323,7 @@ App.persistence.loadFromStorageV2 = async function() {
                 var node = branch.nodes[ni];
                 var tableData = App.storage.loadTable(mode, node.id);
                 if (tableData) {
-                    var tableId = getTableId(node.id);
+                    var tableId = App.grid.getTableId(node.id);
                     // tableData может быть объектом {matrix: ...} или сразу матрицей
                     branch.cellStorage[tableId] = tableData.matrix || tableData;
                 }
