@@ -177,8 +177,10 @@ function updateAuthUi(user) {
     const avatarBtn = document.getElementById('authAvatarBtn');
     const loggedIn = !!user;
     if (userName) {
-        userName.textContent = '';
-        userName.hidden = true;
+        // Логин — первичный идентификатор аккаунта в карточке (над емейлом).
+        const login = user && user.login ? user.login : '';
+        userName.textContent = login;
+        userName.hidden = !loggedIn || !login;
     }
     if (loginItem) loginItem.hidden = loggedIn;
     if (registerItem) registerItem.hidden = loggedIn;
@@ -831,15 +833,15 @@ document.getElementById('gtoTreeCollapseText')?.addEventListener('click', () => 
 
 // ===== КНОПКИ ДОБАВЛЕНИЯ ЦВЕТА И ПРОФИЛЯ =====
 
-document.getElementById("addPaletteColorBtn").onclick = function() {
+document.getElementById("addPaletteColorBtn")?.addEventListener('click', function() {
     App.colors.addPaletteColor();
     App.refresh.all();
-};
+});
 
-document.getElementById("newProfileBtn").onclick = function() {
+document.getElementById("newProfileBtn")?.addEventListener('click', function() {
     App.colors.createNewProfile();
     App.refresh.all();
-};
+});
 
 // GTO версии кнопок
 document.getElementById("gtoAddPaletteColorBtn")?.addEventListener('click', function() {
@@ -980,11 +982,24 @@ function initTreeResize() {
 
     function switchTabWhenReady(tab) {
         return waitForGridModules(10000).then(function() {
-            App.navigation.switchTab(tab);
-            if (tab === 'constructor' && App.state.analysisMode) {
-                App.grid.refreshConstructorAnalysisMode();
+            // Модули матрицы могли не догрузиться за отведённое время — тогда
+            // App.grid недоступен. Вызовы App.grid.* гасим проверками (паттерн
+            // persistence.js), а App.navigation.switchTab оборачиваем в
+            // try/catch: он сам трогает App.grid внутри (App.refresh.all →
+            // App.grid.updateCurrentDisplay) и без матрицы падает TypeError'ом.
+            // Инициализация при этом не обрывается: комментарии и ресайз дерева
+            // отрабатывают в любом случае.
+            try {
+                App.navigation.switchTab(tab);
+                if (App.grid) {
+                    if (tab === 'constructor' && App.state.analysisMode) {
+                        App.grid.refreshConstructorAnalysisMode();
+                    }
+                    App.grid.updateConstructorToolbarState();
+                }
+            } catch (error) {
+                console.error('Ошибка переключения вкладки при запуске:', error);
             }
-            App.grid.updateConstructorToolbarState();
             App.comments.initComments();
             initTreeResize();
         });
@@ -1003,13 +1018,18 @@ function initTreeResize() {
         return switchTabWhenReady(activeTab);
     }).catch(function(error) {
         console.error('Ошибка инициализации хранилища:', error);
-        App.persistence.loadFromStorage().then(function(activeTab) {
+        // Промис резервной инициализации возвращаем (раньше терялся):
+        // финальная стадия цепочки должна дождаться его завершения,
+        // а не выполняться параллельно ему.
+        return App.persistence.loadFromStorage().then(function(activeTab) {
             return switchTabWhenReady(activeTab || 'constructor');
         }).catch(function(loadError) {
             console.error('Ошибка резервной загрузки состояния:', loadError);
             return switchTabWhenReady('constructor');
         });
-    }).then(function() {
+    }).finally(function() {
+        // Выставляем всегда — и по успеху, и после резервной ветки: без флага
+        // auth:changed будет игнорировать вход в аккаунт (reloadAllData).
         initialLoadDone = true;
     });
 })();
