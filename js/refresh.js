@@ -71,8 +71,9 @@ App.refresh.resetToCleanData = function() {
             App.state.expandedNodes.add(folderId);
         }
 
-        // Стартовый цвет диапазона — единая логика с tree.js (initDefaultColor)
-        initDefaultColor(rangeId);
+        // Стартовый цвет диапазона — единая точка App.tree.initDefaultColor
+        // (живёт в tree.js; раньше звалась через голый глобал из tree.js)
+        App.tree.initDefaultColor(rangeId);
     }
 
     if (epRangeId) {

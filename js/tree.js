@@ -1,5 +1,13 @@
 // ===== tree.js -- extracted from all.js (range tree render & node ops) =====
 
+// Файл обёрнут в IIFE: внутренние хелперы (initDefaultColor,
+// generateUniqueNameFor, finishNodeCreation, buildTreeNode* и т.д.) не
+// должны засорять window — голые top-level function в классических
+// скриптах запрещены правилами проекта. Наружу — только App.tree.*;
+// стартовая палитра дополнительно экспортируется как
+// App.tree.initDefaultColor (её использует refresh.js).
+(function() {
+
 // ===== ГЕНЕРАЦИЯ УНИКАЛЬНОГО ИМЕНИ =====
 App.tree = App.tree || {};
 App.tree.generateUniqueName = function(baseName, existingNames) {
@@ -31,6 +39,10 @@ function initDefaultColor(nodeId) {
     });
     App.state.activePerNode[tableId] = colorId;
 }
+
+// Единая точка стартовой палитры нового диапазона: используется внутри
+// tree.js и из refresh.js (App.refresh.resetToCleanData).
+App.tree.initDefaultColor = initDefaultColor;
 
 // Придумать уникальное имя нового узла: parentId === null — среди
 // корневых узлов, иначе — среди детей родителя.
@@ -77,19 +89,23 @@ async function finishNodeCreation(newId, opts) {
             App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
         }
     }
-    App.navigation.selectNode(newId, {
+    const selectOpts = {};
+    if (opts.colors) {
         // «Нет» в диалоге откатывает состояние из хранилища. Если цветовой
         // ключ не отправлялся (были несогласованные правки цветов),
         // стартовая палитра нового узла осталась несохранённой —
         // пересоздаём её, чтобы новый диапазон не остался без цветов.
-        afterRollback: function() {
+        // Хук нужен только узлам со стартовой палитрой (range/subrange):
+        // у папки цветов нет, и создавать их после отката не нужно.
+        selectOpts.afterRollback = function() {
             var colors = App.state.colorsPerNode[App.grid.getTableId(newId)];
             if (!colors || !colors.length) {
                 initDefaultColor(newId);
                 if (App.dirty) App.dirty.markColorsDirty();
             }
-        }
-    });
+        };
+    }
+    App.navigation.selectNode(newId, selectOpts);
     if (!loggedIn) {
         App.persistence.markUnsaved();
         App.persistence.notifyGuestUnsavedChanges();
@@ -451,18 +467,24 @@ let p = App.nodes.getNode(n.parentId);
             App.dirty.markColorsDirty();
         }
 
-        // Несохранённые правки могли относиться только к удаляемому диапазону:
+        // Несохранённые правки могли относиться только к текущему диапазону:
         // любое переключение между диапазонами разряжает флаг диалогом
         // «Сохранить изменения?», так что грязным бывает лишь текущий узел.
-        // Вместе с узлом его правки исчезли — снимаем флаг, иначе при
-        // перескоке на соседний диапазон (и при следующем переключении)
-        // выскакивал фантомный «Сохранить изменения?» об уже удалённом узле.
+        // Снимаем флаг ТОЛЬКО если текущий узел попал в удалённое поддерево —
+        // тогда его правки действительно исчезли вместе с узлом, иначе при
+        // перескоке на соседний диапазон выскакивал бы фантомный
+        // «Сохранить изменения?» об уже удалённом узле. Удаление ЧУЖОГО узла
+        // флаг гасить не должно: правки текущего узла уходят на сервер только
+        // через flushPersist (автосохранение по таймеру шлёт лишь структуру),
+        // и без флага они потеряются при переключении/F5 без диалога.
         // Dirty-метки structure/colors самого удаления не трогаем — это другой
         // механизм, они уходят на сервер автосохранением ниже.
-        App.persistence.clearUnsaved();
+        const activeExists = !!App.nodes.getNode(App.state.currentNodeId);
+        if (!activeExists) {
+            App.persistence.clearUnsaved();
+        }
 
         // Поиск нового активного диапазона в редакторе
-        const activeExists = !!App.nodes.getNode(App.state.currentNodeId);
         if (!activeExists) {
             // Приоритет: сосед удаляемого узла (тот, что перед ним; если его
             // нет — следующий), либо родитель-диапазон (поддиапазон поддиапазона).
@@ -610,10 +632,13 @@ App.tree.addRootNode = function() {
     };
     App.nodes.addNode(newNode);
     App.grid.ensureTable(newId);
-    if (App.dirty) App.dirty.markStructureDirty();
-    App.persistence.persistAll();
-    App.refresh.all();
-    App.navigation.selectNode(newId);
+
+    // Единый «хвост» создания узла (как в addRootRange/createChildNode):
+    // dirty-метки → перерисовка → выбор → стратегия сохранения. Папка
+    // точечно сохраняется ДО переключения при несохранённых правках
+    // (persistAll шлёт структуру лишь по таймеру — этого мало); opts.table/
+    // opts.colors не нужны: у папки нет ни своей таблицы, ни стартовой палитры.
+    finishNodeCreation(newId, {});
 }
 
 // Создать корневой диапазон из тулбара дерева. Раньше логика жила в старом init.js
@@ -1256,3 +1281,5 @@ App.tree.refreshTreeOnly = function() {
         App.tree.renderTree("constructorTree", App.state.selectedNodeId || App.state.currentNodeId, true, App.navigation.selectNode);
     }
 }
+
+})();
