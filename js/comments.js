@@ -72,11 +72,16 @@ App.comments.initComments = function() {
     const toggleBtn = document.getElementById('commentsToggleBtn');
     const textarea = document.getElementById('commentsTextarea');
     
-    if (toggleBtn) {
+    // Защита от повторного связывания: initComments вызывается из
+    // switchTabWhenReady (init.js), который может выполниться несколько раз
+    // при ретраях инициализации — слушатели не должны дублироваться.
+    if (toggleBtn && toggleBtn.dataset.commentsBound !== 'true') {
+        toggleBtn.dataset.commentsBound = 'true';
         toggleBtn.addEventListener('click', App.comments.toggleComments);
     }
     
-    if (textarea) {
+    if (textarea && textarea.dataset.commentsBound !== 'true') {
+        textarea.dataset.commentsBound = 'true';
         // Автосохранение при вводе (с задержкой)
         let saveTimeout = null;
         textarea.addEventListener('input', function() {

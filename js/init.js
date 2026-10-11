@@ -348,7 +348,7 @@ document.addEventListener('pointerdown', function(e) {
 document.addEventListener('keydown', function(e) {
     if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Delete'].includes(e.key)) return;
     if (e.target instanceof Element &&
-        e.target.matches('input, textarea, select, [contenteditable="true"]')) return;
+        (e.target.isContentEditable || e.target.matches('input, textarea, select'))) return;
 
     const activeTree = App.currentMode === 'gto'
         ? document.getElementById('gtoPage')?.classList.contains('active-page')
@@ -378,7 +378,8 @@ document.getElementById('tableSaveBtn')?.addEventListener('click', function() {
     // Тот же сценарий сохранения, что в App.ui.saveAndContinue (App.persistence.flushPersist →
     // проверка → App.persistence.clearUnsaved / range.saveFailed), но без продолжения:
     // хелпер возвращает колбэк «Да» — вызываем его сразу.
-    App.ui.saveAndContinue()();
+    const saveWithoutContinue = App.ui.saveAndContinue();
+    saveWithoutContinue();
 });
 
 // ===== ДОПОЛНИТЕЛЬНОЕ МЕНЮ МАТРИЦЫ =====
@@ -458,10 +459,17 @@ document.getElementById('tablePasteBtn')?.addEventListener('click', function() {
 // ===== ПОДПИСКИ НА СОБЫТИЯ =====
 App.events.on('data:changed', App.refresh.allGrids);
 
+// ===== БРЕЙКПОИНТЫ (общие для мобильных секций ниже) =====
+// Один MediaQueryList на брейкпоинт: раньше каждый блок (tabs / tree swipe /
+// gto filter / constructor toolbar) создавал свой matchMedia с той же строкой.
+const MOBILE_QUERY = '(max-width: 849px)';
+const MOBILE_TABS_QUERY = '(max-width: 530px)';
+const mobileQuery = window.matchMedia(MOBILE_QUERY);
+
 // ===== МОБИЛЬНОЕ МЕНЮ ВКЛАДОК =====
 const tabsToggle = document.getElementById('tabsToggle');
 const mainTabs = document.getElementById('mainTabs');
-const mobileTabsQuery = window.matchMedia('(max-width: 530px)');
+const mobileTabsQuery = window.matchMedia(MOBILE_TABS_QUERY);
 const tabsMenuToggle = document.getElementById('tabsMenuToggle');
 
 App.ui.updateMobileTabsState = function() {
@@ -581,7 +589,7 @@ if (tabsMenuToggle) {
         if (!key) return;
 
         panel.addEventListener('touchstart', function(e) {
-            if (!window.matchMedia('(max-width: 849px)').matches) return;
+            if (!mobileQuery.matches) return;
             if (e.touches.length !== 1) {
                 if (treeSwipeStates[key]) treeSwipeRelease(panel, key, false);
                 return;
@@ -652,13 +660,12 @@ if (tabsMenuToggle) {
 // Паттерн тот же, что у updateConstructorModeToolbarPosition.
 const tabButtons = document.getElementById('tabButtons');
 const authPanel = document.getElementById('authPanel');
-const tabButtonsMobileQuery = window.matchMedia('(max-width: 849px)');
 
 App.ui.updateTabButtonsPosition = function() {
     if (!tabButtons || !mainTabs) return;
 
     const activePage = document.querySelector('.page.active-page');
-    if (tabButtonsMobileQuery.matches && activePage) {
+    if (mobileQuery.matches && activePage) {
         if (tabButtons.parentElement !== activePage) {
             activePage.insertBefore(tabButtons, activePage.firstChild);
         }
@@ -685,7 +692,6 @@ App.ui.updateTabButtonsPosition = function() {
 // Элементы ищутся через getElementById: функция вызывается из
 // updateTabButtonsPosition, которая объявлена выше по файлу, чем
 // const gtoFilterToggle/gtoFilterBar, — так она не зависит от их TDZ.
-const gtoFilterToggleMobileQuery = window.matchMedia('(max-width: 849px)');
 
 App.ui.updateGtoFilterTogglePosition = function() {
     const toggle = document.getElementById('gtoFilterToggle');
@@ -694,7 +700,7 @@ App.ui.updateGtoFilterTogglePosition = function() {
     if (!toggle || !bar || !tabButtonsEl) return;
 
     const filterArea = bar.parentElement;
-    if (gtoFilterToggleMobileQuery.matches && tabButtonsEl.parentElement && tabButtonsEl.parentElement.id === 'gtoPage') {
+    if (mobileQuery.matches && tabButtonsEl.parentElement && tabButtonsEl.parentElement.id === 'gtoPage') {
         // Мобильные: строка вкладок лежит внутри #gtoPage — кнопка встаёт
         // последней в строке и уходит к правому краю (margin-left: auto).
         if (toggle.parentElement !== tabButtonsEl) {
@@ -712,12 +718,11 @@ window.addEventListener('resize', App.ui.updateTabButtonsPosition);
 // ===== МОБИЛЬНАЯ ПАНЕЛЬ ФИЛЬТРОВ GTO =====
 const gtoFilterToggle = document.getElementById('gtoFilterToggle');
 const gtoFilterBar = document.getElementById('gtoFilterBar');
-const mobileGtoFilterQuery = window.matchMedia('(max-width: 849px)');
 
 App.ui.updateMobileGtoFilterState = function() {
     if (!gtoFilterToggle || !gtoFilterBar) return;
 
-    if (!mobileGtoFilterQuery.matches) {
+    if (!mobileQuery.matches) {
         gtoFilterBar.classList.remove('gto-filter-open');
         gtoFilterToggle.setAttribute('aria-expanded', 'false');
     }
@@ -737,12 +742,11 @@ if (gtoFilterToggle && gtoFilterBar) {
 const constructorModeToolbar = document.querySelector('#constructorPage .matrix-mode-toolbar');
 const constructorMatrixRow = document.querySelector('#constructorPage .matrix-row');
 const constructorToolbarRight = document.querySelector('#constructorPage .toolbar-right');
-const mobileConstructorToolbarQuery = window.matchMedia('(max-width: 849px)');
 
 App.ui.updateConstructorModeToolbarPosition = function() {
     if (!constructorModeToolbar || !constructorMatrixRow || !constructorToolbarRight) return;
 
-    if (mobileConstructorToolbarQuery.matches) {
+    if (mobileQuery.matches) {
         if (constructorModeToolbar.parentElement !== constructorToolbarRight) {
             constructorToolbarRight.appendChild(constructorModeToolbar);
         }
@@ -758,8 +762,8 @@ if (constructorModeToolbar && constructorMatrixRow && constructorToolbarRight) {
 
 // ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
 document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.onclick = function() {
-        const page = this.getAttribute("data-page");
+    btn.addEventListener('click', function() {
+        const page = btn.getAttribute("data-page");
 
         // ===== ПРОВЕРКА ПРИ ПЕРЕКЛЮЧЕНИИ НА ПРОСМОТР =====
         if (page === "work" && App.state.hasUnsavedChanges && App.auth && App.auth.isLoggedIn()) {
@@ -782,7 +786,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
         }
 
         App.navigation.switchTab(page);
-    };
+    });
 });
 
 // ========== НАВИГАЦИОННАЯ ПАНЕЛЬ ДЕРЕВА ==========
@@ -927,11 +931,18 @@ document.getElementById('tableClearBtn')?.addEventListener('click', () => {
 const rngWidget = document.getElementById("rngNumber");
 if (rngWidget) {
     rngWidget.textContent = Math.floor(Math.random() * 100) + 1;
-    rngWidget.onclick = function() {
-        this.textContent = Math.floor(Math.random() * 100) + 1;
-    };
+    rngWidget.addEventListener('click', function() {
+        rngWidget.textContent = Math.floor(Math.random() * 100) + 1;
+    });
 }
 // ===== ИЗМЕНЕНИЕ ШИРИНЫ ПАНЕЛИ ДЕРЕВА ПЕРЕТАСКИВАНИЕМ =====
+// Ширина запоминается между сессиями (localStorage, ключ по id дерева внутри
+// панели). Восстанавливается только на десктопе: на мобильных ширину задаёт
+// раскладка, инлайн-стиль не должен её перебивать.
+const TREE_PANEL_WIDTH_KEY = 'treePanelWidth:';
+const TREE_PANEL_MIN_WIDTH = 250; // тулбар сам перенесётся через flex-wrap
+const TREE_PANEL_MAX_WIDTH = 700;
+
 App.ui.initTreeResize = function() {
     document.querySelectorAll('.tree-panel').forEach(panel => {
         // Не добавляем повторно
@@ -940,6 +951,20 @@ App.ui.initTreeResize = function() {
         const handle = document.createElement('div');
         handle.className = 'tree-resize-handle';
         panel.appendChild(handle);
+
+        const panelKey = (panel.querySelector('[id$="Tree"]') || {}).id || 'tree';
+
+        const applyWidth = function(widthPx) {
+            const clamped = Math.max(TREE_PANEL_MIN_WIDTH, Math.min(TREE_PANEL_MAX_WIDTH, widthPx));
+            panel.style.width = clamped + 'px';
+            panel.style.minWidth = clamped + 'px';
+            panel.style.flex = '0 0 ' + clamped + 'px';
+        };
+
+        try {
+            const savedWidth = Number(localStorage.getItem(TREE_PANEL_WIDTH_KEY + panelKey));
+            if (savedWidth && !mobileQuery.matches) applyWidth(savedWidth);
+        } catch (err) { /* localStorage недоступен — работаем без запоминания */ }
 
         let startX = 0;
         let startWidth = 0;
@@ -954,16 +979,9 @@ App.ui.initTreeResize = function() {
             document.body.style.cursor = 'col-resize';
 
             function onMouseMove(e) {
-                const delta = e.clientX - startX;
-                const newWidth = startWidth + delta;
-
-                // Фиксированный минимум 250px (тулбар сам перенесётся через flex-wrap)
-                const minWidth = 250;
-
-                const clamped = Math.max(minWidth, Math.min(700, newWidth));
-                panel.style.width = clamped + 'px';
-                panel.style.minWidth = clamped + 'px';
-                panel.style.flex = '0 0 ' + clamped + 'px';
+                // Страховка от пропущенного mouseup (мышь отпущена вне окна).
+                if (e.buttons === 0) { onMouseUp(); return; }
+                applyWidth(startWidth + (e.clientX - startX));
             }
 
             function onMouseUp() {
@@ -972,10 +990,18 @@ App.ui.initTreeResize = function() {
                 document.body.style.cursor = '';
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
+                // Отпускание мыши вне окна браузера приходит как blur окна —
+                // снимаем и его слушатель, иначе обработчики и стили body
+                // «залипают» навсегда.
+                window.removeEventListener('blur', onMouseUp);
+                try {
+                    localStorage.setItem(TREE_PANEL_WIDTH_KEY + panelKey, String(panel.offsetWidth));
+                } catch (err) { /* localStorage недоступен */ }
             }
 
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('blur', onMouseUp);
         });
     });
 };
@@ -991,8 +1017,8 @@ App.ui.initTreeResize = function() {
     function waitForGridModules(timeoutMs) {
         if (App.grid) return Promise.resolve();
         return new Promise(function(resolve) {
-            var started = Date.now();
-            var timer = setInterval(function() {
+            let started = Date.now();
+            let timer = setInterval(function() {
                 if (App.grid || Date.now() - started > timeoutMs) {
                     clearInterval(timer);
                     resolve();
