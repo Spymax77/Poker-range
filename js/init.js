@@ -75,7 +75,7 @@ App.ui.rollbackAndContinue = function(onSuccess) {
     };
 };
 
-function showAuthDialog(mode) {
+App.ui.showAuthDialog = function(mode) {
     const oldOverlay = document.querySelector('.auth-dialog-overlay');
     if (oldOverlay) {
         // Снимаем слушатель клавиш старого диалога (см. dialogKeys ниже).
@@ -190,7 +190,7 @@ function showAuthDialog(mode) {
     const firstInput = modal.querySelector('input');
     if (firstInput) firstInput.focus();
     modal.querySelectorAll('[data-auth-mode]').forEach(function(button) {
-        button.addEventListener('click', function() { showAuthDialog(button.dataset.authMode); });
+        button.addEventListener('click', function() { App.ui.showAuthDialog(button.dataset.authMode); });
     });
     modal.querySelector('form').addEventListener('submit', async function(event) {
         event.preventDefault();
@@ -223,9 +223,9 @@ function showAuthDialog(mode) {
             submit.disabled = false;
         }
     });
-}
+};
 
-function closeAuthMenu() {
+App.ui.closeAuthMenu = function() {
     const dropdown = document.getElementById('authDropdown');
     const btn = document.getElementById('authAvatarBtn');
     if (dropdown) dropdown.classList.remove('open');
@@ -233,9 +233,9 @@ function closeAuthMenu() {
         btn.setAttribute('aria-expanded', 'false');
         btn.classList.remove('menu-open');
     }
-}
+};
 
-function updateAuthUi(user) {
+App.ui.updateAuthUi = function(user) {
     const userName = document.getElementById('authUserName');
     const loginItem = document.getElementById('authLoginItem');
     const registerItem = document.getElementById('authRegisterItem');
@@ -263,7 +263,7 @@ function updateAuthUi(user) {
     if (importTreeItem) importTreeItem.hidden = !loggedIn;
     if (exportTreeItem) exportTreeItem.hidden = !loggedIn;
     if (avatarBtn) avatarBtn.classList.toggle('logged-in', loggedIn);
-}
+};
 
 const authAvatarBtn = document.getElementById('authAvatarBtn');
 const authDropdown = document.getElementById('authDropdown');
@@ -277,15 +277,15 @@ if (authAvatarBtn && authDropdown) {
 }
 
 document.getElementById('authLoginItem')?.addEventListener('click', function() {
-    closeAuthMenu();
-    showAuthDialog('login');
+    App.ui.closeAuthMenu();
+    App.ui.showAuthDialog('login');
 });
 document.getElementById('authRegisterItem')?.addEventListener('click', function() {
-    closeAuthMenu();
-    showAuthDialog('register');
+    App.ui.closeAuthMenu();
+    App.ui.showAuthDialog('register');
 });
 document.getElementById('authLogoutItem')?.addEventListener('click', function() {
-    closeAuthMenu();
+    App.ui.closeAuthMenu();
 
     const logout = async function() {
         await App.auth.logout();
@@ -319,12 +319,12 @@ document.getElementById('authLogoutItem')?.addEventListener('click', function() 
 
 document.addEventListener('click', function(e) {
     const panel = document.getElementById('authPanel');
-    if (panel && !panel.contains(e.target)) closeAuthMenu();
+    if (panel && !panel.contains(e.target)) App.ui.closeAuthMenu();
 });
 
 let initialLoadDone = false;
 
-async function reloadAllData() {
+App.ui.reloadAllData = async function() {
     try {
         // После входа гостевая сессия не переносится в аккаунт: загружаем
         // только состояние, сохранённое для авторизованного пользователя.
@@ -341,25 +341,25 @@ async function reloadAllData() {
     } catch (error) {
         console.error('Ошибка перезагрузки данных после входа:', error);
     }
-}
+};
 
 App.events.on('auth:changed', function(user) {
-    closeAuthMenu();
-    updateAuthUi(user);
+    App.ui.closeAuthMenu();
+    App.ui.updateAuthUi(user);
     if (!initialLoadDone) return;
     if (user) {
         // Гостевые изменения никогда не переносятся в аккаунт и не
         // сохраняются при входе. Сначала отбрасываем их из памяти, затем
         // загружаем авторитетное состояние пользователя с сервера.
-        reloadAllData();
+        App.ui.reloadAllData();
     }
 });
 App.events.on('auth:required', function() {
     App.modals.showFloatingModal(App.i18n.t('auth.requireAuthToSave'), function() {
-        showAuthDialog('login');
+        App.ui.showAuthDialog('login');
     });
 });
-updateAuthUi(App.auth.getCurrentUser());
+App.ui.updateAuthUi(App.auth.getCurrentUser());
 
 document.addEventListener('mousedown', App.paint.handlePaintStart);
 document.addEventListener('mousemove', App.paint.handlePaintMove);
@@ -503,7 +503,7 @@ const mainTabs = document.getElementById('mainTabs');
 const mobileTabsQuery = window.matchMedia('(max-width: 530px)');
 const tabsMenuToggle = document.getElementById('tabsMenuToggle');
 
-function updateMobileTabsState() {
+App.ui.updateMobileTabsState = function() {
     if (!mainTabs || !tabsToggle) return;
 
     // Панель вкладок по умолчанию открыта; свернутое состояние существует
@@ -514,7 +514,7 @@ function updateMobileTabsState() {
         tabsToggle.setAttribute('aria-expanded', 'true');
         tabsToggle.setAttribute('aria-label', App.i18n.t('tabs.showPanelHide'));
     }
-}
+};
 
 if (tabsToggle && mainTabs) {
     tabsToggle.addEventListener('click', function() {
@@ -530,15 +530,15 @@ if (tabsToggle && mainTabs) {
         );
     });
 
-    window.addEventListener('resize', updateMobileTabsState);
-    updateMobileTabsState();
+    window.addEventListener('resize', App.ui.updateMobileTabsState);
+    App.ui.updateMobileTabsState();
 }
 
 // ===== МОБИЛЬНАЯ ВЫЕЗЖАЮЩАЯ ПАНЕЛЬ ДЕРЕВА (GTO / Редактор) =====
 // Кнопка «три полоски» в шапке выезжает деревом слева поверх матрицы.
 // Закрытие: повторное нажатие, касание вне панели, свайп влево по панели
 // или смена вкладки.
-function setTreePanelOpen(open) {
+App.ui.setTreePanelOpen = function(open) {
     document.body.classList.toggle('tree-open', open);
     if (tabsMenuToggle) {
         tabsMenuToggle.setAttribute('aria-expanded', String(open));
@@ -547,28 +547,28 @@ function setTreePanelOpen(open) {
             open ? App.i18n.t('tree.hidePanel') : App.i18n.t('tree.openPanel')
         );
     }
-}
+};
 
 // Высота шапки передаётся в CSS-переменную, чтобы шторка дерева
 // начиналась ровно под ней.
-function updateTreePanelOffset() {
+App.ui.updateTreePanelOffset = function() {
     if (!mainTabs) return;
     document.documentElement.style.setProperty(
         '--mobile-header-h',
         mainTabs.offsetHeight + 'px'
     );
-}
+};
 
 if (tabsMenuToggle) {
     tabsMenuToggle.addEventListener('click', function() {
-        setTreePanelOpen(!document.body.classList.contains('tree-open'));
+        App.ui.setTreePanelOpen(!document.body.classList.contains('tree-open'));
     });
 
     // Касание вне панели дерева (по матрице и любому другому месту) закрывает её.
     document.addEventListener('pointerdown', function(e) {
         if (!document.body.classList.contains('tree-open')) return;
         if (e.target.closest && (e.target.closest('.tree-panel') || e.target.closest('#tabsMenuToggle'))) return;
-        setTreePanelOpen(false);
+        App.ui.setTreePanelOpen(false);
     });
 
     // Свайп влево по панели дерева закрывает шторку (только мобильные).
@@ -586,34 +586,34 @@ if (tabsMenuToggle) {
     const TREE_SWIPE_CLOSE_PX = 50;       // минимальное смещение для закрытия
     const TREE_SWIPE_FLICK_V = 0.5;       // px/мс — скорость флика влево
 
-    function treeSwipeKey(panel) {
+    const treeSwipeKey = function(panel) {
         const tree = panel.querySelector('[id$="Tree"]');
         return tree ? tree.id : null;
-    }
+    };
 
     // Завершение жеста. Инлайновый transform на время перетаскивания
     // перекрывает CSS, поэтому снимаем его после снятия класса drag,
     // и анимацию (закрытие или возврат) доигрывает CSS-переход .25s.
-    function treeSwipeRelease(panel, key, close) {
+    const treeSwipeRelease = function(panel, key, close) {
         delete treeSwipeStates[key];
         panel.classList.remove('tree-swipe-dragging');
         if (close) {
-            setTreePanelOpen(false);
+            App.ui.setTreePanelOpen(false);
             requestAnimationFrame(function() {
                 panel.style.transform = '';
             });
         } else {
             panel.style.transform = '';
         }
-    }
+    };
 
-    function treeSwipeShouldClose(st, x) {
+    const treeSwipeShouldClose = function(st, x) {
         const dx = x - st.x;
         const first = st.samples[0];
         const velocity = (x - first.x) / Math.max(1, Date.now() - first.t);
         return dx < -TREE_SWIPE_CLOSE_PX ||
             velocity < -TREE_SWIPE_FLICK_V;
-    }
+    };
 
     document.querySelectorAll('.tree-panel').forEach(function(panel) {
         const key = treeSwipeKey(panel);
@@ -679,9 +679,9 @@ if (tabsMenuToggle) {
         }, { passive: true });
     });
 
-    window.addEventListener('resize', updateTreePanelOffset);
-    window.addEventListener('load', updateTreePanelOffset);
-    updateTreePanelOffset();
+    window.addEventListener('resize', App.ui.updateTreePanelOffset);
+    window.addEventListener('load', App.ui.updateTreePanelOffset);
+    App.ui.updateTreePanelOffset();
 }
 
 // ===== СКРОЛЛЯЩИЕСЯ КНОПКИ ВКЛАДОК (МОБИЛЬНЫЕ) =====
@@ -693,7 +693,7 @@ const tabButtons = document.getElementById('tabButtons');
 const authPanel = document.getElementById('authPanel');
 const tabButtonsMobileQuery = window.matchMedia('(max-width: 849px)');
 
-function updateTabButtonsPosition() {
+App.ui.updateTabButtonsPosition = function() {
     if (!tabButtons || !mainTabs) return;
 
     const activePage = document.querySelector('.page.active-page');
@@ -711,10 +711,10 @@ function updateTabButtonsPosition() {
     }
     // Кнопка «Фильтр» GTO следует за строкой вкладок: на мобильных она
     // уезжает в её правый край, на десктопе возвращается на своё место.
-    updateGtoFilterTogglePosition();
+    App.ui.updateGtoFilterTogglePosition();
     // Высота шапки изменилась — пересчитываем отступ шторки дерева.
-    updateTreePanelOffset();
-}
+    App.ui.updateTreePanelOffset();
+};
 
 // ===== ПОЗИЦИЯ КНОПКИ «ФИЛЬТР» GTO (МОБИЛЬНЫЕ) =====
 // На мобильной ширине кнопка переносится в конец строки вкладок
@@ -726,7 +726,7 @@ function updateTabButtonsPosition() {
 // const gtoFilterToggle/gtoFilterBar, — так она не зависит от их TDZ.
 const gtoFilterToggleMobileQuery = window.matchMedia('(max-width: 849px)');
 
-function updateGtoFilterTogglePosition() {
+App.ui.updateGtoFilterTogglePosition = function() {
     const toggle = document.getElementById('gtoFilterToggle');
     const bar = document.getElementById('gtoFilterBar');
     const tabButtonsEl = document.getElementById('tabButtons');
@@ -743,28 +743,24 @@ function updateGtoFilterTogglePosition() {
         // Десктоп либо строка вкладок ещё в шапке: исходное место в разметке.
         filterArea.insertBefore(toggle, bar);
     }
-}
+};
 
-// Точка входа для switchTab (navigation.js) и обработчиков ресайза.
-App.ui = App.ui || {};
-App.ui.updateTabButtonsPosition = updateTabButtonsPosition;
-App.ui.updateTreePanelOffset = updateTreePanelOffset;
-
-window.addEventListener('resize', updateTabButtonsPosition);
+// Точка входа для switchTab (navigation.js) — App.ui.updateTabButtonsPosition.
+window.addEventListener('resize', App.ui.updateTabButtonsPosition);
 
 // ===== МОБИЛЬНАЯ ПАНЕЛЬ ФИЛЬТРОВ GTO =====
 const gtoFilterToggle = document.getElementById('gtoFilterToggle');
 const gtoFilterBar = document.getElementById('gtoFilterBar');
 const mobileGtoFilterQuery = window.matchMedia('(max-width: 849px)');
 
-function updateMobileGtoFilterState() {
+App.ui.updateMobileGtoFilterState = function() {
     if (!gtoFilterToggle || !gtoFilterBar) return;
 
     if (!mobileGtoFilterQuery.matches) {
         gtoFilterBar.classList.remove('gto-filter-open');
         gtoFilterToggle.setAttribute('aria-expanded', 'false');
     }
-}
+};
 
 if (gtoFilterToggle && gtoFilterBar) {
     gtoFilterToggle.addEventListener('click', function() {
@@ -772,8 +768,8 @@ if (gtoFilterToggle && gtoFilterBar) {
         gtoFilterToggle.setAttribute('aria-expanded', String(isOpen));
     });
 
-    window.addEventListener('resize', updateMobileGtoFilterState);
-    updateMobileGtoFilterState();
+    window.addEventListener('resize', App.ui.updateMobileGtoFilterState);
+    App.ui.updateMobileGtoFilterState();
 }
 
 // ===== АДАПТИВНОЕ ПОЛОЖЕНИЕ КНОПОК РЕЖИМОВ КОНСТРУКТОРА =====
@@ -782,7 +778,7 @@ const constructorMatrixRow = document.querySelector('#constructorPage .matrix-ro
 const constructorToolbarRight = document.querySelector('#constructorPage .toolbar-right');
 const mobileConstructorToolbarQuery = window.matchMedia('(max-width: 849px)');
 
-function updateConstructorModeToolbarPosition() {
+App.ui.updateConstructorModeToolbarPosition = function() {
     if (!constructorModeToolbar || !constructorMatrixRow || !constructorToolbarRight) return;
 
     if (mobileConstructorToolbarQuery.matches) {
@@ -792,11 +788,11 @@ function updateConstructorModeToolbarPosition() {
     } else if (constructorModeToolbar.parentElement !== constructorMatrixRow) {
         constructorMatrixRow.insertBefore(constructorModeToolbar, constructorMatrixRow.firstElementChild);
     }
-}
+};
 
 if (constructorModeToolbar && constructorMatrixRow && constructorToolbarRight) {
-    window.addEventListener('resize', updateConstructorModeToolbarPosition);
-    updateConstructorModeToolbarPosition();
+    window.addEventListener('resize', App.ui.updateConstructorModeToolbarPosition);
+    App.ui.updateConstructorModeToolbarPosition();
 }
 
 // ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
@@ -981,7 +977,7 @@ if (rngWidget) {
     };
 }
 // ===== ИЗМЕНЕНИЕ ШИРИНЫ ПАНЕЛИ ДЕРЕВА ПЕРЕТАСКИВАНИЕМ =====
-function initTreeResize() {
+App.ui.initTreeResize = function() {
     document.querySelectorAll('.tree-panel').forEach(panel => {
         // Не добавляем повторно
         if (panel.querySelector('.tree-resize-handle')) return;
@@ -1027,7 +1023,7 @@ function initTreeResize() {
             document.addEventListener('mouseup', onMouseUp);
         });
     });
-}
+};
 
 // ===== ЗАПУСК ПРИ ЗАГРУЗКЕ =====
 (function() {
@@ -1071,7 +1067,7 @@ function initTreeResize() {
                 console.error('Ошибка переключения вкладки при запуске:', error);
             }
             App.comments.initComments();
-            initTreeResize();
+            App.ui.initTreeResize();
         });
     }
 

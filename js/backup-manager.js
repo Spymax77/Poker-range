@@ -7,11 +7,11 @@
         if (!exportButton || !importButton || exportButton.dataset.bound === 'true') return;
 
         exportButton.addEventListener('click', function() {
-            closeAuthMenu();
+            App.ui.closeAuthMenu();
             exportTree();
         });
         importButton.addEventListener('click', function() {
-            closeAuthMenu();
+            App.ui.closeAuthMenu();
             importTree();
         });
         exportButton.dataset.bound = 'true';
