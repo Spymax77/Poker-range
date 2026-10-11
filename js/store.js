@@ -65,6 +65,11 @@
 
         // ---- Флаги (all.js) ----
         hasUnsavedChanges: false,
+        // Первая загрузка завершена (bootstrap в init.js): до этого момента
+        // auth:changed не перезагружает данные. Общий флаг, а не файловый let,
+        // — используется и auth-обработчиком, и bootstrap (при разделении
+        // init.js окажутся в разных файлах).
+        initialLoadDone: false,
         painting: false,
         lastPaintedCell: null,
         blockUntilMap: new Map(),

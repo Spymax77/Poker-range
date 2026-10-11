@@ -289,7 +289,8 @@ document.addEventListener('click', function(e) {
     if (panel && !panel.contains(e.target)) App.ui.closeAuthMenu();
 });
 
-let initialLoadDone = false;
+// Флаг завершения первой загрузки — App.state.initialLoadDone (store.js):
+// общий для auth-обработчика ниже и bootstrap-цепочки в конце файла.
 
 App.ui.reloadAllData = async function() {
     try {
@@ -313,7 +314,7 @@ App.ui.reloadAllData = async function() {
 App.events.on('auth:changed', function(user) {
     App.ui.closeAuthMenu();
     App.ui.updateAuthUi(user);
-    if (!initialLoadDone) return;
+    if (!App.state.initialLoadDone) return;
     if (user) {
         // Гостевые изменения никогда не переносятся в аккаунт и не
         // сохраняются при входе. Сначала отбрасываем их из памяти, затем
@@ -1095,6 +1096,6 @@ App.ui.initTreeResize = function() {
     }).finally(function() {
         // Выставляем всегда — и по успеху, и после резервной ветки: без флага
         // auth:changed будет игнорировать вход в аккаунт (reloadAllData).
-        initialLoadDone = true;
+        App.state.initialLoadDone = true;
     });
 })();
