@@ -499,7 +499,6 @@ if (tabsToggle && mainTabs) {
         );
     });
 
-    window.addEventListener('resize', App.ui.updateMobileTabsState);
     App.ui.updateMobileTabsState();
 }
 
@@ -648,7 +647,6 @@ if (tabsMenuToggle) {
         }, { passive: true });
     });
 
-    window.addEventListener('resize', App.ui.updateTreePanelOffset);
     window.addEventListener('load', App.ui.updateTreePanelOffset);
     App.ui.updateTreePanelOffset();
 }
@@ -712,8 +710,8 @@ App.ui.updateGtoFilterTogglePosition = function() {
     }
 };
 
-// Точка входа для switchTab (navigation.js) — App.ui.updateTabButtonsPosition.
-window.addEventListener('resize', App.ui.updateTabButtonsPosition);
+// Точка входа для switchTab (navigation.js) — App.ui.updateTabButtonsPosition;
+// на resize функция зовётся через единый App.ui.updateLayout (см. ниже).
 
 // ===== МОБИЛЬНАЯ ПАНЕЛЬ ФИЛЬТРОВ GTO =====
 const gtoFilterToggle = document.getElementById('gtoFilterToggle');
@@ -734,7 +732,6 @@ if (gtoFilterToggle && gtoFilterBar) {
         gtoFilterToggle.setAttribute('aria-expanded', String(isOpen));
     });
 
-    window.addEventListener('resize', App.ui.updateMobileGtoFilterState);
     App.ui.updateMobileGtoFilterState();
 }
 
@@ -756,9 +753,30 @@ App.ui.updateConstructorModeToolbarPosition = function() {
 };
 
 if (constructorModeToolbar && constructorMatrixRow && constructorToolbarRight) {
-    window.addEventListener('resize', App.ui.updateConstructorModeToolbarPosition);
     App.ui.updateConstructorModeToolbarPosition();
 }
+
+// ===== ЕДИНЫЙ ОБРАБОТЧИК RESIZE =====
+// Раньше каждая мобильная секция подписывалась на resize отдельно (пять
+// слушателей), и каждое событие ресайза приводило до пяти перерисовок подряд.
+// Теперь один обработчик с rAF-троттлингом вызывает их по порядку; сами
+// функции идемпотентны и сами проверяют наличие своих элементов.
+App.ui.updateLayout = function() {
+    App.ui.updateMobileTabsState();
+    App.ui.updateTabButtonsPosition();
+    App.ui.updateMobileGtoFilterState();
+    App.ui.updateConstructorModeToolbarPosition();
+    App.ui.updateTreePanelOffset();
+};
+
+let layoutRafId = null;
+window.addEventListener('resize', function() {
+    if (layoutRafId !== null) return;
+    layoutRafId = requestAnimationFrame(function() {
+        layoutRafId = null;
+        App.ui.updateLayout();
+    });
+});
 
 // ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
 document.querySelectorAll(".tab-btn").forEach(btn => {
