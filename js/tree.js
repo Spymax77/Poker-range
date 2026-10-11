@@ -616,7 +616,7 @@ App.tree.addRootNode = function() {
     App.navigation.selectNode(newId);
 }
 
-// Создать корневой диапазон из тулбара дерева. Раньше логика жила в init.js
+// Создать корневой диапазон из тулбара дерева. Раньше логика жила в старом init.js
 // и теряла стартовый цвет; теперь единая точка создания диапазона наравне
 // с popup-меню папки (createChildNode).
 App.tree.addRootRange = function() {

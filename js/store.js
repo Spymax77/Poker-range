@@ -65,16 +65,16 @@
 
         // ---- Флаги (all.js) ----
         hasUnsavedChanges: false,
-        // Первая загрузка завершена (bootstrap в init.js): до этого момента
+        // Первая загрузка завершена (bootstrap.js): до этого момента
         // auth:changed не перезагружает данные. Общий флаг, а не файловый let,
-        // — используется и auth-обработчиком, и bootstrap (при разделении
-        // init.js окажутся в разных файлах).
+        // — используется и auth-обработчиком (auth-ui.js), и bootstrap-цепочкой
+        // (bootstrap.js).
         initialLoadDone: false,
         painting: false,
         lastPaintedCell: null,
         blockUntilMap: new Map(),
 
-        // ---- Режим анализа конструктора (grid.js / navigation.js / init.js) ----
+        // ---- Режим анализа конструктора (grid.js / navigation.js / matrix-toolbar.js) ----
         analysisMode: false,
 
         // ---- Импорт (import-manager.js) ----

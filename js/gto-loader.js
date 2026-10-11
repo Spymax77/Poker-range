@@ -670,8 +670,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Если GTO-дерево уже восстановлено из хранилища (App.persistence.loadFromStorage в init.js
-    // выполняется раньше этого события) — не перезатираем сохранённый currentNodeId
+    // Если GTO-дерево уже восстановлено из хранилища (App.persistence.loadFromStorage
+    // в bootstrap.js выполняется раньше этого события) — не перезатираем сохранённый currentNodeId
     // и expandedNodes повторной загрузкой JSON. Загружаем данные только если
     // GTO-ветка действительно пуста (первый визит / очищенное хранилище).
     if (!App.gto.nodes || App.gto.nodes.length === 0) {

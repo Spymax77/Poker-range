@@ -14,7 +14,7 @@ App.clipboard.duplicateRange = function(nodeId) {
             const message = App.i18n.t('range.saveChangesNamedQuestion', { name: node.name });
 
             // Да — сохраняем, Нет — откатываемся (общие хелперы App.ui.saveAndContinue /
-            // App.ui.rollbackAndContinue, определены в init.js).
+            // App.ui.rollbackAndContinue, определены в ui-utils.js).
             App.modals.showSaveConfirmModal(message, App.ui.saveAndContinue(function() {
                 App.clipboard.createCopyAndFinalize(original);
             }), App.ui.rollbackAndContinue(function() {

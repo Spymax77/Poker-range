@@ -1,7 +1,7 @@
 // ===== auth-ui.js — авторизация (диалог, меню аккаунта, перезагрузка данных) =====
 
 // Хелперы «Сохранить и продолжить» / «Откатиться и продолжить» вынесены в
-// ui-utils.js (App.ui.saveAndContinue / App.ui.rollbackAndContinue): этот файл
+// ui-utils.js (App.ui.saveAndContinue / App.ui.rollbackAndContinue): ui-utils.js
 // загружается раньше navigation.js и clipboard.js, которые ими пользуются.
 
 App.authUi = App.authUi || {};

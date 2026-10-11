@@ -73,8 +73,8 @@ App.comments.initComments = function() {
     const textarea = document.getElementById('commentsTextarea');
     
     // Защита от повторного связывания: initComments вызывается из
-    // switchTabWhenReady (init.js), который может выполниться несколько раз
-    // при ретраях инициализации — слушатели не должны дублироваться.
+    // App.bootstrap.switchTabWhenReady (bootstrap.js), который может выполниться
+    // несколько раз при ретраях инициализации — слушатели не должны дублироваться.
     if (toggleBtn && toggleBtn.dataset.commentsBound !== 'true') {
         toggleBtn.dataset.commentsBound = 'true';
         toggleBtn.addEventListener('click', App.comments.toggleComments);
