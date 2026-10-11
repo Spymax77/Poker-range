@@ -484,4 +484,43 @@ App.ui.openColorPicker = function(colorId, callback, anchorRect) {
             input.focus();
         });
     };
+
+    // ===== ОБЩИЕ ХЕЛПЕРЫ «СОХРАНИТЬ И ПРОДОЛЖИТЬ» / «ОТКАТИТЬСЯ И ПРОДОЛЖИТЬ» =====
+    // Один и тот же сценарий повторяется в нескольких обработчиках (выход из
+    // аккаунта, выбор диапазона, переключение вкладки, дублирование диапазона),
+    // поэтому вынесен в App.ui. Размещён в ui-utils.js, а не в init.js: этот файл
+    // загружается раньше navigation.js и clipboard.js, которые хелперами
+    // пользуются. onSuccess может быть как sync-, так и async-функцией.
+
+    // Колбэк «Да» для showSaveConfirmModal: сохраняет всё грязное через
+    // App.persistence.flushPersist; при провале показывает range.saveFailed и прерывает
+    // (onSuccess не вызывается), при успехе снимает флаг несохранённых
+    // изменений и вызывает onSuccess.
+    App.ui.saveAndContinue = function(onSuccess) {
+        return async function() {
+            const results = await App.persistence.flushPersist();
+            const saveSucceeded = !results || results.every(function(result) {
+                return result && result.success !== false;
+            });
+            if (!saveSucceeded) {
+                App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
+                return;
+            }
+            App.persistence.clearUnsaved();
+            if (onSuccess) await onSuccess();
+        };
+    };
+
+    // Колбэк «Нет» для showSaveConfirmModal: отбрасывает несохранённые правки
+    // (перезагрузка состояния из хранилища), перерисовывает интерфейс, снимает
+    // флаг несохранённых изменений и вызывает onSuccess.
+    App.ui.rollbackAndContinue = function(onSuccess) {
+        return async function() {
+            await App.persistence.loadFromStorage();
+            App.refresh.all();
+            App.grid.updateCurrentDisplay();
+            App.persistence.clearUnsaved();
+            if (onSuccess) await onSuccess();
+        };
+    };
 })();

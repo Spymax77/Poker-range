@@ -16,3 +16,19 @@ export function setCellProfile(nodeId, r, c, pid, immediateSave = true) {
     if (App.dirty) App.dirty.markTableDirty(nodeId);
     return true;
 }
+
+// Полная очистка матрицы диапазона (кнопка «Очистить» в тулбаре).
+// Возвращает false, если таблицы у узла нет. Dirty-метка ставится только
+// при реальном изменении — как в setCellProfile.
+export function clearTable(nodeId) {
+    const table = App.state.cellStorage[getTableId(nodeId)];
+    if (!table) return false;
+    for (let r = 0; r < table.length; r++) {
+        const row = table[r];
+        for (let c = 0; c < row.length; c++) {
+            row[c] = null;
+        }
+    }
+    if (App.dirty) App.dirty.markTableDirty(nodeId);
+    return true;
+}

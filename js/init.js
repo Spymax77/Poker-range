@@ -36,44 +36,11 @@ document.addEventListener('languagechange', function () {
     }
 });
 
-// ===== ОБЩИЕ ХЕЛПЕРЫ «СОХРАНИТЬ И ПРОДОЛЖИТЬ» / «ОТКАТИТЬСЯ И ПРОДОЛЖИТЬ» =====
-// Один и тот же сценарий повторяется в трёх обработчиках (выход из аккаунта,
-// выбор диапазона, переключение вкладки), поэтому вынесен в App.ui.
-// onSuccess может быть как sync-, так и async-функцией.
+// Хелперы «Сохранить и продолжить» / «Откатиться и продолжить» вынесены в
+// ui-utils.js (App.ui.saveAndContinue / App.ui.rollbackAndContinue): этот файл
+// загружается раньше navigation.js и clipboard.js, которые ими пользуются.
 
 App.ui = App.ui || {};
-
-// Колбэк «Да» для showSaveConfirmModal: сохраняет всё грязное через
-// App.persistence.flushPersist; при провале показывает range.saveFailed и прерывает
-// (onSuccess не вызывается), при успехе снимает флаг несохранённых
-// изменений и вызывает onSuccess.
-App.ui.saveAndContinue = function(onSuccess) {
-    return async function() {
-        const results = await App.persistence.flushPersist();
-        const saveSucceeded = !results || results.every(function(result) {
-            return result && result.success !== false;
-        });
-        if (!saveSucceeded) {
-            App.modals.showFloatingModal(App.i18n.t('range.saveFailed'));
-            return;
-        }
-        App.persistence.clearUnsaved();
-        if (onSuccess) await onSuccess();
-    };
-};
-
-// Колбэк «Нет» для showSaveConfirmModal: отбрасывает несохранённые правки
-// (перезагрузка состояния из хранилища), перерисовывает интерфейс, снимает
-// флаг несохранённых изменений и вызывает onSuccess.
-App.ui.rollbackAndContinue = function(onSuccess) {
-    return async function() {
-        await App.persistence.loadFromStorage();
-        App.refresh.all();
-        App.grid.updateCurrentDisplay();
-        App.persistence.clearUnsaved();
-        if (onSuccess) await onSuccess();
-    };
-};
 
 App.ui.showAuthDialog = function(mode) {
     const oldOverlay = document.querySelector('.auth-dialog-overlay');
@@ -460,15 +427,9 @@ document.getElementById('tableUndoBtn')?.addEventListener('click', function() {
         ? App.i18n.t('range.undoChangesNamedQuestion', { name: node.name })
         : App.i18n.t('range.undoChangesQuestion');
 
-    App.modals.showSaveConfirmModal(message, async function() {
-        // Да — отменяем
-        await App.persistence.loadFromStorage();
-        App.refresh.all();
-        App.grid.updateCurrentDisplay();
-        App.persistence.clearUnsaved();
-    }, function() {
-        // Нет — ничего не делаем
-    });
+    // Да — отменяем (тот же сценарий, что App.ui.rollbackAndContinue);
+    // Нет — ничего не делаем.
+    App.modals.showSaveConfirmModal(message, App.ui.rollbackAndContinue(), null);
 });
 // ===== КНОПКИ КОПИРОВАТЬ/ВСТАВИТЬ В ТУЛБАРЕ =====
 document.getElementById('tableCopyBtn')?.addEventListener('click', function() {
@@ -953,19 +914,13 @@ document.getElementById('tableClearBtn')?.addEventListener('click', () => {
         ? App.i18n.t('range.clearTableNamedQuestion', { name: node.name })
         : App.i18n.t('range.clearTableQuestion');
 
-App.modals.showSaveConfirmModal(message, () => {
-    const tid = getTableId(App.state.currentNodeId);
-    if (App.state.cellStorage[tid]) {
-        for (let i = 0; i < 13; i++) {
-            for (let j = 0; j < 13; j++) {
-                App.state.cellStorage[tid][i][j] = null;
-            }
+    App.modals.showSaveConfirmModal(message, () => {
+        // Очистка матрицы — App.grid.clearTable (grid-operations.js).
+        if (App.grid.clearTable(App.state.currentNodeId)) {
+            App.persistence.markUnsaved();
+            App.grid.updateCurrentDisplay();
         }
-        App.dirty.markTableDirty(App.state.currentNodeId);
-        App.persistence.markUnsaved();
-        App.grid.updateCurrentDisplay();
-    }
-}, null);
+    }, null);
 });
 
 // ===== ГСЧ (Генератор случайных чисел) =====

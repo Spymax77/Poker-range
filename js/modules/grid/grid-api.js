@@ -14,7 +14,7 @@ import {
 import { getTooltipElement, showTooltip, positionTooltip, hideTooltip } from './grid-tooltip.js';
 import { updateConstructorToolbarState, refreshConstructorAnalysisMode, updateCurrentDisplay } from './grid-toolbar.js';
 import { isPinSafeTarget, getMatrixPreviewContext, getParentRange, ensureTable, getTableId } from './grid-utils.js';
-import { getCellProfile, setCellProfile } from './grid-operations.js';
+import { getCellProfile, setCellProfile, clearTable } from './grid-operations.js';
 
 App.grid = {
     isPinSafeTarget,
@@ -41,5 +41,6 @@ App.grid = {
     refreshConstructorAnalysisMode,
     updateCurrentDisplay,
     getCellProfile,
-    setCellProfile
+    setCellProfile,
+    clearTable
 };
