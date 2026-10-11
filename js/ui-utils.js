@@ -1,3 +1,6 @@
+// Здесь только низкоуровневые утилиты (openColorPicker, saveAndContinue);
+// тематические модули — auth-ui.js, layout.js, tabs.js, tree-panel.js.
+
 // ===== ЦВЕТОВОЙ ПИКЕР (НОВЫЙ) =====
 (function() {
   const overlay    = document.getElementById('pickerOverlay');

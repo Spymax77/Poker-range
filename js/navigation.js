@@ -315,8 +315,8 @@ App.navigation.switchTab = function(page) {
     // Кнопки вкладок на мобильных переезжают в активную страницу,
     // чтобы прокручиваться вместе с её контентом. Вызов после активации
     // страницы — иначе кнопки уедут в предыдущий раздел.
-    if (App.ui && App.ui.updateTabButtonsPosition) {
-        App.ui.updateTabButtonsPosition();
+    if (App.tabs && App.tabs.updateButtonsPosition) {
+        App.tabs.updateButtonsPosition();
     }
 
     App.persistence.persistAll();
