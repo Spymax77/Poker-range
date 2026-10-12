@@ -2692,6 +2692,8 @@ body.dragging .tree-item.active .tree-actions-popup {
     background: #3a3d45;
 }
 
+/* Кружок-индикатор плашки «Генерировать автоматически»: серый — выкл,
+   зелёный — автогенерация включена (класс active на кнопке). */
 .training-plate-indicator {
     width: 13px;
     height: 13px;
@@ -2703,6 +2705,27 @@ body.dragging .tree-item.active .tree-actions-popup {
 
 .training-plate-btn.active .training-plate-indicator {
     background: #358e3e;
+}
+
+/* Иконка в начале плашки «Начать тренировку» — SVG «палочка со звёздами»
+   (в svg задан fill: currentColor, поэтому цветом управляет color ниже):
+   серая — как иконки под матрицей. Отдельный класс, чтобы иконка не
+   смешивалась с кружком-индикатором плашки автогенерации. */
+.training-plate-icon {
+    width: 24px;
+    height: 24px;
+    color: #8a848a;
+    flex-shrink: 0;
+}
+
+/* Плашка «Начать тренировку» стоит под основной матрицей вровень с
+   абсолютными иконками .matrix-btn (bottom: -32px): при margin-top: 10px
+   она наезжала на них. 40px = 32px иконок + 8px воздуха. Кнопка увеличена
+   на +50% по высоте (33px → ~50px), шрифт и иконка — пропорционально. */
+#trainingStartBtn {
+    margin-top: 40px;
+    padding: 13px 20px;
+    font-size: 20px;
 }
 
 /* ===== СКРЫТИЕ ОВЕРЛЕЕВ ПОДДИАПАЗОНОВ (КОНСТРУКТОР / GTO) ===== */
