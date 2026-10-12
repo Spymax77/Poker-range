@@ -6,8 +6,9 @@
 // показываются светло-серыми (тёмный шрифт), не участвующие — обычными,
 // недоступные (subrange-disabled) — disabled и кликам не подлежат. Участие
 // по умолчанию генерируется динамически из основной матрицы (закрашенная в
-// любой пропорции — участвует); клик-тогл живёт только до переключения
-// диапазона — состояние не сохраняется (как хранить — отдельная задача).
+// любой пропорции — участвует); тоглы кликом и групповое выделение скольжением
+// живут только до переключения диапазона — состояние не сохраняется (как
+// хранить — отдельная задача).
 // Плашка «Генерировать автоматически» остаётся под будущий тренажёр: клик
 // пока только переключает её индикатор. Под отражением — плашка «Начать
 // тренировку» (вместо блока статистики).
@@ -63,22 +64,76 @@ function renderTrainingGrid() {
     grid.innerHTML = html;
 }
 
-// ===== КЛИК ПО ЯЧЕЙКЕ ОТРАЖЕНИЯ (тогл участия в тренировке) =====
-function onGridClick(e) {
+// ===== ГРУППОВОЕ ВЫДЕЛЕНИЕ ЯЧЕЕК СКОЛЬЖЕНИЕМ =====
+// mousedown по ячейке задаёт целевое состояние для всей группы: стартовая
+// ячейка инвертируется (одиночный клик-тогл сохранён), а все ячейки, через
+// которые проводят курсором с зажатой кнопкой, принимают это же состояние —
+// выделяются или снимаются группой. Недоступные ячейки (disabled) пропускаются
+// и на старте, и при скольжении (как subrange-disabled в основной матрице).
+// Тоглы пишутся в setupState.toggles (живут до переключения диапазона — см.
+// renderTrainingGrid), DOM обновляется на месте без полного ререндера — иначе
+// innerHTML пересобирается под курсором на каждом движении.
+const dragSelection = {
+    active: false,
+    target: false, // участие, которое проставляется всей группе
+    lastKey: null
+};
+
+// Ячейка отражения под курсором (или null, если курсор вне матрицы).
+function findTrainingCell(e) {
+    const grid = document.getElementById('trainingGrid');
+    if (!grid || !e.target || !e.target.closest) return null;
     const cell = e.target.closest('.training-cell');
-    if (!cell) return;
-    // Недоступные ячейки кликам не подлежат вообще (как subrange-disabled
-    // в основной матрице).
-    if (cell.classList.contains(DISABLED_CLASS)) return;
+    return cell && grid.contains(cell) ? cell : null;
+}
+
+// Проставить ячейке участие из dragSelection: тогл + класс. Классы участия
+// взаимоисключающие (их так же считает renderTrainingGrid), поэтому достаточно
+// включить/выключить один.
+function applySelectionToCell(cell) {
     const r = parseInt(cell.getAttribute('data-row'), 10);
     const c = parseInt(cell.getAttribute('data-col'), 10);
-    const reflection = buildTrainingMatrix(setupState.nodeId);
-    const key = r + '_' + c;
-    // Тогл работает по любой ячейке: закрашенная (участвует по умолчанию) —
-    // снимается, пустая — добавляется.
-    const current = isParticipating(reflection[r][c], r, c);
-    setupState.toggles.set(key, !current);
-    renderTrainingGrid();
+    setupState.toggles.set(r + '_' + c, dragSelection.target);
+    cell.classList.toggle(PARTICIPATING_CLASS, dragSelection.target);
+}
+
+function onMouseDown(e) {
+    // Левая кнопка мыши (тач-эмуляция приходит с button === 0).
+    if (e.button !== undefined && e.button !== 0) return;
+    const cell = findTrainingCell(e);
+    if (!cell) return;
+    if (cell.classList.contains(DISABLED_CLASS)) return;
+    // Без preventDefault скольжение стартует выделение текста на странице.
+    e.preventDefault();
+    dragSelection.active = true;
+    // Цель группы — инверсия текущего участия стартовой ячейки: не участвует
+    // → выделяем группу, участвует → снимаем (семантика одиночного клика).
+    dragSelection.target = !cell.classList.contains(PARTICIPATING_CLASS);
+    dragSelection.lastKey = cell.getAttribute('data-row') + ',' + cell.getAttribute('data-col');
+    applySelectionToCell(cell);
+}
+
+function onMouseMove(e) {
+    if (!dragSelection.active) return;
+    // Кнопку могли отпустить вне окна (mouseup не пришёл) — закрываем
+    // скольжение, чтобы «прилипшее» выделение не тянулось дальше.
+    if (e.buttons !== undefined && e.buttons === 0) {
+        onMouseUp();
+        return;
+    }
+    const cell = findTrainingCell(e);
+    if (!cell || cell.classList.contains(DISABLED_CLASS)) return;
+    const key = cell.getAttribute('data-row') + ',' + cell.getAttribute('data-col');
+    if (dragSelection.lastKey === key) return;
+    dragSelection.lastKey = key;
+    applySelectionToCell(cell);
+}
+
+// mouseup слушаем на document: кнопку отпускают и вне матрицы, скольжение
+// нужно закрыть в любом случае.
+function onMouseUp() {
+    dragSelection.active = false;
+    dragSelection.lastKey = null;
 }
 
 // ===== ПОКАЗАТЬ / СКРЫТЬ ПАНЕЛЬ =====
@@ -118,7 +173,14 @@ function setVisible(visible) {
 // ===== ПУБЛИЧНЫЕ ФУНКЦИИ =====
 export function initTrainingPanel() {
     const grid = document.getElementById('trainingGrid');
-    if (grid) grid.addEventListener('click', onGridClick);
+    if (grid) {
+        // mousedown — на матрице (старт скольжения), mousemove/mouseup — на
+        // document: выделение тянется и завершается и за пределами матрицы
+        // (как кисть в paint.js).
+        grid.addEventListener('mousedown', onMouseDown);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }
 
     const autoBtn = document.getElementById('trainingAutoBtn');
     if (autoBtn) {
