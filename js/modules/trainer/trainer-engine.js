@@ -1,56 +1,49 @@
-// ===== trainer-engine.js — генерация тренировочных наборов =====
-// Правильные руки = все закрашенные ячейки диапазона (рейз+колл+олл-ин).
-// Неправильные = «близкие» ячейки рядом с диапазоном: радиус <= 2 в матрице,
-// чтобы ошибиться было реально, но явный мусор (23o и т.п.) в выборку не
-// попадал. Объём: к диапазону добавляется ~45% близких рук (19% -> ~27%).
+// ===== trainer-engine.js — отражение основной матрицы для тренировки =====
+// Вторая матрица в тренировке — не отдельная сущность, а отражение основной
+// матрицы текущего диапазона. Логика «правильных» и «неправильных» ячеек
+// удалена полностью. Слой данных отражения — участие руки в тренировке:
+// он ВСЕГДА генерируется динамически при каждом обращении (переключение
+// диапазона, перерисовка пары) и нигде не сохраняется (как хранить и где —
+// отдельная будущая задача):
+//   - закрашенная в основной матрице в любой пропорции ячейка участвует
+//     по умолчанию, незакрашенная — нет;
+//   - недоступная ячейка не участвует и кликам не подлежит;
+//   - клик-тоглы поверх участи по умолчанию живут только до переключения
+//     диапазона (см. trainer-ui).
+// Цветовые профили основной матрицы в ячейки отражения НЕ переносятся.
 
 const GRID_SIZE = 13;
-const NEAR_RADIUS = 2;     // макс. расстояние «неправильной» ячейки от диапазона
-const EXTRA_RATIO = 0.45;  // доля близких рук к размеру диапазона
-const MIN_EXTRA = 3;       // минимум неправильных рук, чтобы тренировка имела смысл
 
-// Все закрашенные ячейки диапазона как пары [row, col].
-export function getRangeHands(nodeId) {
+// Слой данных отражения: GRID_SIZE × GRID_SIZE объектов вида
+//   { disabled, participates },
+// где disabled — ячейка действительно недоступна (доступность 0%, как
+// .hand-cell.subrange-disabled в основной матрице: grid-renderer.js),
+// participates — рука участвует в тренировке по умолчанию (закрашена в
+// основной матрице в любой пропорции и не недоступна). Значения строятся
+// на каждый вызов, состояние не хранится.
+export function buildTrainingMatrix(nodeId) {
+    const matrix = nodeId ? App.state.cellStorage[App.grid.getTableId(nodeId)] : null;
+    const node = nodeId ? App.nodes.getNode(nodeId) : null;
+    const isSubrange = !!node && node.type === 'subrange';
     const result = [];
-    if (!nodeId) return result;
-    const matrix = App.state.cellStorage[App.grid.getTableId(nodeId)];
-    if (!matrix) return result;
     for (let r = 0; r < GRID_SIZE; r++) {
+        const row = [];
         for (let c = 0; c < GRID_SIZE; c++) {
-            if (matrix[r][c] !== null && matrix[r][c] !== undefined) result.push([r, c]);
+            // Недоступность раскрывается только в поддиапазонах: там её задаёт
+            // цепочка родителей (каскадно, recursive = true). Частично
+            // доступная ячейка — доступна (оверлей в основной матрице это
+            // просто перекрывающий блок), поэтому порог строго 0%.
+            const disabled = isSubrange &&
+                App.stats.getCellAvailabilityPercent(nodeId, r, c, true, App.state) <= 0;
+            // Участие по умолчанию: закрашена в любой пропорции (профиль
+            // назначен) и не недоступна.
+            const painted = !!matrix && matrix[r][c] !== null && matrix[r][c] !== undefined;
+            row.push({
+                disabled: disabled,
+                participates: painted && !disabled
+            });
         }
+        result.push(row);
     }
     return result;
-}
-
-// «Близкие» неправильные руки: кандидаты — незакрашенные ячейки в радиусе
-// NEAR_RADIUS от любой правильной; сортировка — чем больше правильных
-// соседей и чем ближе, тем правдоподобнее ошибка.
-export function generateIncorrectHands(correctHands) {
-    const correctSet = new Set(correctHands.map(function(p) { return p[0] + '_' + p[1]; }));
-    const candidates = [];
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-            if (correctSet.has(r + '_' + c)) continue;
-            let minDist = Infinity;
-            let neighbors = 0;
-            for (let i = 0; i < correctHands.length; i++) {
-                const d = Math.max(Math.abs(correctHands[i][0] - r), Math.abs(correctHands[i][1] - c));
-                if (d < minDist) minDist = d;
-                if (d === 1) neighbors++;
-            }
-            if (minDist <= NEAR_RADIUS) candidates.push({ r: r, c: c, minDist: minDist, neighbors: neighbors });
-        }
-    }
-    candidates.sort(function(a, b) {
-        return (b.neighbors - a.neighbors) || (a.minDist - b.minDist);
-    });
-    const target = Math.max(MIN_EXTRA, Math.round(correctHands.length * EXTRA_RATIO));
-    return candidates.slice(0, target).map(function(x) { return [x.r, x.c]; });
-}
-
-// Полный набор тренировки для диапазона.
-export function generateTrainingHands(nodeId) {
-    const correct = getRangeHands(nodeId);
-    return { correct: correct, incorrect: generateIncorrectHands(correct) };
 }

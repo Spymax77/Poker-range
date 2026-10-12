@@ -2614,9 +2614,11 @@ body.dragging .tree-item.active .tree-actions-popup {
     width: fit-content;
 }
 
-/* Ячейки копии: свой класс .training-cell (без .hand-cell — кисть редактора
-   и hover-эффекты матрицы на копию не действуют). Геометрия — как у
-   .hand-cell (base.css), правильные — светло-серые, неправильные — серые. */
+/* Ячейки отражения: свой класс .training-cell (без .hand-cell — кисть редактора
+   и hover-эффекты матрицы на отражение не действуют). Геометрия — как у
+   .hand-cell (base.css). Участвующие в тренировке — светло-серые с тёмным
+   шрифтом (семантика «участвует», не «правильная»); недоступные ячейки
+   поддиапазонов — как .hand-cell.subrange-disabled, кликам не подлежат. */
 .training-cell {
     position: relative;
     width: 37px;
@@ -2633,15 +2635,21 @@ body.dragging .tree-item.active .tree-actions-popup {
     user-select: none;
 }
 
-.training-cell-correct {
+.training-cell-participating {
     background: #9a9da3 !important;
     color: #1a1c1f !important;
+}
+
+.training-cell-disabled {
+    background: var(--bg-page) !important;
+    color: #6c6c6c !important;
     cursor: default;
 }
 
-.training-cell-incorrect {
-    background: #666a70 !important;
-    color: #e5eaf0 !important;
+/* Текст руки над оверлеем частичной доступности (как textSpan в grid-renderer). */
+.training-cell-hand {
+    position: relative;
+    z-index: 2;
 }
 
 /* ===== ПЛАШКИ-КНОПКИ ТРЕНИРОВКИ ===== */

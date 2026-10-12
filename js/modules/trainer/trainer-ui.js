@@ -1,70 +1,84 @@
 // ===== trainer-ui.js — панель настройки тренировки в редакторе =====
 // По кнопке «шапочка выпускника» (trainingModeBtn) в правой панели вместо
-// цветов показывается копия матрицы текущего диапазона:
-//   - светло-серые ячейки — правильные руки (закрашены в диапазоне);
-//   - серые ячейки — неправильные («близкие» соседние, см. trainer-engine).
-// Под копией — плашка «Генерировать автоматически» с индикатором: при
-// включённой генерации набор рассчитывается автоматически, при выключенной
-// пользователь кликом добавляет/убирает серые руки. Любая ручная правка
-// выключает авто-генерацию. Под основной матрицей — плашка «Начать
+// цветов показывается отражение основной матрицы текущего диапазона
+// (см. trainer-engine). Логики «правильных»/«неправильных» ячеек нет.
+// Слой данных отражения — участие руки в тренировке: участвующие ячейки
+// показываются светло-серыми (тёмный шрифт), не участвующие — обычными,
+// недоступные (subrange-disabled) — disabled и кликам не подлежат. Участие
+// по умолчанию генерируется динамически из основной матрицы (закрашенная в
+// любой пропорции — участвует); клик-тогл живёт только до переключения
+// диапазона — состояние не сохраняется (как хранить — отдельная задача).
+// Плашка «Генерировать автоматически» остаётся под будущий тренажёр: клик
+// пока только переключает её индикатор. Под отражением — плашка «Начать
 // тренировку» (вместо блока статистики).
 
-import { generateTrainingHands } from './trainer-engine.js';
+import { buildTrainingMatrix } from './trainer-engine.js';
 
-const CORRECT_CLASS = 'training-cell-correct';
-const INCORRECT_CLASS = 'training-cell-incorrect';
+const DISABLED_CLASS = 'training-cell-disabled';
+const PARTICIPATING_CLASS = 'training-cell-participating';
 
 // Состояние панели настройки (живёт вне DOM).
 const setupState = {
     visible: false,
-    auto: true,          // «Генерировать автоматически» включена
-    correct: [],         // [r,c] правильных рук
-    incorrect: [],       // [r,c] неправильных рук
-    nodeId: null
+    nodeId: null,
+    // Преходящие тоглы участия (ключ 'r_c' → bool) — только для текущего
+    // диапазона; при переключении диапазона сбрасываются (см. renderTrainingGrid).
+    toggles: new Map(),
+    togglesNodeId: null
 };
 
-function cellKey(r, c) { return r + '_' + c; }
+// Участие ячейки с учётом преходящих тоглов: тогл сильнее значения по
+// умолчанию, сгенерированного из основной матрицы.
+function isParticipating(cell, r, c) {
+    const key = r + '_' + c;
+    return setupState.toggles.has(key) ? setupState.toggles.get(key) : cell.participates;
+}
 
-// ===== РЕНДЕР КОПИИ МАТРИЦЫ =====
+// ===== РЕНДЕР ОТРАЖЕНИЯ МАТРИЦЫ =====
 function renderTrainingGrid() {
     const grid = document.getElementById('trainingGrid');
     if (!grid) return;
+    // Переключение диапазона сбрасывает тоглы: участие всегда генерируется
+    // динамически заново и нигде не сохраняется (см. trainer-engine).
+    if (setupState.togglesNodeId !== setupState.nodeId) {
+        setupState.toggles.clear();
+        setupState.togglesNodeId = setupState.nodeId;
+    }
     const rowsData = globalThis.rowsData;
-    const correctSet = new Set(setupState.correct.map(function(p) { return cellKey(p[0], p[1]); }));
-    const incorrectSet = new Set(setupState.incorrect.map(function(p) { return cellKey(p[0], p[1]); }));
+    const reflection = buildTrainingMatrix(setupState.nodeId);
     let html = '';
     for (let r = 0; r < 13; r++) {
         for (let c = 0; c < 13; c++) {
-            const k = cellKey(r, c);
-            const cls = correctSet.has(k) ? CORRECT_CLASS : (incorrectSet.has(k) ? INCORRECT_CLASS : '');
+            const cell = reflection[r][c];
+            // Участвующие в тренировке — светло-серые, недоступные
+            // (subrange-disabled) — disabled (кликам не подлежат), остальные —
+            // обычные. Цветовые профили основной матрицы не переносятся.
+            let cls = '';
+            if (cell.disabled) cls = DISABLED_CLASS;
+            else if (isParticipating(cell, r, c)) cls = PARTICIPATING_CLASS;
             html += '<div class="training-cell ' + cls + '" data-row="' + r + '" data-col="' + c + '">' +
-                rowsData[r][c] + '</div>';
+                '<span class="training-cell-hand">' + rowsData[r][c] + '</span></div>';
         }
     }
     grid.innerHTML = html;
 }
 
-// ===== ПЕРЕСЧЁТ НАБОРА =====
-function recalc(auto) {
-    setupState.auto = auto;
-    const hands = generateTrainingHands(setupState.nodeId);
-    setupState.correct = hands.correct;
-    if (auto) {
-        setupState.incorrect = hands.incorrect;
-    } else {
-        // При выключенной генерации оставляем только ручные отметки,
-        // не пересекающиеся с правильными руками.
-        const correctSet = new Set(setupState.correct.map(function(p) { return cellKey(p[0], p[1]); }));
-        setupState.incorrect = setupState.incorrect.filter(function(p) { return !correctSet.has(cellKey(p[0], p[1])); });
-    }
+// ===== КЛИК ПО ЯЧЕЙКЕ ОТРАЖЕНИЯ (тогл участия в тренировке) =====
+function onGridClick(e) {
+    const cell = e.target.closest('.training-cell');
+    if (!cell) return;
+    // Недоступные ячейки кликам не подлежат вообще (как subrange-disabled
+    // в основной матрице).
+    if (cell.classList.contains(DISABLED_CLASS)) return;
+    const r = parseInt(cell.getAttribute('data-row'), 10);
+    const c = parseInt(cell.getAttribute('data-col'), 10);
+    const reflection = buildTrainingMatrix(setupState.nodeId);
+    const key = r + '_' + c;
+    // Тогл работает по любой ячейке: закрашенная (участвует по умолчанию) —
+    // снимается, пустая — добавляется.
+    const current = isParticipating(reflection[r][c], r, c);
+    setupState.toggles.set(key, !current);
     renderTrainingGrid();
-    renderAutoIndicator();
-}
-
-function renderAutoIndicator() {
-    const btn = document.getElementById('trainingAutoBtn');
-    if (!btn) return;
-    btn.classList.toggle('active', setupState.auto);
 }
 
 // ===== ПОКАЗАТЬ / СКРЫТЬ ПАНЕЛЬ =====
@@ -98,34 +112,7 @@ function setVisible(visible) {
         App.grid.refreshConstructorAnalysisMode();
     }
 
-    if (visible) {
-        setupState.incorrect = [];
-        recalc(true);
-    }
-}
-
-// ===== КЛИК ПО ЯЧЕЙКЕ КОПИИ (ручная правка) =====
-function onGridClick(e) {
-    const cell = e.target.closest('.training-cell');
-    if (!cell) return;
-    const r = parseInt(cell.getAttribute('data-row'), 10);
-    const c = parseInt(cell.getAttribute('data-col'), 10);
-    const k = cellKey(r, c);
-
-    // Правильные руки не редактируются — они заданы диапазоном.
-    const isCorrect = setupState.correct.some(function(p) { return cellKey(p[0], p[1]) === k; });
-    if (isCorrect) return;
-
-    const idx = setupState.incorrect.findIndex(function(p) { return cellKey(p[0], p[1]) === k; });
-    if (idx >= 0) setupState.incorrect.splice(idx, 1);
-    else setupState.incorrect.push([r, c]);
-
-    // Любая ручная правка выключает авто-генерацию.
-    if (setupState.auto) {
-        setupState.auto = false;
-        renderAutoIndicator();
-    }
-    renderTrainingGrid();
+    if (visible) renderTrainingGrid();
 }
 
 // ===== ПУБЛИЧНЫЕ ФУНКЦИИ =====
@@ -136,14 +123,10 @@ export function initTrainingPanel() {
     const autoBtn = document.getElementById('trainingAutoBtn');
     if (autoBtn) {
         autoBtn.addEventListener('click', function() {
-            if (setupState.auto) {
-                // Выключить: набор остаётся как есть, доступна ручная правка.
-                setupState.auto = false;
-                renderAutoIndicator();
-            } else {
-                // Включить: пересчитать набор автоматически.
-                recalc(true);
-            }
+            // Плашка остаётся в панели под будущий тренажёр: логика
+            // correct/incorrect удалена, генерировать больше нечего —
+            // клик пока только переключает индикатор.
+            autoBtn.classList.toggle('active');
         });
     }
 
@@ -164,9 +147,9 @@ export function isTrainingPanelVisible() {
     return setupState.visible;
 }
 
-// Обновление копии при смене диапазона (вызывается из trainer-api).
+// Обновление отражения при смене диапазона (вызывается из trainer-api).
 export function refreshTrainingPanel() {
     if (!setupState.visible) return;
     setupState.nodeId = App.state.currentNodeId;
-    recalc(setupState.auto);
+    renderTrainingGrid();
 }

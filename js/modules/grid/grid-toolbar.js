@@ -87,7 +87,13 @@ export function updateCurrentDisplay() {
     }
 
     App.grid.renderGrid("constructorGrid", currentNodeId, null);
-    
+
+    // Вторая матрица тренировки идёт с основной всегда в паре: любое
+    // переключение/перерисовка основной матрицы конструктора обновляет и
+    // отражение (trainer-ui.refreshTrainingPanel сам выходит, если панель
+    // тренировки скрыта).
+    if (App.trainer && typeof App.trainer.refreshSetup === 'function') App.trainer.refreshSetup();
+
     App.grid.refreshConstructorAnalysisMode();
 
     App.stats.renderBranchStats(currentNodeId, branch, {
