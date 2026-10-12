@@ -2635,6 +2635,24 @@ body.dragging .tree-item.active .tree-actions-popup {
     user-select: none;
 }
 
+/* Угловые ячейки отражения: скругление внешнего угла — как у .hand-cell
+   в base.css (constructorGrid): контейнер .hands-grid скруглён БЕЗ
+   overflow: hidden, поэтому углы скругляют сами угловые ячейки. Сетка
+   та же 13×13 (169 ячеек): first-child = [0][0], nth-child(13) = [0][12],
+   nth-child(157) = [12][0], last-child = [12][12]. */
+.training-cell:first-child {
+    border-top-left-radius: 8px;
+}
+.training-cell:nth-child(13) {
+    border-top-right-radius: 8px;
+}
+.training-cell:nth-child(157) {
+    border-bottom-left-radius: 8px;
+}
+.training-cell:last-child {
+    border-bottom-right-radius: 8px;
+}
+
 .training-cell-participating {
     background: #9a9da3 !important;
     color: #1a1c1f !important;
