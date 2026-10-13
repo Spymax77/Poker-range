@@ -2740,6 +2740,8 @@ body.dragging .tree-item.active .tree-actions-popup {
     color: #dedede;
     white-space: nowrap;
     cursor: pointer;
+    /* Смещаем влево от правого края матрицы (ряд — space-between). */
+    margin-right: 8px;
     transition: color 0.15s ease;
 }
 

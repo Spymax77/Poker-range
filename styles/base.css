@@ -297,6 +297,14 @@ html, body {
     cursor: default;
 }
 
+/* В режиме тренировки основная матрица «заморожена» для редактирования (кисть
+   гасится в paint.js по классу body.training-setup), поэтому курсор «палец»
+   вводит в заблуждение — меняем на default. Вторая матрица (отражение
+   тренировки, классы .training-cell) не затрагивается: у неё свой курсор. */
+body.training-setup #constructorPage #constructorGrid .hand-cell {
+    cursor: default;
+}
+
 #constructorPage.analysis-mode #constructorGrid .hand-cell::after {
     content: '';
     position: absolute;
