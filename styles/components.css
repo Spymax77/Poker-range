@@ -2702,6 +2702,51 @@ body.dragging .tree-item.active .tree-actions-popup {
     background: #3a3d45;
 }
 
+/* «Генерировать автоматически» — обычная кнопка «по размеру текста внутри»,
+   а не во всю ширину матрицы/панели (width: 100% из .training-plate-btn).
+   Кнопка «Начать тренировку» (#trainingStartBtn) этот id не затрагивает —
+   у неё по-прежнему 100% от своей колонки. */
+#trainingAutoBtn {
+    width: fit-content;
+}
+
+/* Ряд под матрицей тренировки: плашка автогенерации слева, текстовая
+   кнопка «Закрыть» справа — на одном уровне (space-between по ширине панели). */
+.training-plate-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* margin-top ряда задаёт отступ от матрицы — у кнопки внутри он не нужен. */
+.training-plate-row .training-plate-btn {
+    margin-top: 0;
+}
+
+/* «Закрыть» — просто текст: без фона, рамки и паддингов; ховер — золотой
+   (#D4AF37, как цвет названия диапазона в .toolbar-range-name). */
+.training-plate-close {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: normal;
+    /* Цвет и размер шрифта — как у текста «Генерировать автоматически»
+       (.training-plate-btn: color #dedede, font-size 13px). */
+    color: #dedede;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.training-plate-close:hover {
+    color: #D4AF37;
+}
+
 /* Кружок-индикатор плашки «Генерировать автоматически»: серый — выкл,
    зелёный — автогенерация включена (класс active на кнопке). */
 .training-plate-indicator {
@@ -2730,10 +2775,12 @@ body.dragging .tree-item.active .tree-actions-popup {
 
 /* Плашка «Начать тренировку» стоит под основной матрицей вровень с
    абсолютными иконками .matrix-btn (bottom: -32px): при margin-top: 10px
-   она наезжала на них. 40px = 32px иконок + 8px воздуха. Кнопка увеличена
-   на +50% по высоте (33px → ~50px), шрифт и иконка — пропорционально. */
+   она наезжала на них. Кнопка увеличена на +50% по высоте (33px → ~50px),
+   шрифт и иконка — пропорционально.
+   Отступ 16px — от блока статистики (в режиме тренировки снова видим),
+   чтобы не было большого разрыва. */
 #trainingStartBtn {
-    margin-top: 40px;
+    margin-top: 16px;
     padding: 13px 20px;
     font-size: 20px;
 }

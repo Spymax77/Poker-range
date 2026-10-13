@@ -288,10 +288,15 @@
                             <div class="matrix-wrapper training-matrix-wrapper">
                                 <div id="trainingGrid" class="hands-grid"></div>
                             </div>
-                            <button type="button" class="training-plate-btn active" id="trainingAutoBtn">
-                                <span class="training-plate-indicator"></span>
-                                <span data-i18n="trainer.autoGenerate">Генерировать автоматически</span>
-                            </button>
+                            <!-- Ряд под матрицей: плашка автогенерации слева + текстовая
+                                 кнопка «Закрыть» справа (выход в режим редактора). -->
+                            <div class="training-plate-row">
+                                <button type="button" class="training-plate-btn active" id="trainingAutoBtn">
+                                    <span class="training-plate-indicator"></span>
+                                    <span data-i18n="trainer.autoGenerate">Генерировать автоматически</span>
+                                </button>
+                                <button type="button" class="training-plate-close" id="trainingSetupCloseBtn" data-i18n="trainer.close">Закрыть</button>
+                            </div>
                         </div>
                         <div class="palette-section">
                             <div id="paletteList" class="palette-list"></div>

@@ -153,13 +153,13 @@ function setVisible(visible) {
 
     const panel = document.getElementById('trainingSetupPanel');
     const startBtn = document.getElementById('trainingStartBtn');
-    const stats = document.getElementById('constructorStatsContainer');
     const palette = document.querySelector('#constructorPage .palette-section');
     const profiles = document.querySelector('#constructorPage .profiles-container');
 
     if (panel) panel.style.display = visible ? 'block' : 'none';
     if (startBtn) startBtn.style.display = visible ? 'flex' : 'none';
-    if (stats) stats.style.display = visible ? 'none' : '';
+    // Статистика (constructorStatsContainer) в тренировке видима — display
+    // возвращаем в '' (включится CSS display: flex), как и вне тренировки.
     if (palette) palette.style.display = visible ? 'none' : '';
     if (profiles) profiles.style.display = visible ? 'none' : '';
 
@@ -197,6 +197,22 @@ export function initTrainingPanel() {
         startBtn.addEventListener('click', function() {
             // Заглушка: сама тренировка будет во вкладке «Тренажёр».
             App.modals.showFloatingModal(App.i18n.t('trainer.startSoon'));
+        });
+    }
+
+    // Текстовая «Закрыть» справа от плашки автогенерации: повторно используем
+    // обработчик кнопки «Режим редактора» (editorModeBtn в matrix-toolbar.js) —
+    // он закрывает панель тренировки и снимает режим анализа, если был включён.
+    const closeBtn = document.getElementById('trainingSetupCloseBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            const onEditorModeClick = App.matrixToolbar && App.matrixToolbar.onEditorModeClick;
+            if (typeof onEditorModeClick === 'function') {
+                onEditorModeClick();
+            } else {
+                // Страховка, если matrix-toolbar.js ещё не загрузился.
+                setVisible(false);
+            }
         });
     }
 }
