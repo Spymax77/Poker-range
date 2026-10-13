@@ -1325,7 +1325,12 @@
 }
 
 .range-title-wrapper {
-    padding: 8px 0 4px 0;
+    /* Как .training-setup-title у копии матрицы справа: блок ровно 28px и текст
+       отцентрован line-height'ом — чтобы базовые линии обоих заголовков совпадали
+       (с padding: 8px 0 4px текст «садился» на ~1.7px ниже). */
+    height: 28px;
+    line-height: 28px;
+    padding: 0;
     text-align: left;
 }
 
@@ -2598,6 +2603,11 @@ body.dragging .tree-item.active .tree-actions-popup {
        начинаться на одном уровне с основной матрицей (её задаёт
        .range-title-wrapper высотой 28px над матрицей в .table-panel). */
     margin-top: -30px;
+    /* Ширина по содержимому (по матрице 13×37px + зазоры = 493px), а не на всю
+       правую колонку: заголовок, матрица и плашка-кнопка (width: 100%) становятся
+       одной длины — кнопка «Генерировать автоматически» больше не тянется
+       до конца экрана. */
+    width: fit-content;
 }
 
 .training-setup-title {
