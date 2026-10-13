@@ -863,6 +863,16 @@
     transform: scale(0.92);
 }
 
+/* Фокус после клика "злипается" на кнопке (стрелочная навигация по дереву
+   не переносит DOM-фокус — см. js/tree/tree-keyboard.js), и с первым
+   клавиатурным нажатием Chromium рисует вокруг неё :focus-visible-кольцо
+   (outline: auto, ~2px). Активное состояние и так помечено золотой
+   заливкой (.toolbar-btn.active), поэтому дефолтный индикатор фокуса
+   браузера для тулбар-кнопок гасим. */
+.toolbar-btn:focus {
+    outline: none;
+}
+
 .toolbar-btn .icon,
 .toolbar-btn .plus-icon {
     display: block;

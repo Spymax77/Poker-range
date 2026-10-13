@@ -20,6 +20,31 @@ App.animations.constructorFade = function() {
         grid.classList.add('matrix-fade');
     }
 
+    // Панель настройки тренировки (вторая матрица справа) мерцает вместе с
+    // основной: тот же класс matrix-fade (та же keyframes fadeEffect и
+    // длительность 0.45s), навешенный в этом же кадре, поэтому обе матрицы
+    // начинают и заканчивают fade одновременно и не «разъезжаются» при
+    // переключении диапазона. Вне режима тренировки панель display:none —
+    // класс на ней безвреден.
+    const trainingPanel = document.getElementById('trainingSetupPanel');
+    if (trainingPanel) {
+        trainingPanel.classList.remove('matrix-fade');
+        void trainingPanel.offsetWidth;
+        trainingPanel.classList.add('matrix-fade');
+    }
+
+    // Плашка «Начать тренировку» под основной матрицей мерцает вместе с ней:
+    // тот же класс matrix-fade (та же keyframes fadeEffect и длительность
+    // 0.45s), навешенный в этом же кадре — fade начинается и заканчивается
+    // одновременно с матрицей. Вне режима тренировки кнопка display:none —
+    // класс на ней безвреден.
+    const trainingStartBtn = document.getElementById('trainingStartBtn');
+    if (trainingStartBtn) {
+        trainingStartBtn.classList.remove('matrix-fade');
+        void trainingStartBtn.offsetWidth;
+        trainingStartBtn.classList.add('matrix-fade');
+    }
+
     App.animations.fadeStatsTable('constructorStatsContainer');
 
     const palette = document.getElementById('paletteList');
