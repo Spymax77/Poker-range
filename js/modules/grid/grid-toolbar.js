@@ -11,15 +11,23 @@ const CONSTRUCTOR_EDIT_BUTTON_IDS = [
     'tableMoreBtn'
 ];
 
+export function isTrainingSetupActive() {
+    // Тренировка — режим наравне с анализом: кнопки редактирования в тулбаре
+    // гасятся, пока панель настройки тренировки открыта.
+    return !!(App.trainer && typeof App.trainer.isSetupVisible === 'function' && App.trainer.isSetupVisible());
+}
+
 export function updateConstructorToolbarState() {
     const isAnalysis = !!App.state.analysisMode;
+    // В режиме тренировки кнопки редактирования неактивны — как в анализе.
+    const lockEditing = isAnalysis || isTrainingSetupActive();
     CONSTRUCTOR_EDIT_BUTTON_IDS.forEach(id => {
-        document.getElementById(id)?.classList.toggle('toolbar-btn-disabled', isAnalysis);
+        document.getElementById(id)?.classList.toggle('toolbar-btn-disabled', lockEditing);
     });
 
     // Кнопка «Отменить»: активна только когда есть несохранённые изменения
-    // (вне режима анализа — в анализе она уже погашена циклом выше)
-    if (!isAnalysis) {
+    // (вне режимов анализа и тренировки — там она уже погашена циклом выше)
+    if (!lockEditing) {
         var undoBtn = document.getElementById('tableUndoBtn');
         if (undoBtn) {
             undoBtn.classList.toggle('toolbar-btn-disabled', !App.state.hasUnsavedChanges);
@@ -27,8 +35,8 @@ export function updateConstructorToolbarState() {
     }
 
     // Конечное состояние "Вставить" всегда определяет updatePasteButtonState
-    // (clipboard.js): она учитывает и режим анализа, и наличие скопированных
-    // данных, поэтому при выходе из анализа кнопка не "загорится" с пустым буфером.
+    // (clipboard.js): она учитывает режимы анализа/тренировки и наличие
+    // скопированных данных, поэтому при выходе кнопка не "загорится" с пустым буфером.
     if (typeof App.clipboard.updatePasteButtonState === 'function') App.clipboard.updatePasteButtonState();
 }
 
@@ -46,7 +54,7 @@ export function refreshConstructorAnalysisMode() {
     const branch = App.editor;
     const currentNodeId = branch.currentNodeId;
     // Три кнопки режима — взаимоисключающие: редактор / анализ / тренировка.
-    const isTraining = !!(App.trainer && App.trainer.isSetupVisible && App.trainer.isSetupVisible());
+    const isTraining = isTrainingSetupActive();
     document.getElementById('constructorPage')?.classList.toggle('analysis-mode', isAnalysis);
     document.getElementById('editorModeBtn')?.classList.toggle('active', !isAnalysis && !isTraining);
     document.getElementById('analysisModeBtn')?.classList.toggle('active', isAnalysis);

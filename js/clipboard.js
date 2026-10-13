@@ -371,10 +371,13 @@ App.clipboard.updatePasteButtonState = function() {
     const pasteBtn = document.getElementById('tablePasteBtn');
     if (!pasteBtn) return;
 
-    // В режиме анализа конструктора вставка запрещена наравне с остальными
-    // кнопками редактирования, поэтому режим проверяем раньше буфера обмена:
-    // иначе copyRange() / refreshAll() снова "зажгли" бы кнопку.
-    if (App.state.analysisMode) {
+    // В режимах анализа и настройки тренировки вставка запрещена наравне с
+    // остальными кнопками редактирования, поэтому режимы проверяем раньше
+    // буфера обмена: иначе copyRange() / refreshAll() снова "зажгли" бы кнопку.
+    const trainingActive = !!(App.trainer &&
+        typeof App.trainer.isSetupVisible === 'function' &&
+        App.trainer.isSetupVisible());
+    if (App.state.analysisMode || trainingActive) {
         pasteBtn.classList.add('toolbar-btn-disabled');
         pasteBtn.title = '';
         return;

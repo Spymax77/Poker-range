@@ -12,7 +12,7 @@ import {
     hideCellPreview
 } from './grid-preview.js';
 import { getTooltipElement, showTooltip, positionTooltip, hideTooltip } from './grid-tooltip.js';
-import { updateConstructorToolbarState, refreshConstructorAnalysisMode, updateCurrentDisplay } from './grid-toolbar.js';
+import { isTrainingSetupActive, updateConstructorToolbarState, refreshConstructorAnalysisMode, updateCurrentDisplay } from './grid-toolbar.js';
 import { isPinSafeTarget, getMatrixPreviewContext, getParentRange, ensureTable, getTableId } from './grid-utils.js';
 import { getCellProfile, setCellProfile, clearTable } from './grid-operations.js';
 
@@ -37,6 +37,7 @@ App.grid = {
     showTooltip,
     positionTooltip,
     hideTooltip,
+    isTrainingSetupActive,
     updateConstructorToolbarState,
     refreshConstructorAnalysisMode,
     updateCurrentDisplay,

@@ -11,11 +11,11 @@ document.addEventListener('mouseup', App.paint.handlePaintEnd);
 
 // ===== КНОПКА "СОХРАНИТЬ" =====
 App.matrixToolbar.onSaveClick = function() {
-    // В режиме анализа кнопки редактирования погашены классом
+    // В режимах анализа/тренировки кнопки редактирования погашены классом
     // .toolbar-btn-disabled (pointer-events: none), но CSS не мешает
     // программному .click() (например, из userscript'а), поэтому дублируем
     // проверку в обработчике.
-    if (App.state.analysisMode) return;
+    if (App.state.analysisMode || App.grid.isTrainingSetupActive()) return;
     if (!App.state.currentNodeId) {
         App.modals.showFloatingModal(App.i18n.t('range.noActiveSave'));
         return;
@@ -33,7 +33,7 @@ const tableMoreBtn = document.getElementById('tableMoreBtn');
 const tableMoreMenu = document.getElementById('tableMoreMenu');
 
 App.matrixToolbar.onMoreToggle = function(e) {
-    if (App.state.analysisMode) return;
+    if (App.state.analysisMode || App.grid.isTrainingSetupActive()) return;
     e.stopPropagation();
     const isOpen = tableMoreMenu.classList.toggle('open');
     tableMoreBtn.setAttribute('aria-expanded', String(isOpen));
@@ -42,7 +42,7 @@ App.matrixToolbar.onMoreToggle = function(e) {
 App.matrixToolbar.onRemoveUnusedColors = function() {
     tableMoreMenu.classList.remove('open');
     tableMoreBtn.setAttribute('aria-expanded', 'false');
-    if (App.state.analysisMode || !App.state.currentNodeId) return;
+    if (App.state.analysisMode || App.grid.isTrainingSetupActive() || !App.state.currentNodeId) return;
 
     const result = App.colors.removeUnusedColors(App.state.currentNodeId);
     App.modals.showFloatingModal(
@@ -67,7 +67,7 @@ if (tableMoreBtn && tableMoreMenu) {
 
 // ===== КНОПКА "ОТМЕНИТЬ" =====
 App.matrixToolbar.onUndoClick = function() {
-    if (App.state.analysisMode) return;
+    if (App.state.analysisMode || App.grid.isTrainingSetupActive()) return;
     if (!App.state.hasUnsavedChanges) return;
     if (!App.state.currentNodeId) {
         App.modals.showFloatingModal(App.i18n.t('range.noActive'));
@@ -86,7 +86,7 @@ App.matrixToolbar.onUndoClick = function() {
 document.getElementById('tableUndoBtn')?.addEventListener('click', App.matrixToolbar.onUndoClick);
 // ===== КНОПКИ КОПИРОВАТЬ/ВСТАВИТЬ В ТУЛБАРЕ =====
 App.matrixToolbar.onCopyClick = function() {
-    if (App.state.analysisMode) return;
+    if (App.state.analysisMode || App.grid.isTrainingSetupActive()) return;
     if (!App.state.currentNodeId) {
         App.modals.showFloatingModal(App.i18n.t('range.noActiveCopy'));
         return;
@@ -97,7 +97,7 @@ App.matrixToolbar.onCopyClick = function() {
 document.getElementById('tableCopyBtn')?.addEventListener('click', App.matrixToolbar.onCopyClick);
 
 App.matrixToolbar.onPasteClick = function() {
-    if (App.state.analysisMode) return;
+    if (App.state.analysisMode || App.grid.isTrainingSetupActive()) return;
     if (!App.state.currentNodeId) {
         App.modals.showFloatingModal(App.i18n.t('range.noActivePaste'));
         return;
