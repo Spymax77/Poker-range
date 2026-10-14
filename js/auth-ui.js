@@ -269,6 +269,13 @@ App.authUi.reloadAllData = async function() {
         await App.storage.initialize();
         const activeTab = await App.persistence.loadFromStorage();
         const tab = activeTab || 'constructor';
+        // Режим тренировки: сверяем панель с перечитанным из БД флагом
+        // (App.state.trainingMode, loadFromStorageV2) — после входа в аккаунт
+        // он мог измениться (панель гостя/другого пользователя закрывается).
+        // persist=false: состояние только что прочитано из БД.
+        if (App.trainer && typeof App.trainer.setSetupVisible === 'function') {
+            App.trainer.setSetupVisible(!!App.state.trainingMode, false);
+        }
         App.navigation.switchTab(tab);
         if (tab === 'constructor' && App.state.analysisMode) {
             App.grid.refreshConstructorAnalysisMode();

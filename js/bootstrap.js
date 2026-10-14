@@ -36,6 +36,14 @@ App.events.on('data:changed', App.refresh.allGrids);
             // Инициализация при этом не обрывается: комментарии и ресайз дерева
             // отрабатывают в любом случае.
             try {
+                // Режим тренировки восстанавливаем до switchTab: панель рендерит
+                // отражение матрицы по ветке текущего режима (App.state), а при
+                // F5 текущим режимом по умолчанию является редактор. setSetupVisible
+                // идемпотентен (без смены видимости — no-op), persist=false:
+                // состояние только что прочитано из БД в loadFromStorageV2.
+                if (App.trainer && typeof App.trainer.setSetupVisible === 'function') {
+                    App.trainer.setSetupVisible(!!App.state.trainingMode, false);
+                }
                 App.navigation.switchTab(tab);
                 if (App.grid) {
                     if (tab === 'constructor' && App.state.analysisMode) {

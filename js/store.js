@@ -77,6 +77,12 @@
         // ---- Режим анализа конструктора (grid.js / navigation.js / matrix-toolbar.js) ----
         analysisMode: false,
 
+        // ---- Режим тренировки конструктора (js/modules/trainer/) ----
+        // Зеркало setupState.visible (trainer-ui.js): persistence/bootstrap
+        // читают флаг для сохранения в БД и восстановления после F5 так же,
+        // как analysisMode. Режимы взаимоисключающие.
+        trainingMode: false,
+
         // ---- Импорт (import-manager.js) ----
         importWindowInstance: null,
         selectedColorId: null,

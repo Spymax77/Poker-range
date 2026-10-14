@@ -141,12 +141,17 @@ function onMouseUp() {
 // при входе выходим из режима анализа (иначе остаётся легенда), при выходе
 // возвращаемся в режим редактора. Активные кнопки всех трёх режимов
 // синхронизирует refreshConstructorAnalysisMode (grid-toolbar.js).
-function setVisible(visible) {
+function setVisible(visible, persist) {
+    const changed = setupState.visible !== visible;
     setupState.visible = visible;
     setupState.nodeId = App.state.currentNodeId;
 
     // В тренировке легенда/статистика анализа не показываются.
     if (visible && App.state.analysisMode) App.state.analysisMode = false;
+
+    // Зеркало в App.state (store.js): persistence/bootstrap читают его для
+    // сохранения режима в БД и восстановления после F5 (как analysisMode).
+    App.state.trainingMode = visible;
 
     // Класс на body гасит кисть в paint.js (handlePaintStart/handlePaintMove).
     document.body.classList.toggle('training-setup', visible);
@@ -168,6 +173,15 @@ function setVisible(visible) {
     }
 
     if (visible) renderTrainingGrid();
+
+    // Режим тренировки сохраняется в uiMetadata так же, как режим анализа
+    // (вместе с ним уходит и снятый выше analysisMode). persist=false при
+    // восстановлении из БД (F5, вход в аккаунт): состояние только что
+    // прочитано оттуда же, повторная постановка dirty не нужна.
+    if (changed && persist !== false) {
+        if (App.dirty) App.dirty.markMetadataDirty('editor');
+        App.persistence.persistAll();
+    }
 }
 
 // ===== ПУБЛИЧНЫЕ ФУНКЦИИ =====
@@ -236,6 +250,12 @@ export function initTrainingPanel() {
 
 export function toggleTrainingPanel() {
     setVisible(!setupState.visible);
+}
+
+// Явный показ/скрытие панели (восстановление режима после F5 / после входа
+// в аккаунт — bootstrap.js, auth-ui.js). persist=false гасит сохранение в БД.
+export function setTrainingPanelVisible(visible, persist) {
+    setVisible(visible, persist);
 }
 
 export function isTrainingPanelVisible() {

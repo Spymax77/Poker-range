@@ -117,7 +117,10 @@ App.persistence.persistAllNow = function(skipTables, onlyTables) {
         var activeTab = activeBtn ? activeBtn.getAttribute('data-page') : 'constructor';
         var uiMetadata = {
             activeTab: activeTab,
-            analysisMode: App.state.analysisMode
+            analysisMode: App.state.analysisMode,
+            // Режим тренировки (панель настройки, js/modules/trainer/) —
+            // сохраняется наравне с режимом анализа, взаимоисключающими.
+            trainingMode: !!(App.trainer && typeof App.trainer.isSetupVisible === 'function' && App.trainer.isSetupVisible())
         };
         promises.push(App.storage.saveMetadata(uiMetadata));
     }
@@ -197,7 +200,10 @@ App.persistence.persistActiveTab = function(activeTab) {
     }
     App.storage.saveMetadata({
         activeTab: activeTab || 'constructor',
-        analysisMode: App.state.analysisMode
+        analysisMode: App.state.analysisMode,
+        // Перезапись всей записи: без trainingMode переключение вкладки
+        // стёрло бы сохранённый режим тренировки.
+        trainingMode: !!(App.trainer && typeof App.trainer.isSetupVisible === 'function' && App.trainer.isSetupVisible())
     });
 };
 
@@ -334,6 +340,14 @@ App.persistence.loadFromStorageV2 = async function() {
     }
 
     App.state.analysisMode = !!uiMetadata.analysisMode;
+
+    // Режим тренировки: источник истины — setupState.visible (trainer-ui.js),
+    // здесь только флаг из БД. Фактическое восстановление панели выполняют
+    // bootstrap (switchTabWhenReady) и auth-ui (reloadAllData) после загрузки
+    // модулей. Режимы взаимоисключающие: при сохранённой тренировке анализ
+    // не восстанавливаем (при входе в тренировку analysisMode снимается).
+    App.state.trainingMode = !!uiMetadata.trainingMode;
+    if (App.state.trainingMode) App.state.analysisMode = false;
 
     // Первый заход (сохранённой структуры редактора нет): загружаем дефолтные
     // диапазоны из data/default-editor.json. Для авторизованного пользователя

@@ -9,7 +9,7 @@
 // Сама тренировка (правая часть вкладки) будет позже — сейчас узлы
 // добавляются в тренажёр из редактора и хранятся в БД.
 
-import { initTrainingPanel, toggleTrainingPanel, isTrainingPanelVisible, refreshTrainingPanel } from './trainer-ui.js';
+import { initTrainingPanel, toggleTrainingPanel, setTrainingPanelVisible, isTrainingPanelVisible, refreshTrainingPanel } from './trainer-ui.js';
 import { addTrainerNode, loadTrainerNodes, getTrainerNodes } from './trainer-store.js';
 import { renderTrainerPage, removeTrainerNodeAndRefresh } from './trainer-page.js';
 
@@ -44,6 +44,14 @@ App.trainer = {
     // Показать/скрыть панель настройки тренировки.
     toggleSetup: function() {
         toggleTrainingPanel();
+    },
+
+    // Явный показ/скрыть (восстановление режима после F5 / после входа —
+    // bootstrap.js и auth-ui.js). Идемпотентен: без смены видимости —
+    // no-op. persist=false гасит сохранение в БД: состояние приходит
+    // оттуда же.
+    setSetupVisible: function(visible, persist) {
+        setTrainingPanelVisible(visible, persist);
     },
 
     isSetupVisible: function() {
