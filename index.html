@@ -59,6 +59,7 @@
     <button class="tab-btn" data-page="gto">GTO</button>
     <button class="tab-btn" data-page="constructor" data-i18n="tabs.editor">Редактор</button>
     <button class="tab-btn" data-page="work" data-i18n="tabs.view">Просмотр</button>
+    <button class="tab-btn" data-page="trainer" data-i18n="tabs.trainer">Тренажёр</button>
     </div>
     <div class="auth-panel" id="authPanel">
         <button type="button" class="auth-avatar-btn" id="authAvatarBtn" aria-haspopup="true" aria-expanded="false" data-i18n-aria-label="auth.account" aria-label="Аккаунт">
@@ -454,6 +455,18 @@
                     <div id="workLevelsContainer" class="button-bar"></div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ТРЕНАЖЁР -->
+    <div id="trainerPage" class="page">
+        <div class="three-columns">
+            <!-- ЛЕВАЯ КОЛОНКА: УЗЛЫ ТРЕНАЖЁРА (ширина меняется tree-resize-handle) -->
+            <div class="tree-panel">
+                <div id="trainerTree"></div>
+            </div>
+            <!-- ПРАВАЯ КОЛОНКА: ПОКА ПУСТАЯ (здесь будет матрица тренажёра) -->
+            <div class="table-panel"></div>
         </div>
     </div>
 

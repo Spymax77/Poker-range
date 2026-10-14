@@ -13,7 +13,7 @@
 // пока только переключает её индикатор. Под отражением — плашка «Начать
 // тренировку» (вместо блока статистики).
 
-import { buildTrainingMatrix } from './trainer-engine.js';
+import { buildTrainingMatrix, buildTrainerSnapshot } from './trainer-engine.js';
 
 const DISABLED_CLASS = 'training-cell-disabled';
 const PARTICIPATING_CLASS = 'training-cell-participating';
@@ -195,8 +195,25 @@ export function initTrainingPanel() {
     const startBtn = document.getElementById('trainingStartBtn');
     if (startBtn) {
         startBtn.addEventListener('click', function() {
-            // Заглушка: сама тренировка будет во вкладке «Тренажёр».
-            App.modals.showFloatingModal(App.i18n.t('trainer.startSoon'));
+            // Снапшот данных обеих матриц текущего диапазона (закраска +
+            // участие с тоглами) уходит в тренажёр отдельным узлом —
+            // каждое нажатие создаёт новый узел (см. trainer-store).
+            const nodeId = setupState.nodeId || App.state.currentNodeId;
+            if (!nodeId) return;
+            const sourceNode = App.nodes.getNode(nodeId);
+            // Тоглы относятся к текущему диапазону только если не были
+            // сброшены при его смене (см. renderTrainingGrid).
+            const toggles = (setupState.togglesNodeId === nodeId)
+                ? setupState.toggles : null;
+            const snapshot = buildTrainerSnapshot(nodeId, toggles);
+            App.trainer.addRange({
+                sourceNodeId: nodeId,
+                name: sourceNode ? sourceNode.name : '',
+                colors: snapshot.colors,
+                matrix: snapshot.matrix,
+                participation: snapshot.participation,
+                disabled: snapshot.disabled
+            });
         });
     }
 

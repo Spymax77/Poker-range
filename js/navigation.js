@@ -213,7 +213,7 @@ App.navigation.selectGtoNode = function(nodeId) {
 App.navigation.switchTab = function(page) {
     // Класс активного раздела на body — используется мобильными стилями:
     // в ГТО и Редакторе язычок панели вкладок скрыт, в Просмотре остаётся.
-    document.body.classList.remove('page-gto', 'page-constructor', 'page-work');
+    document.body.classList.remove('page-gto', 'page-constructor', 'page-work', 'page-trainer');
     document.body.classList.add('page-' + page);
 
     // Панель вкладок при смене раздела всегда раскрыта (сворачивается
@@ -253,6 +253,7 @@ App.navigation.switchTab = function(page) {
     document.getElementById("constructorPage").classList.remove("active-page");
     document.getElementById("gtoPage").classList.remove("active-page");
     document.getElementById("workPage").classList.remove("active-page");
+    document.getElementById("trainerPage").classList.remove("active-page");
 
     if (page === "gto") {
     App.currentMode = 'gto';
@@ -310,6 +311,14 @@ App.navigation.switchTab = function(page) {
         }
         App.comments.renderWorkComments(App.state.workDisplayNodeId);
         App.refresh.all();
+    } else if (page === "trainer") {
+        // Тренажёр: левая панель — узлы, добавленные из редактора
+        // (см. js/modules/trainer/), правая пока пустая.
+        App.currentMode = 'editor';
+        document.getElementById("trainerPage").classList.add("active-page");
+        if (App.trainer && typeof App.trainer.renderPage === 'function') {
+            App.trainer.renderPage();
+        }
     }
 
     // Кнопки вкладок на мобильных переезжают в активную страницу,

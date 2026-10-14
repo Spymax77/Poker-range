@@ -11,6 +11,8 @@
 //   - клик-тоглы поверх участи по умолчанию живут только до переключения
 //     диапазона (см. trainer-ui).
 // Цветовые профили основной матрицы в ячейки отражения НЕ переносятся.
+// Отражение — только визуальный слой участия; для переноса диапазона в
+// тренажёр есть отдельный снимок данных — buildTrainerSnapshot ниже.
 
 const GRID_SIZE = 13;
 
@@ -46,4 +48,57 @@ export function buildTrainingMatrix(nodeId) {
         result.push(row);
     }
     return result;
+}
+
+// ===== СНАПШОТ ДАННЫХ ДЛЯ УЗЛА ТРЕНАЖЁРА =====
+// Объединяет данные ОБЕИХ матриц текущего диапазона в один снимок:
+//   - данные ПЕРВОЙ (основной) матрицы: закраска ячеек (matrix 13×13,
+//     значения — id цвета / null), названия и профили цветов (colors),
+//   - данные ВТОРОЙ матрицы («Диапазон на тренировке»): какие ячейки
+//     участвуют в тренировке (participation 13×13, с учётом клик-тоглов
+//     из trainer-ui), а какие недоступны (disabled 13×13).
+// Снимок замораживается на момент вызова: дальнейшие правки диапазона
+// на него не влияют. Всё копируется глубоко — снимок не разделяет
+// ссылки с живым состоянием редактора.
+export function buildTrainerSnapshot(nodeId, toggles) {
+    const tableId = App.grid.getTableId(nodeId);
+    const matrix = App.state.cellStorage[tableId];
+    const colors = App.state.colorsPerNode[tableId] || [];
+    const reflection = buildTrainingMatrix(nodeId);
+
+    // Копия матрицы закраски 13×13 (id цвета / null).
+    const matrixCopy = [];
+    // Участие и недоступность — из второй матрицы (с тоглами поверх).
+    const participation = [];
+    const disabled = [];
+    for (let r = 0; r < GRID_SIZE; r++) {
+        const mRow = [];
+        const pRow = [];
+        const dRow = [];
+        for (let c = 0; c < GRID_SIZE; c++) {
+            mRow.push(matrix ? matrix[r][c] : null);
+            const cell = reflection[r][c];
+            const key = r + '_' + c;
+            // Тогл сильнее значения по умолчанию (та же логика, что
+            // в isParticipating trainer-ui).
+            const participates = (toggles && toggles.has(key))
+                ? toggles.get(key)
+                : cell.participates;
+            pRow.push(!!(participates && !cell.disabled));
+            dRow.push(!!cell.disabled);
+        }
+        matrixCopy.push(mRow);
+        participation.push(pRow);
+        disabled.push(dRow);
+    }
+
+    // Глубокая копия цветов (простых и мульти-профилей с components).
+    const colorsCopy = JSON.parse(JSON.stringify(colors));
+
+    return {
+        matrix: matrixCopy,
+        colors: colorsCopy,
+        participation: participation,
+        disabled: disabled
+    };
 }

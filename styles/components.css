@@ -345,7 +345,8 @@
     }
 
     body.page-gto .tabs-menu-toggle,
-    body.page-constructor .tabs-menu-toggle {
+    body.page-constructor .tabs-menu-toggle,
+    body.page-trainer .tabs-menu-toggle {
         display: flex;
     }
 
@@ -602,11 +603,19 @@
     flex-shrink: 0;
 }
 
-#constructorTree, #gtoTree {
+#constructorTree, #gtoTree, #trainerTree {
     flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+/* Пустое состояние списка узлов тренажёра (вкладка «Тренажёр»). */
+.trainer-empty-hint {
+    padding: 12px 15px;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 

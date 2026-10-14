@@ -60,6 +60,17 @@ html, body {
 #gtoPage.active-page {
     overflow: hidden;
 }
+
+/* Тренажёр: как GTO — фиксированная раскладка колонок без скролла страницы */
+#trainerPage.active-page {
+    overflow: hidden;
+}
+
+/* Правая колонка вкладки «Тренажёр» занимает оставшееся место —
+   пока пустая, здесь будет матрица тренажёра. */
+#trainerPage .table-panel {
+    flex: 1 1 auto;
+}
 #workPage.active-page {
     overflow-y: auto;
 }
