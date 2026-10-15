@@ -4,6 +4,7 @@
 // при каждом изменении активного узла.
 
 import { getTrainerNodes, getActiveNodeId } from './trainer-store.js';
+import { renderCards } from './trainer-cards.js';
 
 // ===== РЕНДЕР СТОЛА И КНОПОК =====
 export function renderTrainerTable() {
@@ -46,13 +47,21 @@ export function renderTrainerTable() {
     tableLabel.textContent = 'POKER TABLE';
     tableDiv.appendChild(tableLabel);
 
-    // Позиция игрока HERO — прямоугольник внизу по центру, смещён на +10px
+    // Позиция игрока HERO — прямоугольник внизу по центру
     var playerDiv = document.createElement('div');
     playerDiv.className = 'trainer-player-chip';
     playerDiv.textContent = 'HERO';
     tableDiv.appendChild(playerDiv);
 
     wrapper.appendChild(tableDiv);
+
+    // === КАРТЫ НА ПОЗИЦИИ HERO ===
+    var cardsContainer = document.createElement('div');
+    cardsContainer.className = 'trainer-cards-container';
+    tableDiv.appendChild(cardsContainer);
+
+    // Рендерим случайную руку из participation-матрицы узла
+    renderCards(cardsContainer, activeNode.participation, activeNode.disabled);
 
     // === КНОПКИ ДЕЙСТВИЙ ===
     var btnContainer = document.createElement('div');

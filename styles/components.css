@@ -659,7 +659,7 @@
     position: absolute;
     bottom: 0;
     left: 50%;
-    transform: translateX(-50%) translateY(calc(50% + 10px));
+    transform: translateX(-50%) translateY(calc(50% + 15px));
     width: 80px;
     height: 40px;
     border-radius: 10px;
@@ -678,7 +678,7 @@
 .trainer-action-buttons {
     display: flex;
     gap: 12px;
-    margin-top: 38px;
+    margin-top: 48px;
     justify-content: center;
 }
 
@@ -695,6 +695,67 @@
     cursor: pointer;
     transition: background 0.15s;
 }
+
+/* ===== КАРТЫ НА СТОЛЕ (позиция HERO) ===== */
+
+/* Контейнер пары карт — поверх фишки игрока */
+.trainer-cards-container {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(calc(50% - 37px));
+    display: flex;
+    gap: 4px;
+    z-index: 3;
+}
+
+/* Компактная карта (масштаб от card.html, −25%, плоский дизайн) */
+.trainer-card {
+    width: 39px;
+    height: 55px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+
+/* Номинал — по центру */
+.trainer-card-rank {
+    font-size: 27px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -1px;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: 'Inter', 'Arial Black', sans-serif;
+    z-index: 1;
+}
+
+/* Масть — вверху слева */
+.trainer-card-suit {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    font-size: 15px;
+    line-height: 1;
+    user-select: none;
+    z-index: 2;
+    opacity: 0.7;
+}
+
+/* Фоны по мастям — плоские, приглушённые, в тон тёмной теме */
+.trainer-card.hearts   { background: #9b2e2e; }
+.trainer-card.spades   { background: #1a3350; }
+.trainer-card.diamonds { background: #8a5a1a; }
+.trainer-card.clubs    { background: #1a5a30; }
+
+/* Цвет масти — чуть светлее фона */
+.trainer-card.hearts   .trainer-card-suit { color: #c75555; }
+.trainer-card.spades   .trainer-card-suit { color: #4a7aaa; }
+.trainer-card.diamonds .trainer-card-suit { color: #c08a3a; }
+.trainer-card.clubs    .trainer-card-suit { color: #3a9a5a; }
 
 
 .tree-actions button {
