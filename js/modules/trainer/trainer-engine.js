@@ -24,7 +24,7 @@ const GRID_SIZE = 13;
 // основной матрице в любой пропорции и не недоступна). Значения строятся
 // на каждый вызов, состояние не хранится.
 export function buildTrainingMatrix(nodeId) {
-    const matrix = nodeId ? App.state.cellStorage[App.grid.getTableId(nodeId)] : null;
+    const matrix = nodeId ? App.editor.cellStorage[App.grid.getTableId(nodeId)] : null;
     const node = nodeId ? App.nodes.getNode(nodeId) : null;
     const isSubrange = !!node && node.type === 'subrange';
     const result = [];
@@ -36,7 +36,7 @@ export function buildTrainingMatrix(nodeId) {
             // доступная ячейка — доступна (оверлей в основной матрице это
             // просто перекрывающий блок), поэтому порог строго 0%.
             const disabled = isSubrange &&
-                App.stats.getCellAvailabilityPercent(nodeId, r, c, true, App.state) <= 0;
+                App.stats.getCellAvailabilityPercent(nodeId, r, c, true, App.editor) <= 0;
             // Участие по умолчанию: закрашена в любой пропорции (профиль
             // назначен) и не недоступна.
             const painted = !!matrix && matrix[r][c] !== null && matrix[r][c] !== undefined;
@@ -62,8 +62,8 @@ export function buildTrainingMatrix(nodeId) {
 // ссылки с живым состоянием редактора.
 export function buildTrainerSnapshot(nodeId, toggles) {
     const tableId = App.grid.getTableId(nodeId);
-    const matrix = App.state.cellStorage[tableId];
-    const colors = App.state.colorsPerNode[tableId] || [];
+    const matrix = App.editor.cellStorage[tableId];
+    const colors = App.editor.colorsPerNode[tableId] || [];
     const reflection = buildTrainingMatrix(nodeId);
 
     // Копия матрицы закраски 13×13 (id цвета / null).

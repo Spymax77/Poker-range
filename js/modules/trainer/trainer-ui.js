@@ -144,7 +144,7 @@ function onMouseUp() {
 function setVisible(visible, persist) {
     const changed = setupState.visible !== visible;
     setupState.visible = visible;
-    setupState.nodeId = App.state.currentNodeId;
+    setupState.nodeId = App.editor.currentNodeId;
 
     // В тренировке легенда/статистика анализа не показываются.
     if (visible && App.state.analysisMode) App.state.analysisMode = false;
@@ -212,7 +212,7 @@ export function initTrainingPanel() {
             // Снапшот данных обеих матриц текущего диапазона (закраска +
             // участие с тоглами) уходит в тренажёр отдельным узлом —
             // каждое нажатие создаёт новый узел (см. trainer-store).
-            const nodeId = setupState.nodeId || App.state.currentNodeId;
+            const nodeId = setupState.nodeId || App.editor.currentNodeId;
             if (!nodeId) return;
             const sourceNode = App.nodes.getNode(nodeId);
             // Тоглы относятся к текущему диапазону только если не были
@@ -265,6 +265,6 @@ export function isTrainingPanelVisible() {
 // Обновление отражения при смене диапазона (вызывается из trainer-api).
 export function refreshTrainingPanel() {
     if (!setupState.visible) return;
-    setupState.nodeId = App.state.currentNodeId;
+    setupState.nodeId = App.editor.currentNodeId;
     renderTrainingGrid();
 }

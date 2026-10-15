@@ -10,7 +10,7 @@
 // добавляются в тренажёр из редактора и хранятся в БД.
 
 import { initTrainingPanel, toggleTrainingPanel, setTrainingPanelVisible, isTrainingPanelVisible, refreshTrainingPanel } from './trainer-ui.js';
-import { addTrainerNode, loadTrainerNodes, getTrainerNodes } from './trainer-store.js';
+import { addTrainerNode, loadTrainerNodes, getTrainerNodes, getActiveNodeId, setActiveNodeId } from './trainer-store.js';
 import { renderTrainerPage, removeTrainerNodeAndRefresh } from './trainer-page.js';
 
 // ===== СОСТОЯНИЕ СЕССИИ (заглушки до правой части вкладки «Тренажёр») =====
@@ -90,6 +90,15 @@ App.trainer = {
     // Список узлов тренажёра (для будущей сессии тренировки).
     getNodes: function() {
         return getTrainerNodes();
+    },
+
+    // Активный узел тренажёра (всегда ровно один, персистентно в БД).
+    getActiveNodeId: function() {
+        return getActiveNodeId();
+    },
+
+    setActiveNodeId: function(id) {
+        return setActiveNodeId(id);
     },
 
     // Перерисовать левую панель вкладки «Тренажёр» (вызывается при

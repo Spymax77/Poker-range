@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Table Replica</title>
+    <style>
+        body {
+            background-color: #1e1e1e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Контейнер, который держит всю композицию */
+        .poker-table-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Обертка стола для точного позиционирования от центра */
+        .table-wrapper {
+            position: relative;
+            width: 490px;   /* Ровно 490px по заданию */
+            height: 340px;  /* Пропорциональная высота */
+        }
+
+        /* Форма стола (капсула) */
+        .table-felt {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #3b3d40;
+            border: 3px solid #4a4c4f;
+            border-radius: 130px; /* Форма вытянутого овала */
+            box-sizing: border-box;
+        }
+
+        /* Текст Банка (по центру стола) */
+        .pot-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #d1d1d1;
+            font-size: 16px;
+            font-weight: normal;
+            z-index: 5;
+        }
+
+        /* --- ОБЩИЙ СТИЛЬ ЭЛЕМЕНТОВ --- */
+
+        .player-box {
+            position: absolute;
+            background-color: #1a1a1a;
+            color: white;
+            border-radius: 8px;
+            padding: 4px 0;
+            text-align: center;
+            width: 60px;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 40px;
+            z-index: 10;
+        }
+
+        .player-name {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 2px;
+            color: #e0e0e0;
+        }
+
+        .player-stack {
+            font-size: 12px;
+            color: #ffffff;
+        }
+
+        .bet-chips {
+            position: absolute;
+            display: flex;
+            gap: 2px;
+            z-index: 5;
+        }
+        .chip {
+            width: 20px;
+            height: 13px;
+            background-color: #d68f1e;
+            border-radius: 3px;
+            border: 1px solid #a86e15;
+        }
+
+        .bet-dot {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background-color: #888;
+            border-radius: 50%;
+            box-shadow: inset -2px -2px 4px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            z-index: 5;
+        }
+
+        .cards {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 3px;
+        }
+        .card {
+            width: 22px;
+            height: 32px;
+            background-color: #9b59b6;
+            border: 2px solid #aaa;
+            border-radius: 3px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: rgba(255,255,255,0.4);
+            font-size: 16px;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+
+        .dealer-btn {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #d68f1e;
+            color: #1a1a1a;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 11px;
+            font-weight: bold;
+            z-index: 20;
+            box-shadow: 0 2px 3px rgba(0,0,0,0.5);
+        }
+
+        /* --- ПОЗИЦИИ (ОТ ЦЕНТРА СТОЛА) --- */
+        /* Все элементы позиционируются относительно центра .table-wrapper */
+
+        /* BU (Button) - Сверху по центру */
+        .pos-bu {
+            top: -30px; /* Выше стола */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .pos-bu-chips {
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .pos-bu-dealer {
+            top: -20px;
+            left: 50%;
+            transform: translateX(-160%); /* Смещена влево от BU */
+        }
+
+        /* CO (Cutoff) - Слева сверху */
+        .pos-co {
+            top: 15px;   /* Внутри верхнего края стола */
+            left: -25px; /* Выступает за левый край */
+        }
+        .pos-co-chips {
+            top: -5px;
+            left: -20px;
+        }
+
+        /* SB (Small Blind) - Справа сверху */
+        .pos-sb {
+            top: 15px;
+            right: -25px;
+        }
+        .pos-sb-chips {
+            top: -5px;
+            right: -20px;
+        }
+
+        /* HJ (Hijack) - Слева снизу */
+        .pos-hj {
+            bottom: 15px; /* Симметрично CO */
+            left: -25px;
+        }
+        .pos-hj-chips {
+            bottom: -5px; /* Фишки под игроком */
+            left: -20px;
+        }
+
+        /* BB (Big Blind) - Справа снизу */
+        .pos-bb {
+            bottom: 15px;
+            right: -25px;
+        }
+        .pos-bb-chips {
+            bottom: -5px;
+            right: -20px;
+        }
+
+        /* LJ (Lojack) - Снизу по центру */
+        .pos-lj {
+            bottom: -30px; /* Ниже стола */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Точки ставок (Blinds) */
+        .dot-sb {
+            top: 50%;
+            right: 80px;
+            transform: translateY(-50%);
+        }
+        .dot-bb {
+            top: 50%;
+            right: 80px;
+            transform: translateY(50%);
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="poker-table-container">
+    <div class="table-wrapper">
+        
+        <!-- Стол -->
+        <div class="table-felt"></div>
+        
+        <!-- Банк -->
+        <div class="pot-display">Pot: 1.5</div>
+
+        <!-- Игрок BU (Сверху по центру) -->
+        <div class="bet-chips pos-bu-chips">
+            <div class="chip"></div><div class="chip"></div>
+        </div>
+        <div class="dealer-btn pos-bu-dealer">D</div>
+        <div class="player-box pos-bu">
+            <div class="player-name">BU</div>
+            <div class="player-stack">100</div>
+        </div>
+
+        <!-- Игрок CO (Слева сверху) -->
+        <div class="bet-chips pos-co-chips">
+            <div class="chip"></div><div class="chip"></div>
+        </div>
+        <div class="player-box pos-co">
+            <div class="player-name">CO</div>
+            <div class="player-stack">100</div>
+        </div>
+
+        <!-- Игрок SB (Справа сверху) -->
+        <div class="bet-chips pos-sb-chips">
+            <div class="chip"></div><div class="chip"></div>
+        </div>
+        <div class="player-box pos-sb">
+            <div class="player-name">SB</div>
+            <div class="player-stack">99.5</div>
+        </div>
+
+        <!-- Ставка SB (точка) -->
+        <div class="bet-dot dot-sb">0.5</div>
+
+        <!-- Игрок HJ (Слева снизу) -->
+        <div class="bet-chips pos-hj-chips">
+            <div class="chip"></div><div class="chip"></div>
+        </div>
+        <div class="player-box pos-hj">
+            <div class="player-name">HJ</div>
+            <div class="player-stack">100</div>
+        </div>
+
+        <!-- Игрок BB (Справа снизу) -->
+        <div class="bet-chips pos-bb-chips">
+            <div class="chip"></div><div class="chip"></div>
+        </div>
+        <div class="player-box pos-bb">
+            <div class="player-name">BB</div>
+            <div class="player-stack">99</div>
+        </div>
+
+        <!-- Ставка BB (точка) -->
+        <div class="bet-dot dot-bb">1</div>
+
+        <!-- Игрок LJ (Снизу по центру) -->
+        <div class="player-box pos-lj">
+            <div class="cards">
+                <div class="card">L</div>
+                <div class="card">L</div>
+            </div>
+            <div class="player-name">LJ</div>
+            <div class="player-stack">100</div>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>

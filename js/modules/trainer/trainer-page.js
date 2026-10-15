@@ -8,7 +8,8 @@
 // поведение меню переиспользуются из styles/components.css без изменений.
 // Правая часть вкладки пока пустая (под будущую матрицу тренажёра).
 
-import { getTrainerNodes, removeTrainerNode } from './trainer-store.js';
+import { getTrainerNodes, removeTrainerNode, getActiveNodeId, setActiveNodeId } from './trainer-store.js';
+import { renderTrainerTable } from './trainer-table.js';
 
 // Иконка «шапочка учёного» — тот же SVG, что у #trainingModeBtn (index.html).
 const CAP_ICON_SVG = '<svg viewBox="0.2 4.3 16.6 11.3">' +
@@ -22,8 +23,7 @@ const DOTS_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3
     '<path d="M12 21C13.1046 21 14 20.1046 14 19C14 17.8954 13.1046 17 12 17C10.8954 17 10 17.8954 10 19C10 20.1046 10.8954 21 12 21Z" fill="currentColor"/>' +
     '</svg>';
 
-// Выбранный узел (подсветка .tree-item.active).
-let selectedNodeId = null;
+// (selectedNodeId удалён: активный узел теперь в trainer-store, персистентно в БД)
 
 // ===== POPUP-МЕНЮ УЗЛА (один пункт — «Удалить из тренировки») =====
 // Логика открытия/закрытия повторяет buildTreeNodeActions (tree-render.js):
@@ -142,7 +142,7 @@ function buildNodeItem(node) {
     nodeDiv.className = 'tree-node';
 
     const itemDiv = document.createElement('div');
-    itemDiv.className = 'tree-item' + (selectedNodeId === node.id ? ' active' : '');
+    itemDiv.className = 'tree-item' + (getActiveNodeId() === node.id ? ' active' : '');
     itemDiv.dataset.trainerId = node.id;
 
     const nameSpan = document.createElement('span');
@@ -160,7 +160,7 @@ function buildNodeItem(node) {
     // вкладки пустая до будущего тренажёра).
     itemDiv.onclick = (e) => {
         if (e.target.closest('.tree-actions-popup')) return;
-        selectedNodeId = node.id;
+        setActiveNodeId(node.id);
         renderTrainerPage();
     };
 
@@ -180,18 +180,23 @@ export function renderTrainerPage() {
         hint.className = 'trainer-empty-hint';
         hint.textContent = App.i18n.t('trainer.empty');
         container.appendChild(hint);
+        // Очищаем правую панель
+        renderTrainerTable();
         return;
     }
 
     for (const node of nodes) {
         container.appendChild(buildNodeItem(node));
     }
+
+    // Рисуем стол и кнопки для активного узла
+    renderTrainerTable();
 }
 
 // Удалить узел из тренировки (шаг после подтверждения в меню узла).
+// Корректировка активного узла выполняется внутри removeTrainerNode (store).
 export function removeTrainerNodeAndRefresh(id) {
     const removed = removeTrainerNode(id);
-    if (removed && selectedNodeId === id) selectedNodeId = null;
     renderTrainerPage();
     return removed;
 }

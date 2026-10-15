@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>минимализм · карты · масть в тон фона</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0e0e12;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
+      padding: 20px;
+    }
+
+    .cards-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      max-width: 1000px;
+    }
+
+    /* ---------- базовая карта ---------- */
+    .card {
+      width: 180px;
+      height: 260px;
+      border-radius: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      box-shadow: 
+        0 20px 30px -10px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
+      transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.3s;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-12px) scale(1.02);
+      box-shadow: 
+        0 30px 40px -12px black,
+        0 0 0 1px rgba(255, 255, 255, 0.15);
+    }
+
+    /* ---------- значек масти ВВЕРХУ СЛЕВА, в 2 раза крупнее ---------- */
+    .suit-badge {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      font-size: 56px;          /* в 2 раза крупнее */
+      line-height: 1;
+      user-select: none;
+      transition: transform 0.2s;
+      font-weight: 400;
+      z-index: 2;
+    }
+
+    /* номинал — по-прежнему доминирует, по центру */
+    .rank-display {
+      font-size: 170px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -8px;
+      text-align: center;
+      user-select: none;
+      transform: scale(0.95);
+      transition: transform 0.2s;
+      font-family: 'Inter', 'Arial Black', sans-serif;
+      text-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      color: #dedede;           /* цвет номинала — dedede */
+    }
+
+    .card:hover .rank-display {
+      transform: scale(1.0);
+    }
+
+    .card:hover .suit-badge {
+      transform: scale(1.05);
+    }
+
+    /* ---------- 4 ЦВЕТА ФОНА = ЦВЕТ МАСТИ ---------- */
+
+    .card.hearts {
+      background: #c92a2a;
+      background: linear-gradient(145deg, #d63b3b, #b31f1f);
+    }
+
+    .card.spades {
+      background: #1b3a5c;
+      background: linear-gradient(145deg, #234b73, #132a40);
+    }
+
+    .card.diamonds {
+      background: #d97706;
+      background: linear-gradient(145deg, #e88a1a, #b85f00);
+    }
+
+    .card.clubs {
+      background: #1e7a3c;
+      background: linear-gradient(145deg, #2a944a, #135a28);
+    }
+
+    /* ---------- ЦВЕТ МАСТИ = ЦВЕТ КАРТЫ, НО СВЕТЛЕЕ ---------- */
+
+    /* Черви — светлее красного фона */
+    .card.hearts .suit-badge {
+      color: #f07070;
+    }
+
+    /* Пики — светлее синего фона */
+    .card.spades .suit-badge {
+      color: #5a8fc0;
+    }
+
+    /* Бубны — светлее оранжевого фона */
+    .card.diamonds .suit-badge {
+      color: #f5b855;
+    }
+
+    /* Трефы — светлее зелёного фона */
+    .card.clubs .suit-badge {
+      color: #5cc07a;
+    }
+
+    /* ---------- адаптив ---------- */
+    @media (max-width: 850px) {
+      .cards-grid {
+        gap: 20px;
+      }
+
+      .card {
+        width: 150px;
+        height: 215px;
+        border-radius: 16px;
+      }
+
+      .suit-badge {
+        font-size: 46px;
+        top: 13px;
+        left: 16px;
+      }
+
+      .rank-display {
+        font-size: 140px;
+        letter-spacing: -6px;
+      }
+    }
+
+    @media (max-width: 650px) {
+      .card {
+        width: 120px;
+        height: 172px;
+        border-radius: 14px;
+      }
+
+      .suit-badge {
+        font-size: 38px;
+        top: 10px;
+        left: 13px;
+      }
+
+      .rank-display {
+        font-size: 112px;
+        letter-spacing: -5px;
+      }
+    }
+
+    @media (max-width: 500px) {
+      .cards-grid {
+        gap: 14px;
+      }
+
+      .card {
+        width: 95px;
+        height: 136px;
+        border-radius: 12px;
+      }
+
+      .suit-badge {
+        font-size: 30px;
+        top: 8px;
+        left: 10px;
+      }
+
+      .rank-display {
+        font-size: 86px;
+        letter-spacing: -3px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .card {
+        width: 80px;
+        height: 115px;
+      }
+
+      .suit-badge {
+        font-size: 26px;
+        top: 6px;
+        left: 8px;
+      }
+
+      .rank-display {
+        font-size: 72px;
+        letter-spacing: -3px;
+      }
+    }
+
+    /* подпись для тренера — очень сдержанная */
+    .trainer-caption {
+      position: fixed;
+      bottom: 18px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 12px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      font-weight: 400;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="cards-grid">
+    <!-- ЧЕРВИ: красный фон, масть ♥ в тон фона (светлее) -->
+    <div class="card hearts">
+      <div class="suit-badge">♥</div>
+      <div class="rank-display">A</div>
+    </div>
+
+    <!-- ПИКИ: синий фон, масть ♠ в тон фона (светлее) -->
+    <div class="card spades">
+      <div class="suit-badge">♠</div>
+      <div class="rank-display">K</div>
+    </div>
+
+    <!-- БУБНЫ: оранжевый фон, масть ♦ в тон фона (светлее) -->
+    <div class="card diamonds">
+      <div class="suit-badge">♦</div>
+      <div class="rank-display">Q</div>
+    </div>
+
+    <!-- ТРЕФЫ: зелёный фон, масть ♣ в тон фона (светлее) -->
+    <div class="card clubs">
+      <div class="suit-badge">♣</div>
+      <div class="rank-display">J</div>
+    </div>
+  </div>
+
+  <div class="trainer-caption">poker trainer · 4 suits</div>
+</body>
+</html>
