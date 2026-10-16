@@ -9,7 +9,7 @@
 // Правая часть вкладки пока пустая (под будущую матрицу тренажёра).
 
 import { getTrainerNodes, removeTrainerNode, getActiveNodeId, setActiveNodeId } from './trainer-store.js';
-import { renderTrainerTable } from './trainer-table.js';
+import { renderTrainerTable, resetTrainingState } from './trainer-table.js';
 
 // Иконка «шапочка учёного» — тот же SVG, что у #trainingModeBtn (index.html).
 const CAP_ICON_SVG = '<svg viewBox="0.2 4.3 16.6 11.3">' +
@@ -190,6 +190,8 @@ export function renderTrainerPage() {
     }
 
     // Рисуем стол и кнопки для активного узла
+    // (сброс состояния тренировки — показывается кнопка «Начать тренировку»)
+    resetTrainingState();
     renderTrainerTable();
 }
 
