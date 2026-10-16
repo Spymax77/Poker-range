@@ -25,7 +25,7 @@
 import { getTrainerNodes, getActiveNodeId } from './trainer-store.js';
 import { generateDeal, renderCards } from './trainer-cards.js';
 import { getCorrectAnswer, FOLD_ACTION } from './trainer-engine.js';
-import { recordAnswer, renderStats, flushStats } from './trainer-stats.js';
+import { recordAnswer, renderStats, renderHands, flushStats } from './trainer-stats.js';
 
 // --- Состояние ---
 var trainingActiveNodeId = null;
@@ -53,10 +53,16 @@ function dealNewHand(node) {
 }
 
 // Ответ на текущую раздачу: оценка по броску ГСЧ → статистика → новая рука.
-function submitAnswer(node, actionId) {
+// actionName — подпись нажатой кнопки (для истории рук).
+function submitAnswer(node, actionId, actionName) {
     if (!currentDeal || currentRoll === null) return;
     var correctId = getCorrectAnswer(node, currentDeal.row, currentDeal.col, currentRoll);
-    recordAnswer(node.id, actionId === correctId);
+    var correct = actionId === correctId;
+    // История рук: карты раздачи + выбранное действие (+ вердикт).
+    recordAnswer(node.id, correct, {
+        cards: currentDeal.cards.map(function(c) { return { rank: c.rank, suit: c.suit }; }),
+        action: actionName
+    });
     dealNewHand(node);
     renderTrainerTable();
 }
@@ -230,7 +236,7 @@ export function renderTrainerTable() {
             b.style.borderColor = a.color; b.style.color = '#a9afb5';
             b.addEventListener('mouseenter', function() { b.style.background = a.color + '18'; });
             b.addEventListener('mouseleave', function() { b.style.background = 'transparent'; });
-            b.addEventListener('click', function() { submitAnswer(activeNode, a.id); });
+            b.addEventListener('click', function() { submitAnswer(activeNode, a.id, a.name); });
             btnRow.appendChild(b);
         });
     } else {
@@ -268,6 +274,9 @@ export function renderTrainerTable() {
             renderTrainerTable();
         });
         statsCol.appendChild(endBtn);
+        // Второй блок: история рук нарастающим итогом (под «Закончить
+        // тренировку»), с галкой свернуть/развернуть и анимацией-шторкой.
+        renderHands(statsCol, activeNode.id);
         content.appendChild(statsCol);
     }
     // --- Правая колонка: матрица (если видима) ---

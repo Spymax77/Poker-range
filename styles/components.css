@@ -863,12 +863,16 @@
 }
 
 /* ===== СТАТИСТИКА ТРЕНИРОВКИ (справа от стола, зона матрицы) ===== */
+/* Зазор «стол ↔ статистика» = 46px — как от tree-resize-handle до блока
+   стола (замер вживую: 46px), для симметрии. Gap .trainer-content-wrapper
+   даёт 20px, margin добавляет оставшиеся 26px. */
 .trainer-stats-col {
     display: flex;
     flex-direction: column;
     gap: 12px;
     min-width: 240px;
     padding-top: 20px;
+    margin-left: 26px;
 }
 
 .trainer-stats-row {
@@ -938,6 +942,135 @@
 .trainer-end-btn:hover {
     color: #e5eaf0;
     text-decoration: underline;
+}
+
+/* ===== ВТОРАЯ ПОЛОВИНА СТАТИСТИКИ: ИСТОРИЯ РУК ===== */
+/* Разделитель-галка между блоками: клик сворачивает/разворачивает историю.
+   Шеврон (∨): свёрнуто — вершина вниз, развёрнуто — rotate(180°), вершина вверх. */
+.trainer-hands-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    margin: 14px 0 10px;
+    color: #8d9aa8;
+}
+
+.trainer-hands-divider:hover {
+    color: #e5eaf0;
+}
+
+.trainer-hands-divider .line {
+    flex: 1;
+    height: 1px;
+    background: #3a3d45;
+    margin: 0 10px;
+}
+
+.trainer-hands-divider .chev {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+}
+
+.trainer-hands-divider .chev svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.25s ease;
+    transform: rotate(180deg); /* развёрнуто: вершина вверх */
+}
+
+.trainer-hands-divider.collapsed .chev svg {
+    transform: rotate(0deg);   /* свёрнуто: вершина вниз */
+}
+
+/* «Шторка» истории: height-transition выезжает сверху вниз и заезжает наверх */
+.trainer-hands-wrap {
+    overflow: hidden;
+    transition: height 0.3s ease;
+}
+
+.trainer-hands-list {
+    border-top: 1px solid #3a3d45;
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Строка истории: мини-карты → действие → кружок вердикта */
+.trainer-hand-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    background: #2a2d33;
+    border: 1px solid #3a3d45;
+    border-radius: 6px;
+}
+
+.trainer-hand-cards {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+/* Мини-карты истории — те же фирменные цвета мастей, что .trainer-card */
+.trainer-hand-card {
+    position: relative;
+    width: 30px;
+    height: 42px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, .25);
+    font-weight: 700;
+    font-size: 16px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.trainer-hand-card .suit {
+    position: absolute;
+    top: 1px;
+    left: 3px;
+    font-size: 9px;
+}
+
+.trainer-hand-card.hearts   { background: #9b2e2e; }
+.trainer-hand-card.spades   { background: #1a3350; }
+.trainer-hand-card.diamonds { background: #8a5a1a; }
+.trainer-hand-card.clubs    { background: #1a5a30; }
+
+.trainer-hand-card.hearts   .suit { color: #c75555; }
+.trainer-hand-card.spades   .suit { color: #4a7aaa; }
+.trainer-hand-card.diamonds .suit { color: #c08a3a; }
+.trainer-hand-card.clubs    .suit { color: #3a9a5a; }
+
+.trainer-hand-action {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e5eaf0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Кружок вердикта: зелёный — верный ответ, красный — ошибка */
+.trainer-hand-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: #e55656;
+}
+
+.trainer-hand-dot.ok {
+    background: #79a65a;
 }
 
 .trainer-grid-btn.toolbar-btn.active {

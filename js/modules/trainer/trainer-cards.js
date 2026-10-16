@@ -16,6 +16,9 @@ var SUITS = ['s', 'h', 'd', 'c'];
 var SUIT_SYMBOL = { s: '♠', h: '♥', d: '♦', c: '♣' };
 var SUIT_CLASS  = { s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' };
 
+// Масти/символы — общий маппинг (мини-карты истории в trainer-stats.js).
+export { SUIT_SYMBOL, SUIT_CLASS };
+
 // ===== ПОЛНАЯ КОЛОДА (52 карты) =====
 function buildDeck() {
     var deck = [];

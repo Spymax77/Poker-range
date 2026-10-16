@@ -1,11 +1,13 @@
 // ===== trainer-stats.js — статистика тренировки узла: счётчики + БД =====
 // Накопительная статистика ответов по каждому узлу тренажёра:
-//   всего рук (total), верных ответов (correct), ошибок (wrong).
-// Всего рук = correct + wrong: прерванные раздачи (не нажат ответ) не считаются.
+//   всего рук (total), верных ответов (correct), ошибок (wrong),
+//   история рук (hands): { cards, action, correct } — нарастающим итогом,
+//   новые сверху. Всего рук = correct + wrong: прерванные раздачи
+//   (не нажат ответ) не считаются.
 // Хранение — отдельным ключом poker_range_trainer_stats одним объектом
-//   { [nodeId]: { total, correct, wrong, updatedAt } } — паттерн btn_styles_all
-// (style-manager.js): статистика не должна перетирать список узлов
-// (poker_range_trainer_nodes). Пустой объект — удаление ключа.
+//   { [nodeId]: { total, correct, wrong, hands, updatedAt } } — паттерн
+// btn_styles_all (style-manager.js): статистика не должна перетирать список
+// узлов (poker_range_trainer_nodes). Пустой объект — удаление ключа.
 //
 // ВАЖНО (ТЗ): во время тренировки ответы накапливаются ТОЛЬКО в памяти,
 // в БД статистика пишется ОДНИМ запросом по кнопке «Закончить тренировку»
@@ -15,6 +17,8 @@
 // счётчики живут в памяти сессии.
 // Удаление узла тренажёра вычищает его статистику (см. clearNodeStats).
 
+import { SUIT_SYMBOL, SUIT_CLASS } from './trainer-cards.js';
+
 const STORAGE_KEY = 'poker_range_trainer_stats';
 
 // Состояние вне DOM: { [nodeId]: { total, correct, wrong, updatedAt } }
@@ -22,12 +26,25 @@ let statsByNodeId = {};
 // Узлы с несохранёнными ответами (пишутся по «Закончить тренировку»).
 let dirtyNodeIds = new Set();
 
+function normalizeHand(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    if (!Array.isArray(raw.cards) || raw.cards.length !== 2) return null;
+    return {
+        cards: raw.cards.map(function(c) {
+            return { rank: String((c && c.rank) || ''), suit: String((c && c.suit) || '') };
+        }),
+        action: String(raw.action || ''),
+        correct: !!raw.correct
+    };
+}
+
 function normalizeEntry(raw) {
     if (!raw || typeof raw !== 'object') return null;
     return {
         total: Number(raw.total) || 0,
         correct: Number(raw.correct) || 0,
         wrong: Number(raw.wrong) || 0,
+        hands: Array.isArray(raw.hands) ? raw.hands.map(normalizeHand).filter(Boolean) : [],
         updatedAt: Number(raw.updatedAt) || 0
     };
 }
@@ -85,19 +102,34 @@ export function getStats(nodeId) {
         : { total: 0, correct: 0, wrong: 0 };
 }
 
+// История рук узла (копия массива, новые сверху).
+export function getHands(nodeId) {
+    const entry = nodeId ? statsByNodeId[nodeId] : null;
+    return entry && Array.isArray(entry.hands) ? entry.hands.slice() : [];
+}
+
 // Учесть один отвеченный разбор: correct — верный ответ был или нет.
+// hand — данные раздачи для истории: { cards: [{rank,suit},…], action }.
 // ТОЛЬКО память (см. шапку файла): запись в БД — по кнопке
 // «Закончить тренировку» (flushStats), не на каждый ответ.
-export function recordAnswer(nodeId, correct) {
+export function recordAnswer(nodeId, correct, hand) {
     if (!nodeId) return getStats(nodeId);
     let entry = statsByNodeId[nodeId];
     if (!entry) {
-        entry = { total: 0, correct: 0, wrong: 0, updatedAt: 0 };
+        entry = { total: 0, correct: 0, wrong: 0, hands: [], updatedAt: 0 };
         statsByNodeId[nodeId] = entry;
     }
+    if (!Array.isArray(entry.hands)) entry.hands = [];
     entry.total += 1;
     if (correct) entry.correct += 1;
     else entry.wrong += 1;
+    // История рук: нарастающим итогом, новая рука — сверху списка.
+    const normalized = normalizeHand({
+        cards: hand && hand.cards,
+        action: hand && hand.action,
+        correct: correct
+    });
+    if (normalized) entry.hands.unshift(normalized);
     entry.updatedAt = Date.now();
     dirtyNodeIds.add(nodeId);
     return { total: entry.total, correct: entry.correct, wrong: entry.wrong };
@@ -171,4 +203,106 @@ export function renderStats(container, nodeId) {
     scaleDiv.appendChild(scaleLabel);
     scaleDiv.appendChild(barTrack);
     container.appendChild(scaleDiv);
+}
+
+// ===== ВТОРАЯ ПОЛОВИНА: ИСТОРИЯ РУК (нарастающим итогом) =====
+// Ниже блока статистики — разделитель с галкой (свернуть/развернуть) и
+// список рук: мини-карты раздачи, выбранное действие, кружок (зелёный —
+// верный ответ, красный — ошибка). Новые руки — сверху списка.
+// Галка-шеврон: свёрнуто — вершиной вниз, развёрнуто — вершиной вверх.
+// Блок выезжает «шторкой» сверху вниз и заезжает обратно наверх
+// (height-transition, а не мгновенное появление/исчезновение).
+// Состояние галки (handsCollapsed) переживает перерисовки страницы.
+
+let handsCollapsed = false;
+
+// SVG-галка: базовый путь «вершина вниз» (∨), развёрнуто — rotate(180°).
+const CHEVRON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="3" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M5 9l7 7 7-7"/></svg>';
+
+// Строка истории: две мини-карты → действие → кружок вердикта.
+function buildHandRow(hand) {
+    const row = document.createElement('div');
+    row.className = 'trainer-hand-row';
+
+    const cards = document.createElement('div');
+    cards.className = 'trainer-hand-cards';
+    hand.cards.forEach(function(card) {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'trainer-hand-card ' + (SUIT_CLASS[card.suit] || '');
+        const suitSpan = document.createElement('span');
+        suitSpan.className = 'suit';
+        suitSpan.textContent = SUIT_SYMBOL[card.suit] || '';
+        cardDiv.appendChild(suitSpan);
+        cardDiv.appendChild(document.createTextNode(card.rank));
+        cards.appendChild(cardDiv);
+    });
+
+    const action = document.createElement('div');
+    action.className = 'trainer-hand-action';
+    action.textContent = hand.action;
+
+    const dot = document.createElement('div');
+    dot.className = 'trainer-hand-dot' + (hand.correct ? ' ok' : '');
+
+    row.appendChild(cards);
+    row.appendChild(action);
+    row.appendChild(dot);
+    return row;
+}
+
+// «Шторка» истории: высота анимируется от/к высоте содержимого.
+// collapse=true — блок заезжает наверх, false — выезжает сверху вниз.
+function slideHands(wrap, collapse) {
+    if (collapse) {
+        // Текущая высота → 0: содержимое уезжает вверх под разделитель.
+        wrap.style.height = wrap.scrollHeight + 'px';
+        void wrap.offsetHeight; // reflow: transition должен стартовать с этой высоты
+        wrap.style.height = '0px';
+    } else {
+        // 0 → высота содержимого: блок выезжает сверху вниз.
+        wrap.style.height = '0px';
+        void wrap.offsetHeight;
+        wrap.style.height = wrap.scrollHeight + 'px';
+        wrap.addEventListener('transitionend', function done(e) {
+            if (e.propertyName !== 'height') return;
+            wrap.removeEventListener('transitionend', done);
+            // auto — чтобы список мог расти дальше без пересчёта высоты.
+            wrap.style.height = 'auto';
+        });
+    }
+}
+
+// Рендер разделителя-галки и истории рук под блоком статистики.
+export function renderHands(container, nodeId) {
+    if (!container) return;
+
+    // --- Разделитель с галкой (между двумя блоками) ---
+    const divider = document.createElement('div');
+    divider.className = 'trainer-hands-divider' + (handsCollapsed ? ' collapsed' : '');
+    divider.innerHTML = '<span class="line"></span>' +
+        '<span class="chev">' + CHEVRON_SVG + '</span>' +
+        '<span class="line"></span>';
+
+    // --- Шторка истории рук ---
+    const wrap = document.createElement('div');
+    wrap.className = 'trainer-hands-wrap';
+    const list = document.createElement('div');
+    list.className = 'trainer-hands-list';
+    getHands(nodeId).forEach(function(hand) {
+        list.appendChild(buildHandRow(hand));
+    });
+    wrap.appendChild(list);
+    // Текущее состояние — без анимации (анимирует только клик по галке).
+    wrap.style.height = handsCollapsed ? '0px' : 'auto';
+
+    divider.addEventListener('click', function() {
+        handsCollapsed = !handsCollapsed;
+        divider.classList.toggle('collapsed', handsCollapsed);
+        slideHands(wrap, handsCollapsed);
+    });
+
+    container.appendChild(divider);
+    container.appendChild(wrap);
 }
