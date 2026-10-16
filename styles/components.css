@@ -834,6 +834,112 @@
     color: #dedede;
 }
 
+/* ===== ГСЧ ТРЕНАЖЁРА (между столом и кнопками действий) ===== */
+/* Строка прижата к левому краю стола (493px = ширина .trainer-table-surface),
+   подпись «ГСЧ» перед числом. Значение фиксируется на раздачу: клик по нему
+   НЕ перебрасывает (в отличие от .rng-widget во вкладке «Просмотр»). */
+.trainer-rng-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 493px;
+    justify-content: flex-start;
+}
+
+.trainer-rng-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.trainer-rng-row .trainer-rng-value {
+    cursor: default;
+}
+
+.trainer-rng-row .trainer-rng-value:hover {
+    background: var(--bg-button);
+    transform: none;
+}
+
+/* ===== СТАТИСТИКА ТРЕНИРОВКИ (справа от стола, зона матрицы) ===== */
+.trainer-stats-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 240px;
+    padding-top: 20px;
+}
+
+.trainer-stats-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    color: #a9afb5;
+    font-size: 14px;
+}
+
+.trainer-stats-row--correct .trainer-stats-value {
+    color: #79a65a;
+}
+
+.trainer-stats-row--wrong .trainer-stats-value {
+    color: #e55656;
+}
+
+.trainer-stats-value {
+    color: #e5eaf0;
+    font-weight: 600;
+}
+
+/* Шкала % верных ответов */
+.trainer-stats-scale {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.trainer-stats-scale-label {
+    color: #e5eaf0;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.trainer-stats-scale-track {
+    height: 10px;
+    background: #2a2d33;
+    border: 1px solid #3a3d45;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.trainer-stats-scale-fill {
+    height: 100%;
+    background: #79a65a;
+    border-radius: 4px;
+    transition: width 0.2s ease;
+}
+
+/* Кнопка «Закончить тренировку» — текстом, без плашки (ниже шкалы).
+   По ней статистика тренировки пишется в БД одним запросом. */
+.trainer-end-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    font-size: 14px;
+    color: #a9afb5;
+    cursor: pointer;
+    text-align: left;
+    transition: color 0.15s ease;
+}
+
+.trainer-end-btn:hover {
+    color: #e5eaf0;
+    text-decoration: underline;
+}
+
 .trainer-grid-btn.toolbar-btn.active {
     background: #3a3d45;
     color: #dedede;

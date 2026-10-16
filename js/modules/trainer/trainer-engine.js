@@ -102,3 +102,37 @@ export function buildTrainerSnapshot(nodeId, toggles) {
         disabled: disabled
     };
 }
+
+// ===== ОЦЕНКА ОТВЕТА ПО БРОСКУ ГСЧ (1..100) =====
+// Мульти-профиль ячейки всегда состоит из простых цветов (компонентов) и,
+// возможно, «без цвета» = фолд. Корзины берутся из App.colors.getPositions —
+// тех же границ, которыми рисуется заливка (applySnapshotFill):
+//   компонент i занимает (positions[i-1], positions[i]],
+//   остаток до 100 (positions[last] < 100) — фолд.
+// Пример: рейз 25% + фолд 75% → roll 1..25 = верный «рейз», 26..100 = «фолд».
+// Простой цвет (или незакрашенная ячейка) — корзина одна: действие / фолд.
+// Возвращает id действия (простого цвета) либо FOLD_ACTION.
+
+export const FOLD_ACTION = 'fold';
+
+export function getCorrectAnswer(node, row, col, roll) {
+    if (!node || !node.matrix || !node.matrix[row]) return FOLD_ACTION;
+    const profileId = node.matrix[row][col];
+    const profile = (node.colors || []).find(function(c) { return c.id === profileId; }) || null;
+    if (!profile) return FOLD_ACTION; // незакрашенная ячейка — всегда фолд
+
+    // Простой цвет: ячейка целиком одного действия.
+    if (profile.type === 'simple' || (!profile.type && profile.color)) {
+        return profile.id;
+    }
+
+    // Мульти-профиль: корзины компонентов, остаток до 100 — фолд.
+    const components = profile.components || [];
+    const positions = App.colors.getPositions(profile); // как у заливки
+    for (let i = 0; i < components.length; i++) {
+        if (roll <= (positions[i] || 0)) {
+            return components[i].colorId;
+        }
+    }
+    return FOLD_ACTION;
+}

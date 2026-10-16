@@ -2,14 +2,18 @@
 // Плоский список узлов тренажёра (см. trainer-store). Каждый узел:
 //   - иконка «шапочка учёного» (как кнопка «Режим тренировки» в редакторе),
 //   - имя узла — копия названия исходного диапазона на момент добавления,
-//   - кнопка «три точки» → popup-меню (как в дереве редактора) с пунктом
-//     «Удалить из тренировки».
+//   - кнопка «три точки» → popup-меню (как в дереве редактора) с пунктами
+//     «Сбросить статистику» и «Удалить из тренировки».
 // Разметка повторяет дерево (tree-node/tree-item/popup-menu) — стили и
 // поведение меню переиспользуются из styles/components.css без изменений.
-// Правая часть вкладки пока пустая (под будущую матрицу тренажёра).
+// Правая часть вкладки — стол, ГСЧ, кнопки действий и статистика
+// (см. trainer-table.js). Состояние тренировки при рендере НЕ сбрасывается:
+// сессия переживает переключение вкладок (сравнение
+// trainingActiveNodeId === activeNodeId в trainer-table.js).
 
 import { getTrainerNodes, removeTrainerNode, getActiveNodeId, setActiveNodeId } from './trainer-store.js';
-import { renderTrainerTable, resetTrainingState } from './trainer-table.js';
+import { renderTrainerTable } from './trainer-table.js';
+import { resetStats } from './trainer-stats.js';
 
 // Иконка «шапочка учёного» — тот же SVG, что у #trainingModeBtn (index.html).
 const CAP_ICON_SVG = '<svg viewBox="0.2 4.3 16.6 11.3">' +
@@ -40,6 +44,17 @@ function buildNodeActions(node) {
     const popupMenu = document.createElement('div');
     popupMenu.className = 'popup-menu';
     popupMenu.style.display = 'none';
+
+    const resetStatsBtn = document.createElement('button');
+    resetStatsBtn.innerHTML = '<span class="menu-icon"></span><span class="menu-text">' +
+        App.i18n.t('trainer.resetStats') + '</span>';
+    resetStatsBtn.onclick = (e) => {
+        e.stopPropagation();
+        closeMenu();
+        resetStats(node.id);
+        renderTrainerPage();
+    };
+    popupMenu.appendChild(resetStatsBtn);
 
     const removeBtn = document.createElement('button');
     removeBtn.innerHTML = '<span class="menu-icon"></span><span class="menu-text">' +
@@ -189,9 +204,10 @@ export function renderTrainerPage() {
         container.appendChild(buildNodeItem(node));
     }
 
-    // Рисуем стол и кнопки для активного узла
-    // (сброс состояния тренировки — показывается кнопка «Начать тренировку»)
-    resetTrainingState();
+    // Рисуем стол, ГСЧ, кнопки действий и статистику для активного узла.
+    // Состояние тренировки НЕ сбрасываем: активная сессия переживает
+    // переключение вкладок (сравнение trainingActiveNodeId === activeNodeId
+    // в trainer-table.js само покажет «Начать тренировку» при смене узла).
     renderTrainerTable();
 }
 

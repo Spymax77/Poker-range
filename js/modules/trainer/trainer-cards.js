@@ -1,6 +1,9 @@
 // ===== trainer-cards.js — колода, руки и рендер карт на столе тренажёра =====
 // Генерирует 52 карты, извлекает «участвующие» руки из participation-матрицы
 // узла тренажёра, выбирает случайную и рендерит пару карт на позиции HERO.
+// Генерация раздачи (generateDeal) отделена от рендера (renderCards):
+// раздача возвращает руку С координатами ячейки (row/col) — по ним движок
+// определяет верный ответ по броску ГСЧ (см. trainer-engine.getCorrectAnswer).
 //
 // Матрица participation (13×13): строки/столбцы = A,K,Q,J,T,9,8,7,6,5,4,3,2.
 //   r == c  → пара   (AA, KK, …)
@@ -43,25 +46,21 @@ function getParticipatingHands(participation, disabled) {
             if (!participation || !participation[r] || !participation[r][c]) continue;
 
             if (r === c) {
-                hands.push({ rank1: RANKS[r], rank2: RANKS[c], type: 'pair' });
+                hands.push({ rank1: RANKS[r], rank2: RANKS[c], type: 'pair', row: r, col: c });
             } else if (r < c) {
                 // Старший ранг первым (row — старший)
-                hands.push({ rank1: RANKS[r], rank2: RANKS[c], type: 'suited' });
+                hands.push({ rank1: RANKS[r], rank2: RANKS[c], type: 'suited', row: r, col: c });
             } else {
                 // Offsuit: c < r, значит RANKS[c] старше — он первым
-                hands.push({ rank1: RANKS[c], rank2: RANKS[r], type: 'offsuit' });
+                hands.push({ rank1: RANKS[c], rank2: RANKS[r], type: 'offsuit', row: r, col: c });
             }
         }
     }
     return hands;
 }
 
-// ===== ВЫБОР СЛУЧАЙНОЙ РУКИ И ГЕНЕРАЦИЯ ПАРЫ КАРТ =====
-function pickRandomHandCards(participation, disabled) {
-    var hands = getParticipatingHands(participation, disabled);
-    if (hands.length === 0) return null;
-
-    var hand = hands[Math.floor(Math.random() * hands.length)];
+// ===== ГЕНЕРАЦИЯ ПАРЫ КАРТ ДЛЯ РУКИ =====
+function handToCards(hand) {
     var deck = shuffle(buildDeck());
 
     if (hand.type === 'pair') {
@@ -85,20 +84,39 @@ function pickRandomHandCards(participation, disabled) {
         ];
     }
 
-    // Разномастные: разные масти
+    // Разномастные: разные масти (в колоде 4 РАЗНЫЕ масти — дубль невозможен)
     var suits = shuffle(SUITS.slice());
     return [
         { rank: hand.rank1, suit: suits[0] },
-        { rank: hand.rank2, suit: suits[1] === suits[0] ? suits[2] : suits[1] }
+        { rank: hand.rank2, suit: suits[1] }
     ];
 }
 
-// ===== РЕНДЕР ПАРЫ КАРТ (DOM) =====
-export function renderCards(container, participation, disabled) {
-    container.innerHTML = '';
+// ===== РАЗДАЧА =====
+// Случайная участвующая рука + её карты + координаты ячейки (row/col).
+// null — участвующих рук нет (пустой participation).
+export function generateDeal(participation, disabled) {
+    var hands = getParticipatingHands(participation, disabled);
+    if (hands.length === 0) return null;
 
-    var cards = pickRandomHandCards(participation, disabled);
-    if (!cards) return;
+    var hand = hands[Math.floor(Math.random() * hands.length)];
+    var cards = handToCards(hand);
+    if (!cards) return null;
+
+    return {
+        rank1: hand.rank1,
+        rank2: hand.rank2,
+        type: hand.type,
+        row: hand.row,
+        col: hand.col,
+        cards: cards
+    };
+}
+
+// ===== РЕНДЕР ПАРЫ КАРТ (DOM) =====
+export function renderCards(container, cards) {
+    container.innerHTML = '';
+    if (!cards || cards.length === 0) return;
 
     for (var i = 0; i < cards.length; i++) {
         var card = cards[i];

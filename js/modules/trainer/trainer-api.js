@@ -2,39 +2,40 @@
 // Раскладка модулей:
 //   trainer-api.js     ← точка входа, App.trainer (этот файл)
 //   trainer-engine.js  ← отражение основной матрицы + снапшот данных узла
+//                        + оценка ответа по броску ГСЧ (getCorrectAnswer)
 //   trainer-ui.js      ← панель настройки тренировки в редакторе
 //   trainer-store.js   ← узлы тренажёра: состояние и сохранение в БД
+//   trainer-stats.js   ← статистика тренировки узла: счётчики + БД
 //   trainer-page.js    ← левая панель вкладки «Тренажёр» (список узлов)
-//   trainer-stats.js   ← статистика сессии (будет)
-// Сама тренировка (правая часть вкладки) будет позже — сейчас узлы
-// добавляются в тренажёр из редактора и хранятся в БД.
+//   trainer-table.js   ← стол, ГСЧ, кнопки действий, статистика (правая часть)
+//   trainer-cards.js   ← колода, раздача и рендер карт HERO
 
 import { initTrainingPanel, toggleTrainingPanel, setTrainingPanelVisible, isTrainingPanelVisible, refreshTrainingPanel } from './trainer-ui.js';
 import { addTrainerNode, loadTrainerNodes, getTrainerNodes, getActiveNodeId, setActiveNodeId } from './trainer-store.js';
 import { renderTrainerPage, removeTrainerNodeAndRefresh } from './trainer-page.js';
-
-// ===== СОСТОЯНИЕ СЕССИИ (заглушки до правой части вкладки «Тренажёр») =====
-const trainerState = {
-    active: false,   // сессия тренировки запущена
-    situation: null  // текущая ситуация
-};
+import { loadTrainerStats, getStats, resetStats, resetAllStats } from './trainer-stats.js';
 
 App.trainer = {
 
     // ===== НАСТРОЙКА В РЕДАКТОРЕ (панель по кнопке «шапочка выпускника») =====
 
     // Инициализация: привязка обработчиков панели + загрузка узлов
-    // тренажёра из БД. Вызывается один раз.
+    // тренажёра и их статистики из БД. Вызывается один раз.
     init: function() {
         initTrainingPanel();
         loadTrainerNodes().then(function() {
+            return loadTrainerStats();
+        }).then(function() {
             renderTrainerPage();
         });
-        // Смена аккаунта (login/logout): узлы перечитываются из БД —
-        // состояние предыдущего пользователя/гостя не должно «утекать».
+        // Смена аккаунта (login/logout): узлы и статистика перечитываются
+        // из БД — состояние предыдущего пользователя/гостя не должно «утекать».
         if (App.events && typeof App.events.on === 'function') {
             App.events.on('auth:changed', function() {
+                resetAllStats();
                 loadTrainerNodes().then(function() {
+                    return loadTrainerStats();
+                }).then(function() {
                     renderTrainerPage();
                 });
             });
@@ -79,9 +80,11 @@ App.trainer = {
     },
 
     // Удалить узел из тренировки (пункт меню «⋮ → Удалить из тренировки»).
+    // Статистика удалённого узла вычищается из БД вместе с узлом.
     removeRange: function(trainerNodeId) {
         const removed = removeTrainerNodeAndRefresh(trainerNodeId);
         if (removed) {
+            resetStats(trainerNodeId);
             App.modals.showToast(App.i18n.t('trainer.removed'));
         }
         return removed;
@@ -107,34 +110,18 @@ App.trainer = {
         renderTrainerPage();
     },
 
-    // ===== СЕССИЯ (заглушки: правая часть вкладки будет позже) =====
+    // ===== СТАТИСТИКА ТРЕНИРОВКИ (см. trainer-stats.js) =====
+    // Накопительная по узлу, хранится в БД (poker_range_trainer_stats).
+    // Сама сессия (раздача + ГСЧ + оценка ответа) живёт в trainer-table.js.
 
-    getState: function() {
-        return trainerState;
+    // Статистика узла: { total, correct, wrong } (+ % верных на шкале).
+    getStats: function(trainerNodeId) {
+        return getStats(trainerNodeId);
     },
 
-    startSession: function(options) {
-        trainerState.active = true;
-        trainerState.situation = null;
-        return null;
-    },
-
-    stopSession: function() {
-        trainerState.active = false;
-        trainerState.situation = null;
-    },
-
-    nextSituation: function() {
-        trainerState.situation = null;
-        return null;
-    },
-
-    submitAnswer: function(answer) {
-        return null;
-    },
-
-    getStats: function() {
-        return null;
+    // Сброс статистики узла (пункт меню «⋮ → Сбросить статистику»).
+    resetStats: function(trainerNodeId) {
+        return resetStats(trainerNodeId);
     }
 };
 

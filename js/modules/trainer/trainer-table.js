@@ -1,17 +1,31 @@
-// ===== trainer-table.js — стол и кнопки действий в правой панели тренажёра =====
-// Рисует покерный стол (овал) и кнопки действий из цветов активного узла
-// в .table-panel вкладки «Тренажёр». Вызывается из renderTrainerPage (trainer-page.js)
-// при каждом изменении активного узла.
+// ===== trainer-table.js — стол, ГСЧ, кнопки действий и статистика тренажёра =====
+// Рисует покерный стол (овал), раздачу карт, ГСЧ и кнопки действий активного
+// узла в .table-panel вкладки «Тренажёр». Вызывается из renderTrainerPage
+// (trainer-page.js) при каждом изменении активного узла.
 //
 // Начальное состояние — кнопка «Начать тренировку» (без карт и кнопок действий).
-// Карты и кнопки действий появляются только после нажатия «Начать тренировку».
+// Карты, ГСЧ и кнопки действий появляются только после «Начать тренировку».
 // Состояние определяется единственным сравнением:
 //   trainingActiveNodeId === activeNodeId
-// Если не совпадает (другой узел, переход из другой вкладки, первый вход) —
-// показывается кнопка «Начать тренировку». Сброс не нужен.
+// Если не совпадает (другой узел, первый вход) — показывается кнопка
+// «Начать тренировку». Сессия переживает переключение вкладок: состояние
+// живёт вне DOM и при рендере страницы НЕ сбрасывается.
+//
+// Раздача: currentDeal (рука + карты + row/col ячейки) + currentRoll (ГСЧ 1..100).
+// Бросок ГСЧ фиксируется на раздачу и выбирает «корзину» верного ответа
+// (trainer-engine.getCorrectAnswer): мульти-профиль ячейки = простые цвета
+// + остаток до 100% = фолд. Пример: рейз 25% / фолд 75% → roll 1..25 — верный
+// «рейз», 26..100 — верный «фолд». Клик по кнопке действия оценивается по
+// этой корзине, ответ пишется в статистику узла (trainer-stats), затем
+// автоматически раздаётся следующая рука.
+//
+// Статистика (всего рук / верных / ошибок / шкала % верных) — справа от стола,
+// в колонке, где по кнопке «Показать диапазон» рисуется матрица.
 
 import { getTrainerNodes, getActiveNodeId } from './trainer-store.js';
-import { renderCards } from './trainer-cards.js';
+import { generateDeal, renderCards } from './trainer-cards.js';
+import { getCorrectAnswer, FOLD_ACTION } from './trainer-engine.js';
+import { recordAnswer, renderStats, flushStats } from './trainer-stats.js';
 
 // --- Состояние ---
 var trainingActiveNodeId = null;
@@ -19,11 +33,32 @@ var matrixVisible = false;
 var matrixToggleMode = false;
 var toggleMap = new Map();
 var toggleMapNodeId = null;
+var currentDeal = null; // { rank1, rank2, type, row, col, cards } — текущая рука
+var currentRoll = null; // ГСЧ 1..100 для текущей раздачи (фиксируется на неё)
 
 export function resetTrainingState() {
     trainingActiveNodeId = null;
     matrixVisible = false;
     matrixToggleMode = false;
+    currentDeal = null;
+    currentRoll = null;
+}
+
+// ===== РАЗДАЧА И ОЦЕНКА ОТВЕТА =====
+
+// Новая раздача: случайная рука + новый бросок ГСЧ.
+function dealNewHand(node) {
+    currentDeal = generateDeal(node.participation, node.disabled);
+    currentRoll = currentDeal ? App.rng.next() : null;
+}
+
+// Ответ на текущую раздачу: оценка по броску ГСЧ → статистика → новая рука.
+function submitAnswer(node, actionId) {
+    if (!currentDeal || currentRoll === null) return;
+    var correctId = getCorrectAnswer(node, currentDeal.row, currentDeal.col, currentRoll);
+    recordAnswer(node.id, actionId === correctId);
+    dealNewHand(node);
+    renderTrainerTable();
 }
 
 // SVG «палочка со звёздами» — кнопка «Начать тренировку».
@@ -167,26 +202,46 @@ export function renderTrainerTable() {
 
     if (isTrainingActive) {
         var cc = document.createElement('div'); cc.className = 'trainer-cards-container'; tableDiv.appendChild(cc);
-        renderCards(cc, activeNode.participation, activeNode.disabled);
+        renderCards(cc, currentDeal ? currentDeal.cards : null);
     }
     leftCol.appendChild(tableDiv);
 
+    // ГСЧ — между столом и кнопками действий, у левого края стола.
+    // Подпись «ГСЧ» перед значением; значение фиксируется на раздачу
+    // (клик не перебрасывает — в отличие от виджета во вкладке «Просмотр»).
+    if (isTrainingActive && currentRoll !== null) {
+        var rngRow = document.createElement('div'); rngRow.className = 'trainer-rng-row';
+        var rngLabel = document.createElement('span'); rngLabel.className = 'trainer-rng-label'; rngLabel.textContent = App.i18n.t('trainer.rngLabel');
+        var rngValue = document.createElement('span'); rngValue.className = 'rng-widget trainer-rng-value'; rngValue.textContent = currentRoll;
+        rngRow.appendChild(rngLabel);
+        rngRow.appendChild(rngValue);
+        leftCol.appendChild(rngRow);
+    }
+
     var btnRow = document.createElement('div'); btnRow.className = 'trainer-action-buttons';
     if (isTrainingActive) {
+        // Кнопки = ВСЕ простые цвета снапшота + Fold (мульти-профили состоят
+        // из простых цветов, верный ответ всегда сводится к одной из кнопок).
         var sc = []; if (activeNode.colors) sc = activeNode.colors.filter(function(c) { return c.type === 'simple' || (!c.type && c.color); });
-        var acts = sc.slice(0, 3).map(function(c) { return { name: c.name, color: c.color }; });
-        acts.push({ name: 'Fold', color: '#5a5d66' });
+        var acts = sc.map(function(c) { return { id: c.id, name: c.name, color: c.color }; });
+        acts.push({ id: FOLD_ACTION, name: 'Fold', color: '#5a5d66' });
         acts.forEach(function(a) {
             var b = document.createElement('button'); b.className = 'trainer-action-btn'; b.textContent = a.name;
             b.style.borderColor = a.color; b.style.color = '#a9afb5';
             b.addEventListener('mouseenter', function() { b.style.background = a.color + '18'; });
             b.addEventListener('mouseleave', function() { b.style.background = 'transparent'; });
+            b.addEventListener('click', function() { submitAnswer(activeNode, a.id); });
             btnRow.appendChild(b);
         });
     } else {
         var sb = document.createElement('button'); sb.className = 'trainer-start-btn';
         sb.innerHTML = WAND_SVG + '<span>' + App.i18n.t('trainer.startTraining') + '</span>';
-        sb.addEventListener('click', function() { trainingActiveNodeId = activeId; matrixVisible = false; renderTrainerTable(); });
+        sb.addEventListener('click', function() {
+            trainingActiveNodeId = activeId;
+            matrixVisible = false;
+            dealNewHand(activeNode); // первая раздача + первый бросок ГСЧ
+            renderTrainerTable();
+        });
         btnRow.appendChild(sb);
         var gridBtn = document.createElement('button'); gridBtn.className = 'trainer-grid-btn toolbar-btn' + (matrixVisible ? ' active' : '');
         gridBtn.innerHTML = GRID_SVG;
@@ -196,6 +251,25 @@ export function renderTrainerTable() {
     }
     leftCol.appendChild(btnRow);
     content.appendChild(leftCol);
+    // --- Правая колонка: при тренировке — статистика (зона матрицы) ---
+    if (isTrainingActive) {
+        var statsCol = document.createElement('div');
+        statsCol.className = 'trainer-stats-col';
+        renderStats(statsCol, activeNode.id);
+        // Кнопка «Закончить тренировку» — текстом (без плашки) ниже шкалы.
+        // Единственное место записи статистики в БД за тренировку: ответы
+        // копились в памяти (trainer-stats), здесь уходит один запрос.
+        var endBtn = document.createElement('button');
+        endBtn.className = 'trainer-end-btn';
+        endBtn.textContent = App.i18n.t('trainer.endTraining');
+        endBtn.addEventListener('click', function() {
+            flushStats();
+            resetTrainingState();
+            renderTrainerTable();
+        });
+        statsCol.appendChild(endBtn);
+        content.appendChild(statsCol);
+    }
     // --- Правая колонка: матрица (если видима) ---
     if (matrixVisible) {
         var rightCol = document.createElement('div');
@@ -220,12 +294,13 @@ export function renderTrainerTable() {
                         var rr = Number(this.getAttribute('data-row')), cc = Number(this.getAttribute('data-col'));
                         var kk = rr + '_' + cc;
                         if (activeNode.disabled && activeNode.disabled[rr] && activeNode.disabled[rr][cc]) return;
-                        var cur = toggleMap.has(kk) ? toggleMap.get(kk) : (activeNode.participation && activeNode.participation[rr] && activeNode.participation[cc]);
-                        toggleMap.set(kk, !cur);
-                        this.classList.toggle('trainer-matrix-participating');
+                        var cur = toggleMap.has(kk) ? toggleMap.get(kk) : (activeNode.participation && activeNode.participation[rr] && activeNode.participation[rr][cc]);
+                        var next = !cur;
+                        toggleMap.set(kk, next);
+                        this.classList.toggle('trainer-matrix-participating', next);
                     });
                 } else {
-                    var pid = activeNode.matrix[r][c];
+                    var pid = activeNode.matrix[r] ? activeNode.matrix[r][c] : null;
                     var prof = findColorById(activeNode.colors, pid);
                     if (prof) { applySnapshotFill(cell, prof, activeNode.colors); cell.style.color = '#FFF'; cell.style.textShadow = '0 1px 2px rgba(0,0,0,.45)'; }
                     if (activeNode.disabled && activeNode.disabled[r] && activeNode.disabled[r][c]) cell.classList.add('subrange-disabled');
