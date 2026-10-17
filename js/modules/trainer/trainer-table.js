@@ -31,8 +31,6 @@ import { recordAnswer, renderStats, renderHands, flushStats } from './trainer-st
 var trainingActiveNodeId = null;
 var matrixVisible = false;
 var matrixToggleMode = false;
-var toggleMap = new Map();
-var toggleMapNodeId = null;
 var currentDeal = null; // { rank1, rank2, type, row, col, cards } — текущая рука
 var currentRoll = null; // ГСЧ 1..100 для текущей раздачи (фиксируется на неё)
 
@@ -114,7 +112,7 @@ var PALETTE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
     '<path d="M12 2a10 10 0 0 0 0 20" fill="currentColor" opacity="0.3"/>' +
     '</svg>';
 
-// SVG «тогл» — режим «с тоглами участия».
+// SVG «тогл» — режим просмотра участия (только просмотр, без кликов).
 var TOGGLE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
     '<rect x="1" y="5" width="22" height="14" rx="7"/>' +
     '<circle cx="16" cy="12" r="5" fill="currentColor"/>' +
@@ -138,8 +136,6 @@ export function renderTrainerTable() {
     var nodes = getTrainerNodes();
     var activeNode = nodes.find(function(n) { return n.id === activeId; }) || nodes[0];
     if (!activeNode) return;
-
-    if (toggleMapNodeId !== activeId) { toggleMap.clear(); toggleMapNodeId = activeId; }
 
     var isTrainingActive = trainingActiveNodeId === activeId;
     var content = document.createElement('div');
@@ -247,20 +243,14 @@ export function renderTrainerTable() {
                 cell.setAttribute('data-row', r);
                 cell.setAttribute('data-col', c);
                 if (matrixToggleMode) {
+                    // Только просмотр: показываем, какие руки участвуют в
+                    // тренировке. Клики по ячейкам отключены — участие
+                    // формируется в редакторе (панель «Диапазон на тренировке»)
+                    // и попадает в узел только снапшотом при добавлении.
                     var isD = activeNode.disabled && activeNode.disabled[r] && activeNode.disabled[r][c];
-                    var k = r + '_' + c;
-                    var part = toggleMap.has(k) ? toggleMap.get(k) : (activeNode.participation && activeNode.participation[r] && activeNode.participation[r][c]);
+                    var part = activeNode.participation && activeNode.participation[r] && activeNode.participation[r][c];
                     if (isD) cell.classList.add('subrange-disabled');
                     else if (part) cell.classList.add('trainer-matrix-participating');
-                    cell.addEventListener('click', function() {
-                        var rr = Number(this.getAttribute('data-row')), cc = Number(this.getAttribute('data-col'));
-                        var kk = rr + '_' + cc;
-                        if (activeNode.disabled && activeNode.disabled[rr] && activeNode.disabled[rr][cc]) return;
-                        var cur = toggleMap.has(kk) ? toggleMap.get(kk) : (activeNode.participation && activeNode.participation[rr] && activeNode.participation[rr][cc]);
-                        var next = !cur;
-                        toggleMap.set(kk, next);
-                        this.classList.toggle('trainer-matrix-participating', next);
-                    });
                 } else {
                     var pid = activeNode.matrix[r] ? activeNode.matrix[r][c] : null;
                     var prof = (pid !== null && pid !== undefined && activeNode.colors)

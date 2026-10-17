@@ -254,23 +254,37 @@ function buildHandRow(hand) {
 
 // «Шторка» истории: высота анимируется от/к высоте содержимого.
 // collapse=true — блок заезжает наверх, false — выезжает сверху вниз.
+// Прерывание (быстрые клики по галке посреди анимации) безопасно:
+//  - «догоняющий» шаг разворачивания (height = auto по transitionend)
+//    снимается перед каждым новым шагом — иначе его запоздалый вызов
+//    приходился на конец ЧУЖОЙ анимации (сворачивания) и разворачивал
+//    уже свёрнутый список: галка «свёрнуто», а список открыт;
+//  - текущая (анимированная) высота замораживается перед новым шагом —
+//    реверс плавно продолжается с текущего кадра, а не дёргается.
 function slideHands(wrap, collapse) {
+    // Снять отложенный финальный шаг прошлого разворачивания.
+    if (wrap._handsAutoHeightHandler) {
+        wrap.removeEventListener('transitionend', wrap._handsAutoHeightHandler);
+        wrap._handsAutoHeightHandler = null;
+    }
+    // Заморозить текущую высоту (при идущей анимации — её текущий кадр).
+    wrap.style.height = getComputedStyle(wrap).height;
+    void wrap.offsetHeight; // reflow: transition должен стартовать с этой высоты
     if (collapse) {
         // Текущая высота → 0: содержимое уезжает вверх под разделитель.
-        wrap.style.height = wrap.scrollHeight + 'px';
-        void wrap.offsetHeight; // reflow: transition должен стартовать с этой высоты
         wrap.style.height = '0px';
     } else {
         // 0 → высота содержимого: блок выезжает сверху вниз.
-        wrap.style.height = '0px';
-        void wrap.offsetHeight;
         wrap.style.height = wrap.scrollHeight + 'px';
-        wrap.addEventListener('transitionend', function done(e) {
-            if (e.propertyName !== 'height') return;
+        const done = function(e) {
+            if (e.target !== wrap || e.propertyName !== 'height') return;
             wrap.removeEventListener('transitionend', done);
+            wrap._handsAutoHeightHandler = null;
             // auto — чтобы список мог расти дальше без пересчёта высоты.
             wrap.style.height = 'auto';
-        });
+        };
+        wrap._handsAutoHeightHandler = done;
+        wrap.addEventListener('transitionend', done);
     }
 }
 

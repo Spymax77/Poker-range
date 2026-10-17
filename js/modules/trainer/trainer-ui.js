@@ -220,6 +220,18 @@ export function initTrainingPanel() {
             const toggles = (setupState.togglesNodeId === nodeId)
                 ? setupState.toggles : null;
             const snapshot = buildTrainerSnapshot(nodeId, toggles);
+            // Проверка на пустой диапазон: нет ни одной участвующей руки
+            // (ничего не закрашено или все закрашенные ячейки недоступны).
+            // Пустой узел в тренажёре не добавляем: генератор раздачи не
+            // найдёт рук и тренировка «зависнет» на пустом столе без карт
+            // и ГСЧ с неработающими кнопками действий.
+            const hasHands = snapshot.participation.some(function(row) {
+                return row.some(Boolean);
+            });
+            if (!hasHands) {
+                App.modals.showFloatingModal(App.i18n.t('trainer.addEmpty'));
+                return;
+            }
             App.trainer.addRange({
                 sourceNodeId: nodeId,
                 name: sourceNode ? sourceNode.name : '',

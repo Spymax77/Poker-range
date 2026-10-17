@@ -762,7 +762,7 @@
     cursor: default;
 }
 
-/* Участвующая ячейка (режим тоглов) */
+/* Участвующая ячейка (режим просмотра участия) */
 .trainer-matrix-participating {
     background: #9a9da3 !important;
     color: #1a1c1f !important;
