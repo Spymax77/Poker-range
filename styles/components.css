@@ -618,6 +618,14 @@
     line-height: 1.5;
 }
 
+/* Шапочки узлов тренажёра — контурные (Lucide graduation-cap).
+   Базовое .tree-item svg { fill: #dedede } сильнее атрибута fill="none"
+   на самом SVG (CSS побеждает presentation attribute) — без этого правила
+   шапочки заливаются. Гасим заливку: рендер идёт по stroke="currentColor". */
+#trainerTree .tree-item-name svg {
+    fill: none;
+}
+
 /* ===== СТОЛ И КНОПКИ В ПРАВОЙ ПАНЕЛИ ТРЕНАЖЁРА ===== */
 
 .trainer-table-wrapper {
@@ -682,10 +690,12 @@
     justify-content: center;
 }
 
-/* Кнопка действия */
+/* Кнопка действия — 110×40 (было 130×46): ряд из 4 кнопок = 4×110 + 3×12
+   gap = 476px, что уже стола (493px) — колонка больше не распирается рядом
+   кнопок, и стол не «прыгает» при смене количества кнопок. */
 .trainer-action-btn {
-    width: 130px;
-    height: 46px;
+    width: 110px;
+    height: 40px;
     border: 2px solid;
     border-radius: 8px;
     background: transparent;
@@ -697,13 +707,13 @@
 }
 
 /* Кнопка «Начать тренировку» — стиль как у .training-plate-btn
-   («Добавить в тренажёр» в редакторе), высота как у action-кнопок */
+   («Добавить в тренажёр» в редакторе), высота как у action-кнопок (40px) */
 .trainer-start-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    height: 46px;
+    height: 40px;
     padding: 0 24px;
     background: #303239;
     border: none;
@@ -720,11 +730,12 @@
     background: #3a3d45;
 }
 
-/* SVG-иконка в кнопке «Начать тренировку» — палочка со звёздами */
+/* SVG-иконка в кнопке «Начать тренировку» — палочка со звёздами.
+   Цвет #dedede — как текст кнопки (было тусклое #8a848a). */
 .trainer-start-btn-icon {
     width: 24px;
     height: 24px;
-    color: #8a848a;
+    color: #dedede;
     flex-shrink: 0;
 }
 
@@ -812,8 +823,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 46px;
-    width: 46px;
+    height: 40px;
+    width: 40px;
     padding: 0;
     background: #303239;
     border: none;
@@ -858,16 +869,17 @@
 }
 
 /* ===== СТАТИСТИКА ТРЕНИРОВКИ (справа от стола, зона матрицы) ===== */
-/* Зазор «стол ↔ статистика» = 46px — как от tree-resize-handle до блока
-   стола (замер вживую: 46px), для симметрии. Gap .trainer-content-wrapper
-   даёт 20px, margin добавляет оставшиеся 26px. */
+/* Зазор «стол ↔ статистика» = 66px: gap .trainer-content-wrapper даёт 20px,
+   margin добавляет 46px (было 26px = зазор 46px «как у дерева»; по запросу
+   добавлено +20px «воздуха» — симметрично +20px между деревом и столом,
+   см. #trainerPage .table-panel в base.css). */
 .trainer-stats-col {
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-width: 240px;
     padding-top: 20px;
-    margin-left: 26px;
+    margin-left: 46px;
 }
 
 .trainer-stats-row {
@@ -1463,6 +1475,73 @@
 .toolbar-btn .plus-icon {
     width: 14px;
     height: 14px;
+}
+
+/* ===== КОНТУРНЫЕ ИКОНКИ ДЕРЕВА (Lucide-стиль, stroke 2px) =====
+   Иконки tree-toolbar — контурные, в отличие от залитых иконок остальных
+   тулбаров. Специфичность .tree-toolbar .toolbar-btn .icon (0,3,0) выше
+   базовой .toolbar-btn .icon (0,2,0), поэтому fill: none пробивается без
+   !important. Цвет теперь по ШТРИХУ: обычный #8a8a8a, hover #dedede,
+   active #D4AF37 (золото) — как было по заливке. */
+.tree-toolbar .toolbar-btn .icon,
+.tree-toolbar .toolbar-btn .plus-icon {
+    fill: none;
+    stroke: #8a8a8a;
+    transition: stroke 0.15s ease;
+}
+
+.tree-toolbar .toolbar-btn:hover .icon,
+.tree-toolbar .toolbar-btn:hover .plus-icon {
+    stroke: #dedede;
+}
+
+.tree-toolbar .toolbar-btn.active .icon,
+.tree-toolbar .toolbar-btn.active .plus-icon {
+    stroke: #D4AF37;
+}
+
+/* ===== КОНТУРНЫЕ ИКОНКИ ПРАВОГО ТУЛБАРА СТОЛА (Lucide-стиль, stroke 2px) =====
+   .toolbar-right (Сохранить/Отменить/Очистить/Копировать/Вставить/Импорт) —
+   контурные, в едином стиле с tree-toolbar. Специфичность
+   .toolbar-right .toolbar-btn .icon (0,3,0) выше базовой
+   .toolbar-btn .icon (0,2,0) — fill: none пробивается без !important
+   (в т.ч. перебивает старый жёсткий fill="#e5eaf0" у «Вставить»).
+   Цвет по ШТРИХУ: #8a8a8a, hover #dedede, active #D4AF37. */
+.toolbar-right .toolbar-btn .icon {
+    fill: none;
+    stroke: #8a8a8a;
+    transition: stroke 0.15s ease;
+}
+
+.toolbar-right .toolbar-btn:hover .icon {
+    stroke: #dedede;
+}
+
+.toolbar-right .toolbar-btn.active .icon {
+    stroke: #D4AF37;
+}
+
+/* ===== КОНТУРНЫЕ ИКОНКИ РЕЖИМОВ МАТРИЦЫ (Lucide-стиль, stroke 2px) =====
+   .matrix-mode-toolbar (Редактор/Анализ/Тренировка, слева от матрицы) —
+   контурные, в едином стиле с tree-toolbar и toolbar-right. Специфичность
+   .matrix-mode-toolbar .toolbar-btn .icon (0,3,0) выше базовой
+   .toolbar-btn .icon (0,2,0) — fill: none пробивается без !important.
+   Цвет по ШТРИХУ: #8a8a8a, hover #dedede, active #D4AF37 (золото).
+   Иконки: sliders-horizontal (Lucide), три широких столбика (кастом в стиле
+   Lucide — официального аналога с широкими столбиками нет), graduation-cap
+   (Lucide). */
+.matrix-mode-toolbar .toolbar-btn .icon {
+    fill: none;
+    stroke: #8a8a8a;
+    transition: stroke 0.15s ease;
+}
+
+.matrix-mode-toolbar .toolbar-btn:hover .icon {
+    stroke: #dedede;
+}
+
+.matrix-mode-toolbar .toolbar-btn.active .icon {
+    stroke: #D4AF37;
 }
 
 .divider {
@@ -2296,7 +2375,7 @@
     cursor: pointer;
     margin-right: 8px;
     font-size: 10px;
-    color: #909090;
+    color: #909090;   /* тускло-серые: светлый #dedede оптически «раздувал» глиф */
     display: inline-flex;
     align-items: center;
     line-height: 1;
@@ -3815,6 +3894,13 @@ body.dragging .tree-item.active .tree-actions-popup {
 #shareRangeBtn svg {
     stroke: currentColor;
     fill: none;
+    /* Вертикальная оптика пары «фотоаппарат ↔ бабло комментариев»:
+       корпус фотоаппарата в viewBox начинается с y=5.5, бабло (message-square)
+       с y=3 — без сдвига корпус сидит на ~2px ниже и пара выглядит разъехавшейся.
+       translateY(-2.08px) совмещает верх корпуса с верхом бабла (замер вживую:
+       delta 0.00). transform, а не margin: flex-центрирование кнопки игнорирует
+       отрицательный margin при переполнении. */
+    transform: translateY(-2.08px);
 }
 #commentsToggleBtn {
     color: #8a848a;

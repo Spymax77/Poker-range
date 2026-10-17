@@ -419,7 +419,7 @@ if (App.state.workDisplayNodeId) {
             iconBtn.dataset.tooltip = App.i18n.t('matrix.comments');
             iconBtn.innerHTML = `
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 3v-5.1a7.5 7.5 0 0 1-1.5-4.4A7.5 7.5 0 0 1 10 5h2.5A7.5 7.5 0 0 1 20 11.5Z"/>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
             `;
             workTableWrapper.appendChild(iconBtn);

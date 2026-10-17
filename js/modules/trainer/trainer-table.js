@@ -137,12 +137,13 @@ var WAND_SVG = '<svg class="trainer-start-btn-icon" viewBox="0 0 512 512" fill="
     'c3.39,10.674,10.504,22.34,11.174,28.88L412.831,205.639z"/>' +
     '</svg>';
 
-// SVG «4 квадрата» — кнопка «Показать диапазон» (как иконка дерева в редакторе).
-var GRID_SVG = '<svg class="trainer-grid-btn-icon" viewBox="0 0 24 24" fill="currentColor">' +
-    '<rect x="2" y="2" width="9" height="9" rx="1"/>' +
-    '<rect x="13" y="2" width="9" height="9" rx="1"/>' +
-    '<rect x="2" y="13" width="9" height="9" rx="1"/>' +
-    '<rect x="13" y="13" width="9" height="9" rx="1"/>' +
+// SVG «4 квадрата» — кнопка «Показать диапазон» (Lucide layout-grid, контур —
+// в едином стиле с иконками тулбаров; было: залитые квадраты).
+var GRID_SVG = '<svg class="trainer-grid-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect width="7" height="7" x="3" y="3" rx="1"/>' +
+    '<rect width="7" height="7" x="14" y="3" rx="1"/>' +
+    '<rect width="7" height="7" x="14" y="14" rx="1"/>' +
+    '<rect width="7" height="7" x="3" y="14" rx="1"/>' +
     '</svg>';
 
 // SVG «палитра» — режим «показ в цвете».

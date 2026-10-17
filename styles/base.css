@@ -66,10 +66,21 @@ html, body {
     overflow: hidden;
 }
 
+/* Воздух сверху: все три блока тренажёра (дерево, стол, статистика) ниже
+   таб-бара на +20px. Правило за-scoped'о на #trainerPage — вкладки GTO,
+   «Редактор» и «Просмотр» (тот же класс .three-columns) не затрагиваются. */
+#trainerPage .three-columns {
+    padding-top: 20px;
+}
+
 /* Правая колонка вкладки «Тренажёр» занимает оставшееся место —
-   пока пустая, здесь будет матрица тренажёра. */
+   пока пустая, здесь будет матрица тренажёра.
+   padding-left: 40px (базовые 20px у .table-panel + ещё 20px) — «воздух»
+   между деревом узлов (tree-resize-handle) и столом, симметрично зазору
+   «стол ↔ статистика» (тоже +20px, см. .trainer-stats-col). */
 #trainerPage .table-panel {
     flex: 1 1 auto;
+    padding-left: 40px;
 }
 #workPage.active-page {
     overflow-y: auto;
