@@ -226,7 +226,11 @@ export function initTrainingPanel() {
                 colors: snapshot.colors,
                 matrix: snapshot.matrix,
                 participation: snapshot.participation,
-                disabled: snapshot.disabled
+                disabled: snapshot.disabled,
+                // Процент доступности ячеек — готовые данные под будущий
+                // оверлей частичной доступности: сохраняем сразу, пока
+                // не рисуется (см. trainer-engine.buildTrainerSnapshot).
+                availability: snapshot.availability
             });
         });
     }

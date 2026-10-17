@@ -76,7 +76,10 @@ App.colors.getEmptyCellBg = function() {
 
 // Сегменты заливки [{ color, width }]: цвет и ширина в процентах.
 // Сегменты идут стык в стык от 0 до 100% (как стопы прежнего градиента).
-App.colors.getCellFillSegments = function(nodeId, color) {
+// colorsList — необязательный явный список цветов для компонентов мульти-
+// профиля (снапшот узла тренажёра, trainer-table.js); по умолчанию — живые
+// цвета узла (App.colors.getColorsForNode).
+App.colors.getCellFillSegments = function(nodeId, color, colorsList) {
     if (!color) return [];
 
     if (color.type === 'simple' || (!color.type && color.color)) {
@@ -85,9 +88,9 @@ App.colors.getCellFillSegments = function(nodeId, color) {
     }
 
     if (color.type === 'multi' || color.components) {
-        const colorsList = App.colors.getColorsForNode(nodeId);
+        const list = colorsList || App.colors.getColorsForNode(nodeId);
         const componentColors = color.components.map(comp => {
-            const compColor = colorsList.find(c => c.id === comp.colorId);
+            const compColor = list.find(c => c.id === comp.colorId);
             return compColor ? compColor.color : '#3d3d3d';
         });
         if (componentColors.length === 0) return [];
@@ -118,10 +121,10 @@ App.colors.getCellFillSegments = function(nodeId, color) {
 
 // Создаёт/обновляет слой .cell-fill внутри ячейки по сегментам профиля.
 // color === null → слой удаляется. Возвращает слой или null.
-App.colors.applyCellFill = function(cell, nodeId, color) {
+App.colors.applyCellFill = function(cell, nodeId, color, colorsList) {
     if (!cell) return null;
     let fill = cell.querySelector(':scope > .cell-fill');
-    const segments = color ? App.colors.getCellFillSegments(nodeId, color) : [];
+    const segments = color ? App.colors.getCellFillSegments(nodeId, color, colorsList) : [];
 
     if (segments.length === 0) {
         if (fill) fill.remove();

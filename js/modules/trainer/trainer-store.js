@@ -33,6 +33,28 @@ function genId() {
     return 'trn_' + Date.now().toString(36) + '_' + seq;
 }
 
+// Поле частичной доступности ячеек (0..100, %) — готовые данные под будущий
+// оверлей частичной доступности (перекрывающий блок .cell-overlay,
+// grid-renderer.js): данные сохраняем в узел заранее, рендер оверлея —
+// отдельная будущая задача (см. trainer-engine.buildTrainerSnapshot).
+// Узлы, сохранённые в БД ДО появления поля, достраиваем бинарно из disabled:
+// 0% у недоступных, 100% у остальных — в точности как они выглядят сейчас.
+function normalizeAvailability(rawAvailability, rawDisabled) {
+    const grid = [];
+    for (let r = 0; r < 13; r++) {
+        const row = [];
+        for (let c = 0; c < 13; c++) {
+            const has = Array.isArray(rawAvailability) && Array.isArray(rawAvailability[r]);
+            const value = has ? Number(rawAvailability[r][c]) : NaN;
+            row.push(Number.isFinite(value)
+                ? Math.max(0, Math.min(100, value))
+                : (Array.isArray(rawDisabled) && rawDisabled[r] && rawDisabled[r][c]) ? 0 : 100);
+        }
+        grid.push(row);
+    }
+    return grid;
+}
+
 // Нормализация записи (из БД или при создании): отбрасываем мусор,
 // недостающие поля заполняем значениями по умолчанию.
 function normalizeNode(raw) {
@@ -47,6 +69,7 @@ function normalizeNode(raw) {
         matrix: raw.matrix,
         participation: Array.isArray(raw.participation) ? raw.participation : [],
         disabled: Array.isArray(raw.disabled) ? raw.disabled : [],
+        availability: normalizeAvailability(raw.availability, raw.disabled),
         createdAt: Number(raw.createdAt) || Date.now()
     };
 }

@@ -754,13 +754,8 @@
     gap: 10px;
 }
 
-/* Сетка матрицы — тот же стиль, что .hands-grid в редакторе */
-.trainer-matrix-grid {
-    display: grid;
-    grid-template-columns: repeat(13, 37px);
-    grid-template-rows: repeat(13, 37px);
-    gap: 1px;
-}
+/* Сетка матрицы тренажёра — переиспользуем .hands-grid из base.css
+   (класс вешается в trainer-table.js): дубль grid-свойств не нужен. */
 
 /* Ячейка матрицы тренажёра — переиспользуем .hand-cell из base.css */
 .trainer-matrix-grid .hand-cell {

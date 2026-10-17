@@ -67,7 +67,8 @@ App.trainer = {
     // ===== УЗЛЫ ТРЕНАЖЁРА (вкладка «Тренажёр», левая панель) =====
 
     // Добавить диапазон в тренажёр (кнопка «Добавить в тренажёр» в редакторе).
-    // data: { sourceNodeId, name, colors, matrix, participation, disabled } —
+    // data: { sourceNodeId, name, colors, matrix, participation, disabled,
+    //         availability } —
     // снапшот обеих матриц (см. trainer-engine.buildTrainerSnapshot).
     // Каждый вызов создаёт новый узел.
     addRange: function(data) {

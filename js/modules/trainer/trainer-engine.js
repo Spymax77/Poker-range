@@ -17,12 +17,16 @@
 const GRID_SIZE = 13;
 
 // Слой данных отражения: GRID_SIZE × GRID_SIZE объектов вида
-//   { disabled, participates },
+//   { disabled, participates, availability },
 // где disabled — ячейка действительно недоступна (доступность 0%, как
 // .hand-cell.subrange-disabled в основной матрице: grid-renderer.js),
 // participates — рука участвует в тренировке по умолчанию (закрашена в
-// основной матрице в любой пропорции и не недоступна). Значения строятся
-// на каждый вызов, состояние не хранится.
+// основной матрице в любой пропорции и не недоступна),
+// availability — процент доступности ячейки 0..100 (каскадно, recursive
+// = true): готовые данные под будущий оверлей частичной доступности
+// (перекрывающий блок .cell-overlay, grid-renderer.js) — см. комментарий
+// в buildTrainerSnapshot. Значения строятся на каждый вызов, состояние
+// не хранится.
 export function buildTrainingMatrix(nodeId) {
     const matrix = nodeId ? App.editor.cellStorage[App.grid.getTableId(nodeId)] : null;
     const node = nodeId ? App.nodes.getNode(nodeId) : null;
@@ -35,14 +39,17 @@ export function buildTrainingMatrix(nodeId) {
             // цепочка родителей (каскадно, recursive = true). Частично
             // доступная ячейка — доступна (оверлей в основной матрице это
             // просто перекрывающий блок), поэтому порог строго 0%.
-            const disabled = isSubrange &&
-                App.stats.getCellAvailabilityPercent(nodeId, r, c, true, App.editor) <= 0;
+            const availability = isSubrange
+                ? App.stats.getCellAvailabilityPercent(nodeId, r, c, true, App.editor)
+                : 100;
+            const disabled = availability <= 0;
             // Участие по умолчанию: закрашена в любой пропорции (профиль
             // назначен) и не недоступна.
             const painted = !!matrix && matrix[r][c] !== null && matrix[r][c] !== undefined;
             row.push({
                 disabled: disabled,
-                participates: painted && !disabled
+                participates: painted && !disabled,
+                availability: availability
             });
         }
         result.push(row);
@@ -56,7 +63,14 @@ export function buildTrainingMatrix(nodeId) {
 //     значения — id цвета / null), названия и профили цветов (colors),
 //   - данные ВТОРОЙ матрицы («Диапазон на тренировке»): какие ячейки
 //     участвуют в тренировке (participation 13×13, с учётом клик-тоглов
-//     из trainer-ui), а какие недоступны (disabled 13×13).
+//     из trainer-ui), а какие недоступны (disabled 13×13) и процент
+//     доступности каждой ячейки (availability 13×13, 0..100).
+//
+// ПОЛЕ AVAILABILITY — ГОТОВЫЕ ДАННЫЕ ПОД БУДУЩИЙ ОВЕРЛЕЙ частичной
+// доступности (перекрывающий блок .cell-overlay в grid-renderer.js:
+// недоступная часть ячейки закрывается серым блоком). Данные сохраняем
+// в узел СРАЗУ, чтобы при реализации оверлея они уже были на месте;
+// сам оверлей в матрицах тренажёра пока НЕ рисуется.
 // Снимок замораживается на момент вызова: дальнейшие правки диапазона
 // на него не влияют. Всё копируется глубоко — снимок не разделяет
 // ссылки с живым состоянием редактора.
@@ -71,10 +85,13 @@ export function buildTrainerSnapshot(nodeId, toggles) {
     // Участие и недоступность — из второй матрицы (с тоглами поверх).
     const participation = [];
     const disabled = [];
+    // Процент доступности — под будущий оверлей (см. комментарий выше).
+    const availability = [];
     for (let r = 0; r < GRID_SIZE; r++) {
         const mRow = [];
         const pRow = [];
         const dRow = [];
+        const aRow = [];
         for (let c = 0; c < GRID_SIZE; c++) {
             mRow.push(matrix ? matrix[r][c] : null);
             const cell = reflection[r][c];
@@ -86,10 +103,12 @@ export function buildTrainerSnapshot(nodeId, toggles) {
                 : cell.participates;
             pRow.push(!!(participates && !cell.disabled));
             dRow.push(!!cell.disabled);
+            aRow.push(cell.availability);
         }
         matrixCopy.push(mRow);
         participation.push(pRow);
         disabled.push(dRow);
+        availability.push(aRow);
     }
 
     // Глубокая копия цветов (простых и мульти-профилей с components).
@@ -99,14 +118,15 @@ export function buildTrainerSnapshot(nodeId, toggles) {
         matrix: matrixCopy,
         colors: colorsCopy,
         participation: participation,
-        disabled: disabled
+        disabled: disabled,
+        availability: availability
     };
 }
 
 // ===== ОЦЕНКА ОТВЕТА ПО БРОСКУ ГСЧ (1..100) =====
 // Мульти-профиль ячейки всегда состоит из простых цветов (компонентов) и,
 // возможно, «без цвета» = фолд. Корзины берутся из App.colors.getPositions —
-// тех же границ, которыми рисуется заливка (applySnapshotFill):
+// тех же границ, которыми рисуется заливка (App.colors.applyCellFill):
 //   компонент i занимает (positions[i-1], positions[i]],
 //   остаток до 100 (positions[last] < 100) — фолд.
 // Пример: рейз 25% + фолд 75% → roll 1..25 = верный «рейз», 26..100 = «фолд».

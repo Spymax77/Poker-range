@@ -121,64 +121,12 @@ var TOGGLE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
     '</svg>';
 
 // ===== ЗАЛИВКА ЯЧЕЙКИ ИЗ СНАПШОТА =====
-// Аналог App.colors.applyCellFill, но использует массив цветов из снапшота
-// узла тренажёра, а не из App.editor.colorsPerNode.
-function applySnapshotFill(cell, colorProfile, snapshotColors) {
-    if (!cell) return;
-    var fill = cell.querySelector(':scope > .cell-fill');
-    if (!colorProfile) {
-        if (fill) fill.remove();
-        return;
-    }
-    var segments = [];
-    if (colorProfile.type === 'simple' || (!colorProfile.type && colorProfile.color)) {
-        segments = [{ color: colorProfile.color, width: 100 }];
-    } else if (colorProfile.type === 'multi' || colorProfile.components) {
-        var componentColors = colorProfile.components.map(function(comp) {
-            var found = snapshotColors.find(function(c) { return c.id === comp.colorId; });
-            return found ? found.color : '#3d3d3d';
-        });
-        if (componentColors.length > 0) {
-            var positions = App.colors.getPositions(colorProfile);
-            var prev = 0;
-            for (var i = 0; i < componentColors.length; i++) {
-                var pos = Math.round((positions[i] || 0) * 10) / 10;
-                var w = Math.round((pos - prev) * 10) / 10;
-                if (w > 0) segments.push({ color: componentColors[i], width: w });
-                prev = pos;
-            }
-            if (prev < 100) {
-                segments.push({ color: App.colors.getEmptyCellBg(), width: Math.round((100 - prev) * 10) / 10 });
-            }
-        }
-    }
-    if (segments.length === 0) {
-        if (fill) fill.remove();
-        return;
-    }
-    if (!fill) {
-        fill = document.createElement('div');
-        fill.className = 'cell-fill';
-        cell.insertBefore(fill, cell.firstChild);
-    }
-    fill.innerHTML = '';
-    for (var j = 0; j < segments.length; j++) {
-        var segEl = document.createElement('div');
-        segEl.className = 'cell-fill-segment';
-        segEl.style.backgroundColor = segments[j].color;
-        segEl.style.width = segments[j].width + '%';
-        fill.appendChild(segEl);
-    }
-}
-
-// Найти цветовой профиль по id в массиве цветов снапшота.
-function findColorById(colors, id) {
-    if (!colors || id === null || id === undefined) return null;
-    for (var i = 0; i < colors.length; i++) {
-        if (colors[i].id === id) return colors[i];
-    }
-    return null;
-}
+// Эталонная заливка App.colors.applyCellFill / App.colors.getCellFillSegments
+// (color-manager.js) — та же, что в редакторе. Цвета компонентов мульти-
+// профилей берутся из снапшота узла тренажёра (4-й аргумент colorsList),
+// а не из живого App.editor.colorsPerNode. Отдельная копия логики заливки
+// не нужна: вторая реализация расходится с эталоном («баг второго
+// экземпляра») при любом изменении общей логики.
 
 // ===== РЕНДЕР СТОЛА И КНОПОК =====
 export function renderTrainerTable() {
@@ -280,6 +228,11 @@ export function renderTrainerTable() {
         content.appendChild(statsCol);
     }
     // --- Правая колонка: матрица (если видима) ---
+    // activeNode.availability (проценты доступности ячеек) в узле уже
+    // хранится (см. trainer-engine.buildTrainerSnapshot), но оверлей
+    // частичной доступности (перекрывающий блок .cell-overlay,
+    // grid-renderer.js) здесь пока НЕ рисуется — данные готовы под
+    // будущую реализацию.
     if (matrixVisible) {
         var rightCol = document.createElement('div');
         rightCol.className = 'trainer-matrix-col';
@@ -310,8 +263,15 @@ export function renderTrainerTable() {
                     });
                 } else {
                     var pid = activeNode.matrix[r] ? activeNode.matrix[r][c] : null;
-                    var prof = findColorById(activeNode.colors, pid);
-                    if (prof) { applySnapshotFill(cell, prof, activeNode.colors); cell.style.color = '#FFF'; cell.style.textShadow = '0 1px 2px rgba(0,0,0,.45)'; }
+                    var prof = (pid !== null && pid !== undefined && activeNode.colors)
+                        ? activeNode.colors.find(function(c) { return c.id === pid; }) : null;
+                    // Эталонная заливка из редактора (color-manager.js), цвета
+                    // компонентов — из снапшота узла (colorsList).
+                    if (prof) {
+                        App.colors.applyCellFill(cell, activeNode.id, prof, activeNode.colors);
+                        cell.style.color = '#FFF';
+                        cell.style.textShadow = '0 1px 2px rgba(0,0,0,.45)';
+                    }
                     if (activeNode.disabled && activeNode.disabled[r] && activeNode.disabled[r][c]) cell.classList.add('subrange-disabled');
                 }
                 var ts = document.createElement('span'); ts.textContent = rowsData[r][c]; ts.style.position = 'relative'; ts.style.zIndex = '2';
