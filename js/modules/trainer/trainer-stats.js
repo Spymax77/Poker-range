@@ -4,6 +4,14 @@
 //   история рук (hands): { cards, action, correct } — нарастающим итогом,
 //   новые сверху. Всего рук = correct + wrong: прерванные раздачи
 //   (не нажат ответ) не считаются.
+// История рук ограничена скользящим окном MAX_HANDS последних раздач —
+//   иначе база разрастается тысячами записей (каждый ответ ≈ 100 байт,
+//   а весь объект статистики пишется целиком при каждом флоше и читается
+//   целиком при старте). Счётчики total/correct/wrong НЕ ограничены и
+//   хранят итоги за всю жизнь узла.
+// Ячейная статистика cells: 13×13 пар [верно, неверно] — агрегат ответов
+//   по каждой руке для будущей тепловой карты диапазона. Окном истории
+//   НЕ ограничивается и копится всегда (обрезке не подлежит).
 // Хранение — отдельным ключом poker_range_trainer_stats одним объектом
 //   { [nodeId]: { total, correct, wrong, hands, updatedAt } } — паттерн
 // btn_styles_all (style-manager.js): статистика не должна перетирать список
@@ -20,6 +28,21 @@
 import { SUIT_SYMBOL, SUIT_CLASS } from './trainer-cards.js';
 
 const STORAGE_KEY = 'poker_range_trainer_stats';
+
+// Размер скользящего окна истории рук: хранятся последние MAX_HANDS
+// раздач на узел (новые вытесняют старые). Счётчики не ограничены.
+const MAX_HANDS = 100;
+
+// Пустая ячейная сетка: 13×13 пар [верно, неверно].
+function emptyCells() {
+    const grid = [];
+    for (let r = 0; r < 13; r++) {
+        const row = [];
+        for (let c = 0; c < 13; c++) row.push([0, 0]);
+        grid.push(row);
+    }
+    return grid;
+}
 
 // Состояние вне DOM: { [nodeId]: { total, correct, wrong, updatedAt } }
 let statsByNodeId = {};
@@ -38,13 +61,38 @@ function normalizeHand(raw) {
     };
 }
 
+// Нормализация ячейной сетки: 13×13 пар [верно, неверно] (неотрицательные
+// целые). null — поля нет (запись статистики до появления ячейных данных).
+function normalizeCells(rawCells) {
+    if (!Array.isArray(rawCells)) return null;
+    const grid = emptyCells();
+    for (let r = 0; r < 13; r++) {
+        if (!Array.isArray(rawCells[r])) continue;
+        for (let c = 0; c < 13; c++) {
+            const slot = rawCells[r][c];
+            if (Array.isArray(slot)) {
+                grid[r][c] = [
+                    Math.max(0, Math.floor(Number(slot[0])) || 0),
+                    Math.max(0, Math.floor(Number(slot[1])) || 0)
+                ];
+            }
+        }
+    }
+    return grid;
+}
+
 function normalizeEntry(raw) {
     if (!raw || typeof raw !== 'object') return null;
     return {
         total: Number(raw.total) || 0,
         correct: Number(raw.correct) || 0,
         wrong: Number(raw.wrong) || 0,
-        hands: Array.isArray(raw.hands) ? raw.hands.map(normalizeHand).filter(Boolean) : [],
+        cells: normalizeCells(raw.cells) || emptyCells(),
+        // Обрезка до окна: руки лежат новые сверху, остаются последние
+        // MAX_HANDS. Лечит старые раздутые записи из БД при загрузке;
+        // в БД урезанная версия запишется при следующем обычном
+        // сохранении (без записей «просто так»).
+        hands: Array.isArray(raw.hands) ? raw.hands.map(normalizeHand).filter(Boolean).slice(0, MAX_HANDS) : [],
         updatedAt: Number(raw.updatedAt) || 0
     };
 }
@@ -108,28 +156,58 @@ export function getHands(nodeId) {
     return entry && Array.isArray(entry.hands) ? entry.hands.slice() : [];
 }
 
+// Ячейная статистика узла: 13×13 пар [верно, неверно] — для тепловой карты.
+// Копия — снаружи состояние не мутируется. Пустая сетка — если данных нет.
+export function getCells(nodeId) {
+    const entry = nodeId ? statsByNodeId[nodeId] : null;
+    const src = entry && entry.cells ? entry.cells : null;
+    const grid = emptyCells();
+    if (!src) return grid;
+    for (let r = 0; r < 13; r++) {
+        for (let c = 0; c < 13; c++) {
+            grid[r][c] = [src[r][c][0] || 0, src[r][c][1] || 0];
+        }
+    }
+    return grid;
+}
+
 // Учесть один отвеченный разбор: correct — верный ответ был или нет.
 // hand — данные раздачи для истории: { cards: [{rank,suit},…], action }.
+// cell — { row, col } ячейки руки в матрице — для ячейной статистики
+// (будущая тепловая карта): инкремент [верно, неверно] в cells.
 // ТОЛЬКО память (см. шапку файла): запись в БД — по кнопке
 // «Закончить тренировку» (flushStats), не на каждый ответ.
-export function recordAnswer(nodeId, correct, hand) {
+export function recordAnswer(nodeId, correct, hand, cell) {
     if (!nodeId) return getStats(nodeId);
     let entry = statsByNodeId[nodeId];
     if (!entry) {
-        entry = { total: 0, correct: 0, wrong: 0, hands: [], updatedAt: 0 };
+        entry = { total: 0, correct: 0, wrong: 0, hands: [], cells: emptyCells(), updatedAt: 0 };
         statsByNodeId[nodeId] = entry;
     }
     if (!Array.isArray(entry.hands)) entry.hands = [];
+    if (!entry.cells) entry.cells = emptyCells();
     entry.total += 1;
     if (correct) entry.correct += 1;
     else entry.wrong += 1;
+    // Ячейная статистика (тепловая карта): окном истории не ограничивается.
+    if (cell && Number.isInteger(cell.row) && Number.isInteger(cell.col) &&
+        cell.row >= 0 && cell.row < 13 && cell.col >= 0 && cell.col < 13) {
+        const slot = entry.cells[cell.row][cell.col];
+        if (correct) slot[0] += 1;
+        else slot[1] += 1;
+    }
     // История рук: нарастающим итогом, новая рука — сверху списка.
     const normalized = normalizeHand({
         cards: hand && hand.cards,
         action: hand && hand.action,
         correct: correct
     });
-    if (normalized) entry.hands.unshift(normalized);
+    if (normalized) {
+        entry.hands.unshift(normalized);
+        // Скользящее окно: старые руки вытесняются новыми. Счётчики выше
+        // от этого не страдают — они накопительные за всю жизнь узла.
+        if (entry.hands.length > MAX_HANDS) entry.hands.length = MAX_HANDS;
+    }
     entry.updatedAt = Date.now();
     dirtyNodeIds.add(nodeId);
     return { total: entry.total, correct: entry.correct, wrong: entry.wrong };

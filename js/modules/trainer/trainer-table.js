@@ -8,8 +8,11 @@
 // Состояние определяется единственным сравнением:
 //   trainingActiveNodeId === activeNodeId
 // Если не совпадает (другой узел, первый вход) — показывается кнопка
-// «Начать тренировку». Сессия переживает переключение вкладок: состояние
-// живёт вне DOM и при рендере страницы НЕ сбрасывается.
+// «Начать тренировку». Сессия НЕ переживает смену активного узла и уход
+// на другую вкладку: в этих случаях она автоматически ФИНИШИРУЕТ как по
+// кнопке «Закончить тренировку» (статистика пишется в БД). Смена узла —
+// событие trainer:activeChanged (trainer-store → подписка в этом файле),
+// уход на вкладку — хук в navigation.js switchTab (finishTrainingSession).
 //
 // Раздача: currentDeal (рука + карты + row/col ячейки) + currentRoll (ГСЧ 1..100).
 // Бросок ГСЧ фиксируется на раздачу и выбирает «корзину» верного ответа
@@ -54,6 +57,30 @@ export function finishTrainingSession() {
     return true;
 }
 
+// Отмена сессии БЕЗ записи статистики — для случая, когда удаляется сам
+// тренируемый узел: его статистика удаляется вместе с ним (resetStats),
+// отдельный запрос «записать → тут же удалить» не нужен.
+// С nodeId — отменяется, только если в тренировке именно этот узел;
+// без nodeId — любая открытая сессия.
+export function abandonTrainingSession(nodeId) {
+    if (trainingActiveNodeId === null) return false;
+    if (nodeId !== undefined && nodeId !== null && String(nodeId) !== String(trainingActiveNodeId)) return false;
+    resetTrainingState();
+    return true;
+}
+
+// ===== ФИНИШ СЕССИИ ПО СОБЫТИЮ СМЕНЫ АКТИВНОГО УЗЛА =====
+// Смена активного узла (событие из trainer-store, см. notifyActiveChanged)
+// закрывает открытую сессию как кнопка «Закончить тренировку»: статистика
+// пишется в БД (гостю — не сохраняется), состояние сбрасывается. Живёт
+// ЗДЕСЬ, а не в renderTrainerTable: отрисовка остаётся чистой — без
+// побочных эффектов и неожиданных записей в БД.
+if (App.events && typeof App.events.on === 'function') {
+    App.events.on('trainer:activeChanged', function() {
+        finishTrainingSession();
+    });
+}
+
 // ===== РАЗДАЧА И ОЦЕНКА ОТВЕТА =====
 
 // Новая раздача: случайная рука + новый бросок ГСЧ.
@@ -72,7 +99,7 @@ function submitAnswer(node, actionId, actionName) {
     recordAnswer(node.id, correct, {
         cards: currentDeal.cards.map(function(c) { return { rank: c.rank, suit: c.suit }; }),
         action: actionName
-    });
+    }, { row: currentDeal.row, col: currentDeal.col });
     dealNewHand(node);
     renderTrainerTable();
 }
@@ -139,16 +166,10 @@ var TOGGLE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 // экземпляра») при любом изменении общей логики.
 
 // ===== РЕНДЕР СТОЛА И КНОПОК =====
+// Чистая отрисовка: никаких побочных эффектов и записей в БД. Финиш
+// сессии при смене активного узла — в подписке на событие
+// trainer:activeChanged (см. выше), а не здесь.
 export function renderTrainerTable() {
-    // Смена активного узла при открытой сессии (клик по другому узлу,
-    // удаление активного узла и т.п.) — сессия финиширует как по кнопке
-    // «Закончить тренировку»: статистика уходит в БД (гостю — не сохраняется).
-    // Без этого данные терялись бы: экран уже другой, кнопку «Закончить»
-    // не нажмут. Без открытой сессии — no-op.
-    if (trainingActiveNodeId !== null && trainingActiveNodeId !== getActiveNodeId()) {
-        flushStats();
-        resetTrainingState();
-    }
     var panel = document.querySelector('#trainerPage .table-panel');
     if (!panel) return;
     panel.innerHTML = '';

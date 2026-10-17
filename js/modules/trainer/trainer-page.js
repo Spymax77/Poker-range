@@ -7,9 +7,10 @@
 // Разметка повторяет дерево (tree-node/tree-item/popup-menu) — стили и
 // поведение меню переиспользуются из styles/components.css без изменений.
 // Правая часть вкладки — стол, ГСЧ, кнопки действий и статистика
-// (см. trainer-table.js). Состояние тренировки при рендере НЕ сбрасывается:
-// сессия переживает переключение вкладок (сравнение
-// trainingActiveNodeId === activeNodeId в trainer-table.js).
+// (см. trainer-table.js). Сессия тренировки НЕ переживает уход на другую
+// вкладку и смену активного узла: она автоматически финиширует как по
+// кнопке «Закончить тренировку» — статистика пишется в БД
+// (trainer-table.js finishTrainingSession, navigation.js switchTab).
 
 import { getTrainerNodes, removeTrainerNode, getActiveNodeId, setActiveNodeId } from './trainer-store.js';
 import { renderTrainerTable } from './trainer-table.js';
@@ -205,9 +206,9 @@ export function renderTrainerPage() {
     }
 
     // Рисуем стол, ГСЧ, кнопки действий и статистику для активного узла.
-    // Состояние тренировки НЕ сбрасываем: активная сессия переживает
-    // переключение вкладок (сравнение trainingActiveNodeId === activeNodeId
-    // в trainer-table.js само покажет «Начать тренировку» при смене узла).
+    // Открытая сессия автоматически финиширует при смене активного узла
+    // (событие trainer:activeChanged — см. trainer-table.js) — поэтому
+    // здесь состояние тренировки специально не трогаем.
     renderTrainerTable();
 }
 

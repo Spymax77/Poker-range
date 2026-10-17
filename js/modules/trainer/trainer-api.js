@@ -13,8 +13,8 @@
 import { initTrainingPanel, toggleTrainingPanel, setTrainingPanelVisible, isTrainingPanelVisible, refreshTrainingPanel } from './trainer-ui.js';
 import { addTrainerNode, loadTrainerNodes, getTrainerNodes, getActiveNodeId, setActiveNodeId } from './trainer-store.js';
 import { renderTrainerPage, removeTrainerNodeAndRefresh } from './trainer-page.js';
-import { loadTrainerStats, getStats, resetStats, resetAllStats } from './trainer-stats.js';
-import { finishTrainingSession } from './trainer-table.js';
+import { loadTrainerStats, getStats, getCells, resetStats, resetAllStats } from './trainer-stats.js';
+import { finishTrainingSession, abandonTrainingSession } from './trainer-table.js';
 
 App.trainer = {
 
@@ -33,6 +33,12 @@ App.trainer = {
         // из БД — состояние предыдущего пользователя/гостя не должно «утекать».
         if (App.events && typeof App.events.on === 'function') {
             App.events.on('auth:changed', function() {
+                // Сессия тренировки принадлежит ПРЕДЫДУЩЕМУ аккаунту/гостю:
+                // закрываем её БЕЗ записи (при logout данные уже сохранены —
+                // флош до выхода в auth-ui.js; гостевые не сохраняются вовсе).
+                // Явное закрытие ДО сброса статистики делает защиту от утечки
+                // данных между аккаунтами независимой от порядка обработчиков.
+                abandonTrainingSession();
                 resetAllStats();
                 loadTrainerNodes().then(function() {
                     return loadTrainerStats();
@@ -84,6 +90,10 @@ App.trainer = {
     // Удалить узел из тренировки (пункт меню «⋮ → Удалить из тренировки»).
     // Статистика удалённого узла вычищается из БД вместе с узлом.
     removeRange: function(trainerNodeId) {
+        // Удаляется узел текущей сессии — сессия отменяется БЕЗ записи
+        // статистики: статистика удаляется вместе с узлом (resetStats ниже),
+        // иначе уходят два запроса «записать → тут же удалить».
+        abandonTrainingSession(trainerNodeId);
         const removed = removeTrainerNodeAndRefresh(trainerNodeId);
         if (removed) {
             resetStats(trainerNodeId);
@@ -102,6 +112,8 @@ App.trainer = {
         return getActiveNodeId();
     },
 
+    // Смена активного узла. id=null при непустом списке отклоняется —
+    // инвариант «всегда ровно один активный» (см. trainer-store.js).
     setActiveNodeId: function(id) {
         return setActiveNodeId(id);
     },
@@ -121,6 +133,12 @@ App.trainer = {
         return getStats(trainerNodeId);
     },
 
+    // Ячейная статистика узла (для будущей тепловой карты): 13×13 пар
+    // [верно, неверно], накопительно без ограничений.
+    getCells: function(trainerNodeId) {
+        return getCells(trainerNodeId);
+    },
+
     // Сброс статистики узла (пункт меню «⋮ → Сбросить статистику»).
     resetStats: function(trainerNodeId) {
         return resetStats(trainerNodeId);
@@ -129,8 +147,8 @@ App.trainer = {
     // Финиш открытой сессии тренировки — как кнопка «Закончить тренировку»:
     // статистика пишется в БД одним запросом (гостю — не сохраняется),
     // состояние тренировки сбрасывается. Вызывается при уходе на другую
-    // вкладку (navigation.js switchTab); смена активного узла внутри
-    // тренажёра финиширует сессию сама (trainer-table.js renderTrainerTable).
+    // вкладку (navigation.js switchTab); смена активного узла финиширует
+    // сессию по событию trainer:activeChanged (trainer-store → trainer-table).
     finishTraining: function() {
         return finishTrainingSession();
     }

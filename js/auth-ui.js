@@ -221,6 +221,12 @@ App.authUi.onLogoutClick = function() {
     App.authUi.closeMenu();
 
     const logout = async function() {
+        // Финиш сессии тренировки ДО выхода: пока пользователь ещё
+        // залогинен, статистика уходит в его БД. После logout запись уже
+        // невозможна — данные потерялись бы молча.
+        if (App.trainer && typeof App.trainer.finishTraining === 'function') {
+            App.trainer.finishTraining();
+        }
         await App.auth.logout();
         location.reload();
     };

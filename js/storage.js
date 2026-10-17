@@ -101,11 +101,17 @@
     function saveRemote(key, rawValue, isRetry) {
         if (requiresAuth()) return authRequiredResult();
 
+        // keepalive: запрос переживает выгрузку страницы (F5 / закрытие
+        // вкладки) — иначе запись, стартовавшая перед выгрузкой, молча
+        // теряется. Ограничение браузера: тело keepalive-запроса ≤ 64 КБ;
+        // для больших payload — обычный fetch (лучше риск потери при
+        // выгрузке, чем гарантированный отказ сохранения).
         const request = fetch(API_URL + '?action=save', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: key, value: rawValue })
+            body: JSON.stringify({ key: key, value: rawValue }),
+            keepalive: rawValue.length <= 60 * 1024
         }).then(function(response) {
             if (!response.ok) throw new Error('HTTP ' + response.status);
             return response.json();
@@ -132,7 +138,8 @@
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: key })
+            body: JSON.stringify({ key: key }),
+            keepalive: true
         }).then(function(response) {
             if (!response.ok) throw new Error('HTTP ' + response.status);
             return response.json();

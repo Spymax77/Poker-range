@@ -78,6 +78,7 @@ function normalizeNode(raw) {
 // Параллельно загружает активный узел и гарантирует, что он указывает
 // на существующий узел (иначе — первый в списке, либо null если список пуст).
 export function loadTrainerNodes() {
+    const prevActive = activeNodeId;
     return App.storage.preload([STORAGE_KEY, STORAGE_KEY_ACTIVE]).then(function() {
         // --- узлы ---
         const data = App.storage.load(STORAGE_KEY);
@@ -95,7 +96,11 @@ export function loadTrainerNodes() {
         // Гарантия «один всегда активен»
         if (!activeNodeId && trainerNodes.length > 0) {
             activeNodeId = trainerNodes[0].id;
-            persistActiveNodeId();
+            commitActiveChange();
+        } else if (activeNodeId !== prevActive) {
+            // Активный пришёл из БД и изменился — персистить его не нужно
+            // (значение и так оттуда), но событие уведомить надо.
+            notifyActiveChanged();
         }
 
         return trainerNodes;
@@ -121,6 +126,29 @@ function persistActiveNodeId() {
     return App.storage.save(STORAGE_KEY_ACTIVE, activeNodeId);
 }
 
+// Единственная точка уведомления о смене активного узла: store мутирует
+// activeNodeId в нескольких местах (загрузка, добавление, удаление,
+// setActiveNodeId) — все они зовут commitActiveChange/notifyActiveChanged.
+// Слушатели (см. событие trainer:activeChanged в trainer-table.js) закрывают
+// открытую сессию тренировки с записью статистики: смена контекста = финиш.
+function notifyActiveChanged() {
+    if (App.events && typeof App.events.emit === 'function') {
+        App.events.emit('trainer:activeChanged', activeNodeId);
+    }
+}
+
+// Применение смены активного узла — вызывается СРАЗУ ПОСЛЕ мутации
+// activeNodeId. Порядок записи в БД принципиален: сначала событие —
+// слушатели успевают сохранить данные старого контекста (статистику
+// открытой сессии), и только потом новый активный узел уходит в БД.
+// Принцип «данные → указатель»: при сбое между этими записями в БД
+// остаются целые ДАННЫЕ, а теряется максимум указатель (после перезагрузки
+// активный просто восстановится/станет первым узлом).
+function commitActiveChange() {
+    notifyActiveChanged();
+    return persistActiveNodeId();
+}
+
 export function getTrainerNodes() {
     return trainerNodes;
 }
@@ -132,15 +160,22 @@ export function getActiveNodeId() {
 }
 
 export function setActiveNodeId(id) {
-    const idStr = id !== null ? String(id) : null;
-    if (idStr !== null) {
-        // Проверяем, что узел существует
-        const exists = trainerNodes.some(function(n) { return n.id === idStr; });
-        if (!exists) return false;
+    const idStr = (id !== null && id !== undefined) ? String(id) : null;
+    if (idStr === null) {
+        // Инвариант «всегда ровно один активный» (шапка файла): null
+        // осмыслен только при ПУСТОМ списке. При непустом отклоняем —
+        // иначе активный «теряется», ключ удаляется из БД, а после
+        // перезагрузки активный самопроизвольно «прыгает» на первый узел.
+        if (trainerNodes.length > 0) return false;
+        activeNodeId = null;
+        return true;
     }
+    // Проверяем, что узел существует
+    const exists = trainerNodes.some(function(n) { return n.id === idStr; });
+    if (!exists) return false;
     if (activeNodeId === idStr) return true; // уже активен — no-op
     activeNodeId = idStr;
-    persistActiveNodeId();
+    commitActiveChange();
     return true;
 }
 
@@ -158,7 +193,7 @@ export function addTrainerNode(data) {
     persistNodes();
     // Новый узел сразу активен
     activeNodeId = node.id;
-    persistActiveNodeId();
+    commitActiveChange();
     return node;
 }
 
@@ -180,7 +215,7 @@ export function removeTrainerNode(id) {
             const newIdx = idx < trainerNodes.length ? idx : trainerNodes.length - 1;
             activeNodeId = trainerNodes[newIdx].id;
         }
-        persistActiveNodeId();
+        commitActiveChange();
     }
     return true;
 }

@@ -864,7 +864,7 @@
 .trainer-stats-col {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     min-width: 240px;
     padding-top: 20px;
     margin-left: 26px;
@@ -927,10 +927,10 @@
     border: none;
     padding: 0;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 16px;
     color: #a9afb5;
     cursor: pointer;
-    text-align: left;
+    text-align: center;
     transition: color 0.15s ease;
 }
 
@@ -948,7 +948,7 @@
     justify-content: center;
     cursor: pointer;
     user-select: none;
-    margin: 14px 0 10px;
+    margin: 0;
     color: #8d9aa8;
 }
 
@@ -963,12 +963,20 @@
     margin: 0 10px;
 }
 
+/* Шеврон в контуре кружка; при наведении контур подсвечивается вместе с текстом. */
 .trainer-hands-divider .chev {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 22px;
     height: 22px;
+    box-sizing: border-box;
+    border: 1px solid #3a3d45;
+    border-radius: 50%;
+}
+
+.trainer-hands-divider:hover .chev {
+    border-color: #8d9aa8;
 }
 
 .trainer-hands-divider .chev svg {
@@ -982,18 +990,41 @@
     transform: rotate(0deg);   /* свёрнуто: вершина вниз */
 }
 
-/* «Шторка» истории: height-transition выезжает сверху вниз и заезжает наверх */
+/* «Шторка» истории: height-transition выезжает сверху вниз и заезжает наверх.
+   Отрицательный margin-top прижимает список вплотную к разделителю-галке. */
 .trainer-hands-wrap {
     overflow: hidden;
     transition: height 0.3s ease;
+    margin-top: -3px;
 }
 
 .trainer-hands-list {
-    border-top: 1px solid #3a3d45;
-    padding-top: 10px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    /* Список растёт до низа экрана (16px запас), дальше — вертикальный скролл. */
+    max-height: calc(100vh - 268px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #3a3d45 transparent;
+}
+
+/* Ползунок скролла истории — в стилистике сайта (тонкий, тёмный). */
+.trainer-hands-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.trainer-hands-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.trainer-hands-list::-webkit-scrollbar-thumb {
+    background: #3a3d45;
+    border-radius: 4px;
+}
+
+.trainer-hands-list::-webkit-scrollbar-thumb:hover {
+    background: #55585f;
 }
 
 /* Строка истории: мини-карты → действие → кружок вердикта */
