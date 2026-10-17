@@ -211,6 +211,13 @@ App.navigation.selectGtoNode = function(nodeId) {
 
 // ===== ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ =====
 App.navigation.switchTab = function(page) {
+    // Уход на другую вкладку при открытой сессии тренировки — сессия
+    // финиширует как по кнопке «Закончить тренировку»: статистика уходит
+    // в БД одним запросом (гостю — не сохраняется). Без этого данные
+    // терялись бы: вкладка уже не активна, кнопку «Закончить» не нажмут.
+    if (page !== 'trainer' && App.trainer && typeof App.trainer.finishTraining === 'function') {
+        App.trainer.finishTraining();
+    }
     // Класс активного раздела на body — используется мобильными стилями:
     // в ГТО и Редакторе язычок панели вкладок скрыт, в Просмотре остаётся.
     document.body.classList.remove('page-gto', 'page-constructor', 'page-work', 'page-trainer');

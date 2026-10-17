@@ -42,6 +42,18 @@ export function resetTrainingState() {
     currentRoll = null;
 }
 
+// Финиш открытой сессии тренировки — как кнопка «Закончить тренировку»:
+// накопленная статистика пишется в БД одним запросом (гостю не сохраняется —
+// счётчики остаются в памяти сессии, см. isPersistable в trainer-stats),
+// состояние тренировки сбрасывается. Идемпотентен: без открытой сессии — no-op.
+export function finishTrainingSession() {
+    if (trainingActiveNodeId === null) return false;
+    flushStats();
+    resetTrainingState();
+    renderTrainerTable();
+    return true;
+}
+
 // ===== РАЗДАЧА И ОЦЕНКА ОТВЕТА =====
 
 // Новая раздача: случайная рука + новый бросок ГСЧ.
@@ -128,6 +140,15 @@ var TOGGLE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 
 // ===== РЕНДЕР СТОЛА И КНОПОК =====
 export function renderTrainerTable() {
+    // Смена активного узла при открытой сессии (клик по другому узлу,
+    // удаление активного узла и т.п.) — сессия финиширует как по кнопке
+    // «Закончить тренировку»: статистика уходит в БД (гостю — не сохраняется).
+    // Без этого данные терялись бы: экран уже другой, кнопку «Закончить»
+    // не нажмут. Без открытой сессии — no-op.
+    if (trainingActiveNodeId !== null && trainingActiveNodeId !== getActiveNodeId()) {
+        flushStats();
+        resetTrainingState();
+    }
     var panel = document.querySelector('#trainerPage .table-panel');
     if (!panel) return;
     panel.innerHTML = '';
@@ -213,9 +234,7 @@ export function renderTrainerTable() {
         endBtn.className = 'trainer-end-btn';
         endBtn.textContent = App.i18n.t('trainer.endTraining');
         endBtn.addEventListener('click', function() {
-            flushStats();
-            resetTrainingState();
-            renderTrainerTable();
+            finishTrainingSession();
         });
         statsCol.appendChild(endBtn);
         // Второй блок: история рук нарастающим итогом (под «Закончить

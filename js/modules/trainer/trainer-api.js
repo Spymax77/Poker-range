@@ -14,6 +14,7 @@ import { initTrainingPanel, toggleTrainingPanel, setTrainingPanelVisible, isTrai
 import { addTrainerNode, loadTrainerNodes, getTrainerNodes, getActiveNodeId, setActiveNodeId } from './trainer-store.js';
 import { renderTrainerPage, removeTrainerNodeAndRefresh } from './trainer-page.js';
 import { loadTrainerStats, getStats, resetStats, resetAllStats } from './trainer-stats.js';
+import { finishTrainingSession } from './trainer-table.js';
 
 App.trainer = {
 
@@ -123,6 +124,15 @@ App.trainer = {
     // Сброс статистики узла (пункт меню «⋮ → Сбросить статистику»).
     resetStats: function(trainerNodeId) {
         return resetStats(trainerNodeId);
+    },
+
+    // Финиш открытой сессии тренировки — как кнопка «Закончить тренировку»:
+    // статистика пишется в БД одним запросом (гостю — не сохраняется),
+    // состояние тренировки сбрасывается. Вызывается при уходе на другую
+    // вкладку (navigation.js switchTab); смена активного узла внутри
+    // тренажёра финиширует сессию сама (trainer-table.js renderTrainerTable).
+    finishTraining: function() {
+        return finishTrainingSession();
     }
 };
 
