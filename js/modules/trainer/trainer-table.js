@@ -488,8 +488,16 @@ export function renderTrainerTable() {
             b.addEventListener('mouseleave', function() { b.style.background = 'transparent'; });
             b.addEventListener('click', function() { submitAnswer(activeNode, a.id, a.name); });
             // Ответ уже дан: кнопки действий блокируются (второй ответ
-            // невозможен) до нажатия «Следующая рука».
-            if (answerGiven) b.disabled = true;
+            // невозможен) до нажатия «Следующая рука». Ненажатые кнопки
+            // гаснут (см. CSS), нажатая остаётся выделенной заливкой своего
+            // цвета (как hover) — видно, каким действием отвечали.
+            if (answerGiven) {
+                b.disabled = true;
+                if (a.id === answerActionId) {
+                    b.classList.add('trainer-action-btn--chosen');
+                    b.style.background = a.color + '18';
+                }
+            }
             btnRow.appendChild(b);
         });
     } else {
