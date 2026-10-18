@@ -1,10 +1,10 @@
-// ===== trainer-table.js — стол, ГСЧ, кнопки действий и статистика тренажёра =====
-// Рисует покерный стол (овал), раздачу карт, ГСЧ и кнопки действий активного
+// ===== trainer-table.js — стол, кнопки действий и статистика тренажёра =====
+// Рисует покерный стол (овал), раздачу карт и кнопки действий активного
 // узла в .table-panel вкладки «Тренажёр». Вызывается из renderTrainerPage
 // (trainer-page.js) при каждом изменении активного узла.
 //
 // Начальное состояние — кнопка «Начать тренировку» (без карт и кнопок действий).
-// Карты, ГСЧ и кнопки действий появляются только после «Начать тренировку».
+// Карты и кнопки действий появляются только после «Начать тренировку».
 // Состояние определяется единственным сравнением:
 //   trainingActiveNodeId === activeNodeId
 // Если не совпадает (другой узел, первый вход) — показывается кнопка
@@ -33,6 +33,14 @@ import { generateDeal, renderCards } from './trainer-cards.js';
 import { getCorrectActions, FOLD_ACTION } from './trainer-engine.js';
 import { recordAnswer, renderStats, renderHands, flushStats } from './trainer-stats.js';
 
+// Имя действия Fold — единая константа (не переводится: покерный термин,
+// одинаков в русском и английском интерфейсе). Используется в кнопке
+// действия, легенде и строках (рука, вердикт).
+var FOLD_NAME = 'Fold';
+// Порог «Допустимо»: верный ответ с частотой действия ≤ порога помечается
+// как «Допустимо!» (не «Верно!»), в статистике остаётся верным.
+var ACCEPTABLE_SHARE_THRESHOLD = 25;
+
 // --- Состояние ---
 var trainingActiveNodeId = null;
 var matrixToggleMode = false;
@@ -40,6 +48,11 @@ var currentDeal = null; // { rank1, rank2, type, row, col, cards } — теку�
 // Ответ на текущую раздачу уже дан: кнопки действий заблокированы,
 // показана кнопка «Следующая рука» (новая рука — только по ней).
 var answerGiven = false;
+// Вердикт ответа (для строки под кнопками): true — верно, false — неверно,
+// null — ответа ещё нет.
+var answerCorrect = null;
+// Выбранное действие ответа (id кнопки) — для частоты в строке вердикта.
+var answerActionId = null;
 // Открыт попап «Показать диапазон» (матрица поверх стола, см.
 // buildRangeMatrixGrid): закрывается кнопкой «Закрыть» и раздачей новой руки.
 var rangePopupOpen = false;
@@ -53,6 +66,8 @@ export function resetTrainingState() {
     matrixToggleMode = false;
     currentDeal = null;
     answerGiven = false;
+    answerCorrect = null;
+    answerActionId = null;
     rangePopupOpen = false;
     // Подсветка рамки после ответа сессии не принадлежит — гасим сразу.
     tableFlashClass = null;
@@ -119,7 +134,8 @@ function showTableVerdict(correct) {
     }
 }
 
-// Ответ на текущую раздачу: оценка по броску ГСЧ → статистика. Новая рука
+// Ответ на текущую раздачу: оценка по списку верных действий из ячейки →
+// статистика. Новая рука
 // НЕ раздаётся автоматически: рука остаётся на столе до кнопки
 // «Следующая рука» (dealNextHand). actionName — подпись нажатой кнопки
 // (для истории рук).
@@ -135,8 +151,10 @@ function submitAnswer(node, actionId, actionName) {
         action: actionName
     }, { row: currentDeal.row, col: currentDeal.col });
     // Рука «отвечена»: кнопки действий блокируются (см. renderTrainerTable),
-    // появляется кнопка «Следующая рука».
+    // появляется кнопка «Следующая рука» и строка вердикта под ней.
     answerGiven = true;
+    answerCorrect = correct;
+    answerActionId = actionId;
     renderTrainerTable();
     // Рамка стола горит цветом вердикта до нажатия «Следующая рука».
     showTableVerdict(correct);
@@ -147,6 +165,8 @@ function submitAnswer(node, actionId, actionName) {
 function dealNextHand(node) {
     dealNewHand(node);
     answerGiven = false;
+    answerCorrect = null;
+    answerActionId = null;
     // Попап «Показать диапазон» — просмотр уже отвеченной руки: с раздачей
     // новой руки закрывается.
     rangePopupOpen = false;
@@ -291,8 +311,8 @@ function buildRangeLegend(activeNode) {
         });
     });
     // Fold — цвет незакрашенной ячейки (фон .hand-cell без заливки); имя —
-    // как у кнопки действия Fold (см. renderTrainerTable).
-    items.push({ name: 'Fold', color: 'var(--cell-empty-bg)', fold: true });
+    // FOLD_NAME, как у кнопки действия (см. renderTrainerTable).
+    items.push({ name: FOLD_NAME, color: 'var(--cell-empty-bg)', fold: true });
 
     var legend = document.createElement('div');
     legend.className = 'trainer-range-legend';
@@ -312,23 +332,20 @@ function buildRangeLegend(activeNode) {
     return legend;
 }
 
-// ===== СТРОКА «РУКА + ДОЛИ ДЕЙСТВИЙ» (попап «Показать диапазон») =====
-// Вторая строка слева внизу попапа (под легендой): рука текущей раздачи и
-// доли действий в её ячейке. Названия действий — ТОЧНО как у цветов-действий
-// (например: Рука: AQo Raise 20: 50% Fold: 50%).
-function buildHandInfoLine(activeNode, deal) {
-    var rowsData = globalThis.rowsData;
-    var label = (rowsData[deal.row] && rowsData[deal.row][deal.col]) || '';
-    // Доли действий ячейки: компоненты мульти-профиля (границы — те же, что у
-    // заливки) + фолд (остаток до 100%); простой цвет — 100%; пустая ячейка —
-    // только фолд.
+// ===== ДОЛИ ДЕЙСТВИЙ В ЯЧЕЙКЕ (общее: строка руки в попапе + строка вердикта) =====
+// Компоненты мульти-профиля (границы — те же, что у заливки) + фолд (остаток
+// до 100%); простой цвет — 100%; пустая ячейка — только фолд. Названия
+// действий — ТОЧНО как у цветов-действий. Возвращает [{ id, name, share }]
+// (id = id простого цвета либо FOLD_ACTION) в порядке ячейки, Fold —
+// последним, когда имеется.
+function getCellActionShares(activeNode, row, col) {
     var shares = [];
-    var profileId = activeNode.matrix[deal.row] ? activeNode.matrix[deal.row][deal.col] : null;
+    var profileId = activeNode.matrix[row] ? activeNode.matrix[row][col] : null;
     var profile = (activeNode.colors || []).find(function(c) { return c.id === profileId; }) || null;
     if (!profile) {
-        shares.push({ name: 'Fold', share: 100 });
+        shares.push({ id: FOLD_ACTION, name: FOLD_NAME, share: 100 });
     } else if (profile.type === 'simple' || (!profile.type && profile.color)) {
-        shares.push({ name: profile.name || '', share: 100 });
+        shares.push({ id: profile.id, name: profile.name || '', share: 100 });
     } else {
         var components = profile.components || [];
         var positions = App.colors.getPositions(profile); // как у заливки
@@ -338,19 +355,31 @@ function buildHandInfoLine(activeNode, deal) {
             var share = pos - prev;
             prev = pos;
             if (share <= 0) continue;
+            var id = components[i].colorId;
+            if (id === undefined || id === null) continue;
             // Компонент мульти-профиля ссылается на простой цвет (colorId) —
             // название действия берём у него, точное название цвета-действия.
-            var src = (components[i].colorId !== undefined && components[i].colorId !== null)
-                ? (activeNode.colors || []).find(function(x) { return x.id === components[i].colorId; }) || components[i]
-                : components[i];
-            var name = src.name || '';
-            var same = shares.find(function(s) { return s.name === name; });
-            if (same) same.share += share; // одно действие в нескольких компонентах
-            else shares.push({ name: name, share: share });
+            var src = (activeNode.colors || []).find(function(x) { return x.id === id; }) || components[i];
+            // Одинаковое действие в нескольких компонентах складываем (по id —
+            // сопоставление с кнопками устойчиво к переименованиям и пустым
+            // именам).
+            var same = shares.find(function(s) { return s.id === id; });
+            if (same) same.share += share;
+            else shares.push({ id: id, name: src.name || '', share: share });
         }
         var foldShare = 100 - prev;
-        if (foldShare > 0) shares.push({ name: 'Fold', share: foldShare });
+        if (foldShare > 0) shares.push({ id: FOLD_ACTION, name: FOLD_NAME, share: foldShare });
     }
+    return shares;
+}
+
+// ===== СТРОКА «РУКА + ДОЛИ ДЕЙСТВИЙ» (попап «Показать диапазон») =====
+// Вторая строка слева внизу попапа (под легендой): рука текущей раздачи и
+// доли действий в её ячейке. Пример: Рука: AQo · Raise 20 50% · Fold 50%.
+function buildHandInfoLine(activeNode, deal) {
+    var rowsData = globalThis.rowsData;
+    var label = (rowsData[deal.row] && rowsData[deal.row][deal.col]) || '';
+    var shares = getCellActionShares(activeNode, deal.row, deal.col);
 
     var line = document.createElement('div');
     line.className = 'trainer-range-popup-hand';
@@ -370,6 +399,43 @@ function buildHandInfoLine(activeNode, deal) {
         addSpan(s.name + ' ' + Math.round(s.share) + '%');
     });
     return line;
+}
+
+// ===== СТРОКА ВЕРДИКТА (под кнопками после ответа) =====
+// «✔ Верно!» (зелёный #78A659) или «✘ Неверно!» (красный #E55757) + через
+// разделитель «·» перечисление действий ячейки с долями текстом #dedede
+// (названия — точные имена цветов-действий, без двоеточий; Fold — когда
+// имеется). Пример: ✔ Верно! Raise 8 25% · Call 25% · Fold 50%.
+// Правило: у верного ответа с частотой ≤ ACCEPTABLE_SHARE_THRESHOLD слово
+// «Верно!» заменяется на «Допустимо!» — оценка и статистика при этом НЕ
+// меняются (ответ верный).
+function buildVerdictLine(activeNode, deal, correct, chosenId) {
+    var shares = getCellActionShares(activeNode, deal.row, deal.col);
+    // Частота выбранного действия — по id действия (устойчиво к
+    // переименованиям цветов и пустым именам).
+    var chosenShare = null;
+    shares.forEach(function(s) { if (s.id === chosenId) chosenShare = s.share; });
+    var statusKey = 'trainer.verdictWrong';
+    if (correct) {
+        statusKey = (chosenShare !== null && chosenShare <= ACCEPTABLE_SHARE_THRESHOLD)
+            ? 'trainer.verdictAcceptable'
+            : 'trainer.verdictCorrect';
+    }
+
+    var row = document.createElement('div');
+    row.className = 'trainer-verdict-row';
+    var status = document.createElement('span');
+    status.className = 'trainer-verdict-status ' + (correct ? 'ok' : 'err');
+    status.textContent = (correct ? '✔ ' : '✘ ') + App.i18n.t(statusKey);
+    row.appendChild(status);
+    row.appendChild(document.createTextNode(' '));
+    var actions = document.createElement('span');
+    actions.className = 'trainer-verdict-actions';
+    actions.textContent = shares
+        .map(function(s) { return s.name + ' ' + Math.round(s.share) + '%'; })
+        .join(' · ');
+    row.appendChild(actions);
+    return row;
 }
 
 // ===== РЕНДЕР СТОЛА И КНОПОК =====
@@ -414,7 +480,7 @@ export function renderTrainerTable() {
         // из простых цветов, верный ответ всегда сводится к одной из кнопок).
         var sc = []; if (activeNode.colors) sc = activeNode.colors.filter(function(c) { return c.type === 'simple' || (!c.type && c.color); });
         var acts = sc.map(function(c) { return { id: c.id, name: c.name, color: c.color }; });
-        acts.push({ id: FOLD_ACTION, name: 'Fold', color: '#5a5d66' });
+        acts.push({ id: FOLD_ACTION, name: FOLD_NAME, color: '#5a5d66' });
         acts.forEach(function(a) {
             var b = document.createElement('button'); b.className = 'trainer-action-btn'; b.textContent = a.name;
             b.style.borderColor = a.color; b.style.color = '#a9afb5';
@@ -431,16 +497,16 @@ export function renderTrainerTable() {
         sb.innerHTML = WAND_SVG + '<span>' + App.i18n.t('trainer.startTraining') + '</span>';
         sb.addEventListener('click', function() {
             trainingActiveNodeId = activeId;
-            dealNewHand(activeNode); // первая раздача + первый бросок ГСЧ
+            dealNewHand(activeNode); // первая раздача
             renderTrainerTable();
         });
         btnRow.appendChild(sb);
     }
     leftCol.appendChild(btnRow);
     // Ряд кнопок после ответа — ТОЛЬКО после ответа (до ответа не виден), под
-    // кнопками действий, у правого края стола (493px = ширина
-    // .trainer-table-surface). «Показать диапазон» — перед «Следующая рука»
-    // (слева от неё). Новая рука раздаётся только по «Следующая рука».
+    // кнопками действий, по центру стола (493px = ширина .trainer-table-surface).
+    // «Показать диапазон» — перед «Следующая рука» (слева от неё). Новая рука
+    // раздаётся только по «Следующая рука».
     if (isTrainingActive && answerGiven) {
         var nextRow = document.createElement('div'); nextRow.className = 'trainer-next-hand-row';
         var showBtn = document.createElement('button'); showBtn.className = 'trainer-next-hand-btn';
@@ -452,6 +518,12 @@ export function renderTrainerTable() {
         nb.addEventListener('click', function() { dealNextHand(activeNode); });
         nextRow.appendChild(nb);
         leftCol.appendChild(nextRow);
+    }
+    // Строка вердикта — после ответа, под кнопками «Показать диапазон» /
+    // «Следующая рука»: «✔ Верно!» / «✘ Неверно!» + перечисление действий
+    // ячейки с долями (см. buildVerdictLine).
+    if (isTrainingActive && answerGiven && currentDeal) {
+        leftCol.appendChild(buildVerdictLine(activeNode, currentDeal, answerCorrect, answerActionId));
     }
     // --- Попап «Показать диапазон»: матрица поверх стола (строго на месте
     // стола — top/left = 0 колонки стола, см. .trainer-range-popup в

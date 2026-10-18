@@ -726,16 +726,14 @@
     pointer-events: none;
 }
 
-/* Кнопка «Следующая рука» — под кнопками действий, у правого края стола.
-   Показывается только после ответа; новая рука раздаётся только по ней.
-   Ширина — по содержимому (текст + стрелка вправо), ряд
-   .trainer-next-hand-row прижимает её к правому краю. Стиль — как у
-   .trainer-start-btn (высота как у action-кнопок — 40px). Этот же стиль
-   делит кнопка «Показать диапазон» (перед «Следующая рука», слева). */
+/* Кнопки «Показать диапазон» и «Следующая рука» — под кнопками действий,
+   по центру стола. Показываются только после ответа; новая рука раздаётся
+   только по «Следующая рука». Ширина кнопок — по содержимому. Стиль — как у
+   .trainer-start-btn (высота как у action-кнопок — 40px). */
 .trainer-next-hand-row {
     display: flex;
     width: 493px;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 12px;
     margin-top: 12px;
 }
@@ -819,6 +817,32 @@
     font-size: 13px;
     line-height: normal;
     color: #dedede;
+}
+
+/* ===== СТРОКА ВЕРДИКТА (под кнопками после ответа) ===== */
+/* «✔ Верно!» / «✘ Неверно!» цветом вердикта + перечисление действий ячейки
+   с долями текстом #dedede (пример: ✔ Верно! Raise 8 75% Call 25%).
+   margin-top отрицательный: у .trainer-table-col flex-gap 16px между
+   блоками, а строка вердикта должна быть ближе к кнопкам (итог ~6px). */
+.trainer-verdict-row {
+    width: 493px;
+    margin-top: -10px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: normal;
+    color: #dedede;
+}
+
+.trainer-verdict-status {
+    font-weight: 600;
+}
+
+.trainer-verdict-status.ok {
+    color: #78A659;
+}
+
+.trainer-verdict-status.err {
+    color: #E55757;
 }
 
 /* Легенда цветов действий: квадратик цвета 14×14 (без скругления) +

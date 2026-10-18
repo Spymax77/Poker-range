@@ -7,7 +7,7 @@
 //   trainer-store.js   ← узлы тренажёра: состояние и сохранение в БД
 //   trainer-stats.js   ← статистика тренировки узла: счётчики + БД
 //   trainer-page.js    ← левая панель вкладки «Тренажёр» (список узлов)
-//   trainer-table.js   ← стол, ГСЧ, кнопки действий, статистика (правая часть)
+//   trainer-table.js   ← стол, кнопки действий, статистика (правая часть)
 //   trainer-cards.js   ← колода, раздача и рендер карт HERO
 
 import { initTrainingPanel, toggleTrainingPanel, setTrainingPanelVisible, isTrainingPanelVisible, refreshTrainingPanel } from './trainer-ui.js';
@@ -126,7 +126,7 @@ App.trainer = {
 
     // ===== СТАТИСТИКА ТРЕНИРОВКИ (см. trainer-stats.js) =====
     // Накопительная по узлу, хранится в БД (poker_range_trainer_stats).
-    // Сама сессия (раздача + ГСЧ + оценка ответа) живёт в trainer-table.js.
+    // Сама сессия (раздача + оценка ответа) живёт в trainer-table.js.
 
     // Статистика узла: { total, correct, wrong } (+ % верных на шкале).
     getStats: function(trainerNodeId) {
