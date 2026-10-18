@@ -129,3 +129,24 @@ App.animations.gtoFade = function() {
         addProfileBtn.classList.add('buttons-fade');
     }
 }
+
+// ===== АНИМАЦИЯ МЕРЦАНИЯ ДЛЯ ТРЕНАЖЁРА =====
+// При переключении диапазона в списке тренажёра матрица и тумблер режимов
+// под ней мерцают так же, как матрица редактора при смене диапазона:
+// класс matrix-fade (та же keyframes fadeEffect и длительность 0.45s),
+// навешенный в этом же кадре — оба начинают и заканчивают fade одновременно.
+App.animations.trainerFade = function() {
+    const grid = document.querySelector('#trainerPage .trainer-matrix-grid');
+    if (grid) {
+        grid.classList.remove('matrix-fade');
+        void grid.offsetWidth;
+        grid.classList.add('matrix-fade');
+    }
+
+    const toggle = document.querySelector('#trainerPage .trainer-matrix-mode-toggle');
+    if (toggle) {
+        toggle.classList.remove('matrix-fade');
+        void toggle.offsetWidth;
+        toggle.classList.add('matrix-fade');
+    }
+}

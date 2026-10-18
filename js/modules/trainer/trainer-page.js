@@ -198,8 +198,13 @@ function buildNodeItem(node) {
     // вкладки пустая до будущего тренажёра).
     itemDiv.onclick = (e) => {
         if (e.target.closest('.tree-actions-popup')) return;
+        const prevId = getActiveNodeId();
         setActiveNodeId(node.id);
         renderTrainerPage();
+        // Мерцание матрицы и тумблера под ней при переключении диапазона —
+        // так же, как матрица редактора при смене диапазона
+        // (App.animations.constructorFade). Только при реальной смене узла.
+        if (prevId !== node.id) App.animations.trainerFade();
     };
 
     nodeDiv.appendChild(itemDiv);
