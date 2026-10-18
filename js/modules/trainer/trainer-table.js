@@ -593,15 +593,35 @@ export function renderTrainerTable() {
         var matrixGrid = buildRangeMatrixGrid(activeNode, matrixToggleMode, null);
         rightCol.appendChild(matrixGrid);
 
-        // Переключатели режимов
+        // Переключатель режимов матрицы: «Диапазон» (цвета) ↔ «Руки в
+        // тренировке» (просмотр участия). Тумблер с двумя подписями; клик
+        // по тумблеру или по любой из подписей переключает режим.
         var modes = document.createElement('div'); modes.className = 'trainer-matrix-modes';
-        var cb = document.createElement('button'); cb.className = 'trainer-matrix-mode-btn toolbar-btn' + (!matrixToggleMode ? ' active' : '');
-        cb.innerHTML = PALETTE_SVG; cb.setAttribute('data-tooltip', App.i18n.t('trainer.matrixColors'));
-        cb.addEventListener('click', function() { matrixToggleMode = false; renderTrainerTable(); });
-        var tb = document.createElement('button'); tb.className = 'trainer-matrix-mode-btn toolbar-btn' + (matrixToggleMode ? ' active' : '');
-        tb.innerHTML = TOGGLE_SVG; tb.setAttribute('data-tooltip', App.i18n.t('trainer.matrixToggles'));
-        tb.addEventListener('click', function() { matrixToggleMode = true; renderTrainerTable(); });
-        modes.appendChild(cb); modes.appendChild(tb);
+        var toggleWrap = document.createElement('div'); toggleWrap.className = 'trainer-matrix-mode-toggle';
+        var lblRange = document.createElement('span'); lblRange.className = 'trainer-matrix-mode-toggle-label' + (!matrixToggleMode ? ' active' : '');
+        lblRange.textContent = App.i18n.t('trainer.matrixModeRange');
+        var sw = document.createElement('button'); sw.className = 'trainer-matrix-mode-toggle-sw' + (matrixToggleMode ? ' on' : '');
+        var knob = document.createElement('div'); knob.className = 'trainer-matrix-mode-toggle-knob';
+        sw.appendChild(knob);
+        var lblHands = document.createElement('span'); lblHands.className = 'trainer-matrix-mode-toggle-label' + (matrixToggleMode ? ' active' : '');
+        lblHands.textContent = App.i18n.t('trainer.matrixModeHands');
+        var onModeToggle = function() {
+            matrixToggleMode = !matrixToggleMode;
+            // Тумблер обновляется на месте, без renderTrainerTable(): полный
+            // перерендер пересоздавал бы DOM и ручка перескакивала без анимации.
+            // Перестраивается только сетка матрицы.
+            sw.className = 'trainer-matrix-mode-toggle-sw' + (matrixToggleMode ? ' on' : '');
+            lblRange.className = 'trainer-matrix-mode-toggle-label' + (!matrixToggleMode ? ' active' : '');
+            lblHands.className = 'trainer-matrix-mode-toggle-label' + (matrixToggleMode ? ' active' : '');
+            var newGrid = buildRangeMatrixGrid(activeNode, matrixToggleMode, null);
+            rightCol.replaceChild(newGrid, matrixGrid);
+            matrixGrid = newGrid;
+        };
+        lblRange.addEventListener('click', onModeToggle);
+        sw.addEventListener('click', onModeToggle);
+        lblHands.addEventListener('click', onModeToggle);
+        toggleWrap.appendChild(lblRange); toggleWrap.appendChild(sw); toggleWrap.appendChild(lblHands);
+        modes.appendChild(toggleWrap);
         rightCol.appendChild(modes);
         content.appendChild(rightCol);
     }

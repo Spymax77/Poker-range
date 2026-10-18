@@ -940,7 +940,9 @@
     display: flex;
     flex-direction: row;
     align-items: flex-start;
-    gap: 20px;
+    /* Зазор «стол ↔ правая колонка» (матрица вне тренировки, статистика во
+       время тренировки) = 66px — задаётся здесь, без доп. margin у колонок. */
+    gap: 66px;
     width: 100%;
 }
 
@@ -955,7 +957,8 @@
     position: relative;
 }
 
-/* Правая колонка: матрица 13×13 + переключатели */
+/* Правая колонка: матрица 13×13 + переключатели. Зазор от стола —
+   gap .trainer-content-wrapper (66px), тот же, что у статистики. */
 .trainer-matrix-col {
     display: flex;
     flex-direction: column;
@@ -1015,18 +1018,72 @@
     border-color: #5a5d66;
 }
 
+/* Тумблер режимов матрицы: «Диапазон» ↔ «Руки в тренировке» */
+.trainer-matrix-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+}
+
+.trainer-matrix-mode-toggle-label {
+    font-size: 13px;
+    cursor: pointer;
+    color: #8a848a;
+    transition: color 0.2s;
+}
+
+.trainer-matrix-mode-toggle-label.active {
+    color: #dedede;
+}
+
+.trainer-matrix-mode-toggle-sw {
+    width: 44px;
+    height: 24px;
+    border: none;
+    padding: 0;
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    background: #3a3d45;
+    transition: transform 0.12s ease;
+}
+
+.trainer-matrix-mode-toggle-sw:focus-visible {
+    outline: 2px solid #dedede;
+    outline-offset: 3px;
+}
+
+.trainer-matrix-mode-toggle-sw:active {
+    transform: scale(0.94);
+}
+
+.trainer-matrix-mode-toggle-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #dedede;
+    transform: translateX(0);
+    transition: transform 0.15s ease;
+}
+
+.trainer-matrix-mode-toggle-sw.on .trainer-matrix-mode-toggle-knob {
+    transform: translateX(20px);
+}
+
 /* ===== СТАТИСТИКА ТРЕНИРОВКИ (справа от стола, зона матрицы) ===== */
-/* Зазор «стол ↔ статистика» = 66px: gap .trainer-content-wrapper даёт 20px,
-   margin добавляет 46px (было 26px = зазор 46px «как у дерева»; по запросу
-   добавлено +20px «воздуха» — симметрично +20px между деревом и столом,
-   см. #trainerPage .table-panel в base.css). */
+/* Зазор «стол ↔ статистика» = 66px — gap .trainer-content-wrapper (тот же,
+   что у матрицы вне тренировки). */
 .trainer-stats-col {
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-width: 240px;
     padding-top: 20px;
-    margin-left: 46px;
 }
 
 .trainer-stats-row {
