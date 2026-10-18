@@ -3610,12 +3610,12 @@ body.dragging .tree-item.active .tree-actions-popup {
 
 /* Иконка в начале плашки «Добавить в тренажёр» — SVG «палочка со звёздами»
    (в svg задан fill: currentColor, поэтому цветом управляет color ниже):
-   серая — как иконки под матрицей. Отдельный класс, чтобы иконка не
+   #dedede — как текст кнопки. Отдельный класс, чтобы иконка не
    смешивалась с кружком-индикатором плашки автогенерации. */
 .training-plate-icon {
     width: 24px;
     height: 24px;
-    color: #8a848a;
+    color: #dedede;
     flex-shrink: 0;
 }
 
@@ -3677,6 +3677,18 @@ body.dragging .tree-item.active .tree-actions-popup {
     flex-direction: column;
 }
 
+/* В редакторе сокращённая статистика (prim-блоки) стоит между матрицей и
+   блоком статистики и должна быть посередине этого зазора: равные отступы
+   8px сверху и снизу (групповое правило выше даёт 6px, а .stats-table--details —
+   10px, из-за чего блок визуально смещался вверх). */
+#constructorStatsContainer {
+    margin-top: 8px;
+}
+
+#constructorStatsContainer .stats-table--details {
+    margin-top: 8px;
+}
+
 /* В просмотре total-статистика находится в одной строке с rngNumber.
    Сам контейнер не должен создавать отдельный flex-уровень. */
 #workStatsContainer {
@@ -3736,6 +3748,7 @@ body.dragging .tree-item.active .tree-actions-popup {
 .stats-row--total--prim .stats-cell--combos--prim {
     width: max-content;
     justify-self: end;
+    color: #8a8a8a;
 }
 
 .stats-row--total--prim {
