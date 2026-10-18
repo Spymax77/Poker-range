@@ -41,6 +41,9 @@ var currentRoll = null; // ГСЧ 1..100 для текущей раздачи (�
 // Ответ на текущую раздачу уже дан: кнопки действий заблокированы,
 // показана кнопка «Следующая рука» (новая рука — только по ней).
 var answerGiven = false;
+// Открыт попап «Показать диапазон» (матрица поверх стола, см.
+// buildRangeMatrixGrid): закрывается кнопкой «Закрыть» и раздачей новой руки.
+var rangePopupOpen = false;
 // Подсветка рамки стола после ответа (см. showTableVerdict ниже):
 // класс 'trainer-table-flash-ok' / 'trainer-table-flash-err' либо null.
 // Горит, пока не нажата «Следующая рука».
@@ -52,6 +55,7 @@ export function resetTrainingState() {
     currentDeal = null;
     currentRoll = null;
     answerGiven = false;
+    rangePopupOpen = false;
     // Подсветка рамки после ответа сессии не принадлежит — гасим сразу.
     tableFlashClass = null;
 }
@@ -144,6 +148,9 @@ function submitAnswer(node, actionId, actionName) {
 function dealNextHand(node) {
     dealNewHand(node);
     answerGiven = false;
+    // Попап «Показать диапазон» — просмотр уже отвеченной руки: с раздачей
+    // новой руки закрывается.
+    rangePopupOpen = false;
     tableFlashClass = null;
     renderTrainerTable();
 }
@@ -205,6 +212,100 @@ var NEXT_ARROW_SVG = '<svg class="trainer-next-hand-btn-icon" viewBox="0 0 24 24
 // а не из живого App.editor.colorsPerNode. Отдельная копия логики заливки
 // не нужна: вторая реализация расходится с эталоном («баг второго
 // экземпляра») при любом изменении общей логики.
+
+// ===== МАТРИЦА ДИАПАЗОНА (общая: правая колонка вне тренировки + попап
+// «Показать диапазон») =====
+// Классы hands-grid trainer-matrix-grid — тот же вид и размер (13×37px +
+// gap 1px = 493px), что у матрицы до «Начать тренировку». togglesMode=true —
+// только просмотр участия рук в тренировке (клики по ячейкам отключены —
+// участие формируется в редакторе, панель «Диапазон на тренировке», и
+// попадает в узел только снапшотом при добавлении); false — цвета диапазона.
+// highlight {row,col} — золотая рамка на ячейке текущей руки (как у
+// закреплённой ячейки в режиме анализа редактора, .gto-cell-pinned).
+function buildRangeMatrixGrid(activeNode, togglesMode, highlight) {
+    var matrixGrid = document.createElement('div');
+    matrixGrid.className = 'hands-grid trainer-matrix-grid';
+    var rowsData = globalThis.rowsData;
+    for (var r = 0; r < 13; r++) {
+        for (var c = 0; c < 13; c++) {
+            var cell = document.createElement('div');
+            cell.className = 'hand-cell';
+            cell.setAttribute('data-row', r);
+            cell.setAttribute('data-col', c);
+            if (togglesMode) {
+                var isD = activeNode.disabled && activeNode.disabled[r] && activeNode.disabled[r][c];
+                var part = activeNode.participation && activeNode.participation[r] && activeNode.participation[r][c];
+                if (isD) cell.classList.add('subrange-disabled');
+                else if (part) cell.classList.add('trainer-matrix-participating');
+            } else {
+                var pid = activeNode.matrix[r] ? activeNode.matrix[r][c] : null;
+                var prof = (pid !== null && pid !== undefined && activeNode.colors)
+                    ? activeNode.colors.find(function(c) { return c.id === pid; }) : null;
+                // Эталонная заливка из редактора (color-manager.js), цвета
+                // компонентов — из снапшота узла (colorsList).
+                if (prof) {
+                    App.colors.applyCellFill(cell, activeNode.id, prof, activeNode.colors);
+                    cell.style.color = '#FFF';
+                    cell.style.textShadow = '0 1px 2px rgba(0,0,0,.45)';
+                }
+                if (activeNode.disabled && activeNode.disabled[r] && activeNode.disabled[r][c]) cell.classList.add('subrange-disabled');
+            }
+            // Золотая рамка ячейки текущей руки (попап «Показать диапазон»).
+            if (highlight && highlight.row === r && highlight.col === c) cell.classList.add('gto-cell-pinned');
+            var ts = document.createElement('span'); ts.textContent = rowsData[r][c]; ts.style.position = 'relative'; ts.style.zIndex = '2';
+            cell.appendChild(ts);
+            matrixGrid.appendChild(cell);
+        }
+    }
+    return matrixGrid;
+}
+
+// ===== ЛЕГЕНДА ЦВЕТОВ ДЕЙСТВИЙ (попап «Показать диапазон») =====
+// Квадратик цвета + название действия: показываются только цвета, реально
+// используемые в матрице (мульти-профили — по их компонентам), + Fold —
+// цветом незакрашенной ячейки, всегда последним.
+function buildRangeLegend(activeNode) {
+    var used = {};
+    for (var r = 0; r < 13; r++) {
+        for (var c = 0; c < 13; c++) {
+            var pid = activeNode.matrix[r] ? activeNode.matrix[r][c] : null;
+            if (pid !== null && pid !== undefined) used[pid] = true;
+        }
+    }
+    var items = [];
+    var seen = {};
+    (activeNode.colors || []).forEach(function(col) {
+        if (!used[col.id]) return;
+        var parts = (col.type === 'multi' && Array.isArray(col.components)) ? col.components : [col];
+        parts.forEach(function(p) {
+            if (!p.color) return;
+            var key = (p.name || '') + '|' + p.color;
+            if (seen[key]) return;
+            seen[key] = true;
+            items.push({ name: p.name || '', color: p.color, fold: false });
+        });
+    });
+    // Fold — цвет незакрашенной ячейки (фон .hand-cell без заливки); имя —
+    // как у кнопки действия Fold (см. renderTrainerTable).
+    items.push({ name: 'Fold', color: 'var(--cell-empty-bg)', fold: true });
+
+    var legend = document.createElement('div');
+    legend.className = 'trainer-range-legend';
+    items.forEach(function(it) {
+        var item = document.createElement('span');
+        item.className = 'trainer-range-legend-item';
+        var sq = document.createElement('span');
+        sq.className = 'trainer-range-legend-swatch' + (it.fold ? ' fold' : '');
+        sq.style.background = it.color;
+        var lbl = document.createElement('span');
+        lbl.className = 'trainer-range-legend-label';
+        lbl.textContent = it.name;
+        item.appendChild(sq);
+        item.appendChild(lbl);
+        legend.appendChild(item);
+    });
+    return legend;
+}
 
 // ===== РЕНДЕР СТОЛА И КНОПОК =====
 // Чистая отрисовка: никаких побочных эффектов и записей в БД. Финиш
@@ -283,16 +384,42 @@ export function renderTrainerTable() {
         btnRow.appendChild(sb);
     }
     leftCol.appendChild(btnRow);
-    // Кнопка «Следующая рука» — ТОЛЬКО после ответа (до ответа не видна),
-    // под кнопками действий, у правого края стола (493px = ширина
-    // .trainer-table-surface). Новая рука раздаётся только по ней.
+    // Ряд кнопок после ответа — ТОЛЬКО после ответа (до ответа не виден), под
+    // кнопками действий, у правого края стола (493px = ширина
+    // .trainer-table-surface). «Показать диапазон» — перед «Следующая рука»
+    // (слева от неё). Новая рука раздаётся только по «Следующая рука».
     if (isTrainingActive && answerGiven) {
         var nextRow = document.createElement('div'); nextRow.className = 'trainer-next-hand-row';
+        var showBtn = document.createElement('button'); showBtn.className = 'trainer-next-hand-btn';
+        showBtn.textContent = App.i18n.t('trainer.showRange');
+        showBtn.addEventListener('click', function() { rangePopupOpen = true; renderTrainerTable(); });
+        nextRow.appendChild(showBtn);
         var nb = document.createElement('button'); nb.className = 'trainer-next-hand-btn';
         nb.innerHTML = '<span>' + App.i18n.t('trainer.nextHand') + '</span>' + NEXT_ARROW_SVG;
         nb.addEventListener('click', function() { dealNextHand(activeNode); });
         nextRow.appendChild(nb);
         leftCol.appendChild(nextRow);
+    }
+    // --- Попап «Показать диапазон»: матрица поверх стола (строго на месте
+    // стола — top/left = 0 колонки стола, см. .trainer-range-popup в
+    // styles/components.css), НЕ блокируя остальной интерфейс (без оверлея).
+    if (isTrainingActive && rangePopupOpen && currentDeal) {
+        var popup = document.createElement('div'); popup.className = 'trainer-range-popup';
+        // Матрица в точности как вне тренировки (цвета диапазона), но с
+        // золотой рамкой на ячейке текущей руки.
+        var popupGrid = buildRangeMatrixGrid(activeNode, false, { row: currentDeal.row, col: currentDeal.col });
+        popupGrid.classList.add('trainer-range-matrix');
+        popup.appendChild(popupGrid);
+        // Нижний ряд: легенда цветов действий слева (у левого края матрицы)
+        // и текстовая кнопка «Закрыть» справа (у нижнего правого края матрицы).
+        var closeRow = document.createElement('div'); closeRow.className = 'trainer-range-popup-close-row';
+        closeRow.appendChild(buildRangeLegend(activeNode));
+        var closeBtn = document.createElement('button'); closeBtn.className = 'training-plate-close';
+        closeBtn.textContent = App.i18n.t('trainer.close');
+        closeBtn.addEventListener('click', function() { rangePopupOpen = false; renderTrainerTable(); });
+        closeRow.appendChild(closeBtn);
+        popup.appendChild(closeRow);
+        leftCol.appendChild(popup);
     }
     content.appendChild(leftCol);
     // --- Статистика: при активной тренировке (зона матрицы, справа от стола) ---
@@ -326,42 +453,7 @@ export function renderTrainerTable() {
         var rightCol = document.createElement('div');
         rightCol.className = 'trainer-matrix-col';
 
-        var matrixGrid = document.createElement('div');
-        matrixGrid.className = 'hands-grid trainer-matrix-grid';
-        var rowsData = globalThis.rowsData;
-        for (var r = 0; r < 13; r++) {
-            for (var c = 0; c < 13; c++) {
-                var cell = document.createElement('div');
-                cell.className = 'hand-cell';
-                cell.setAttribute('data-row', r);
-                cell.setAttribute('data-col', c);
-                if (matrixToggleMode) {
-                    // Только просмотр: показываем, какие руки участвуют в
-                    // тренировке. Клики по ячейкам отключены — участие
-                    // формируется в редакторе (панель «Диапазон на тренировке»)
-                    // и попадает в узел только снапшотом при добавлении.
-                    var isD = activeNode.disabled && activeNode.disabled[r] && activeNode.disabled[r][c];
-                    var part = activeNode.participation && activeNode.participation[r] && activeNode.participation[r][c];
-                    if (isD) cell.classList.add('subrange-disabled');
-                    else if (part) cell.classList.add('trainer-matrix-participating');
-                } else {
-                    var pid = activeNode.matrix[r] ? activeNode.matrix[r][c] : null;
-                    var prof = (pid !== null && pid !== undefined && activeNode.colors)
-                        ? activeNode.colors.find(function(c) { return c.id === pid; }) : null;
-                    // Эталонная заливка из редактора (color-manager.js), цвета
-                    // компонентов — из снапшота узла (colorsList).
-                    if (prof) {
-                        App.colors.applyCellFill(cell, activeNode.id, prof, activeNode.colors);
-                        cell.style.color = '#FFF';
-                        cell.style.textShadow = '0 1px 2px rgba(0,0,0,.45)';
-                    }
-                    if (activeNode.disabled && activeNode.disabled[r] && activeNode.disabled[r][c]) cell.classList.add('subrange-disabled');
-                }
-                var ts = document.createElement('span'); ts.textContent = rowsData[r][c]; ts.style.position = 'relative'; ts.style.zIndex = '2';
-                cell.appendChild(ts);
-                matrixGrid.appendChild(cell);
-            }
-        }
+        var matrixGrid = buildRangeMatrixGrid(activeNode, matrixToggleMode, null);
         rightCol.appendChild(matrixGrid);
 
         // Переключатели режимов
