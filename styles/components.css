@@ -645,8 +645,9 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
-/* Подсветка рамки стола на 1 секунду после ответа (см. flashTableBorder
-   в trainer-table.js): зелёная — верный ответ, красная — ошибка. */
+/* Подсветка рамки стола после ответа (см. showTableVerdict
+   в trainer-table.js): зелёная — верный ответ, красная — ошибка.
+   Горит, пока не нажата кнопка «Следующая рука» (без автоперехода). */
 .trainer-table-surface.trainer-table-flash-ok {
     border-color: #78A659;
 }
@@ -714,6 +715,57 @@
     font-family: inherit;
     cursor: pointer;
     transition: background 0.15s;
+}
+
+/* После ответа кнопки действий заблокированы (второй ответ невозможен) —
+   приглушены до нажатия «Следующая рука». pointer-events: none — hover
+   (подсветка фона) на заблокированных кнопках не срабатывает. */
+.trainer-action-btn:disabled {
+    cursor: default;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* Кнопка «Следующая рука» — под кнопками действий, у правого края стола.
+   Показывается только после ответа; новая рука раздаётся только по ней.
+   Ширина — по содержимому (текст + стрелка вправо), ряд
+   .trainer-next-hand-row прижимает её к правому краю. Стиль — как у
+   .trainer-start-btn (высота как у action-кнопок — 40px). */
+.trainer-next-hand-row {
+    display: flex;
+    width: 493px;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.trainer-next-hand-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 40px;
+    padding: 0 20px;
+    background: #303239;
+    border: none;
+    border-radius: 4px;
+    color: #dedede;
+    font-size: 13px;
+    font-weight: 400;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.trainer-next-hand-btn:hover {
+    background: #3a3d45;
+}
+
+/* SVG-стрелка вправо в кнопке «Следующая рука». */
+.trainer-next-hand-btn-icon {
+    width: 18px;
+    height: 18px;
+    color: #dedede;
+    flex-shrink: 0;
 }
 
 /* Кнопка «Начать тренировку» — стиль как у .training-plate-btn

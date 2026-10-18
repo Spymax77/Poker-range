@@ -19,8 +19,10 @@
 // (trainer-engine.getCorrectAnswer): мульти-профиль ячейки = простые цвета
 // + остаток до 100% = фолд. Пример: рейз 25% / фолд 75% → roll 1..25 — верный
 // «рейз», 26..100 — верный «фолд». Клик по кнопке действия оценивается по
-// этой корзине, ответ пишется в статистику узла (trainer-stats), затем
-// автоматически раздаётся следующая рука.
+// этой корзине, ответ пишется в статистику узла (trainer-stats). Следующая
+// рука раздаётся ТОЛЬКО по кнопке «Следующая рука» (под кнопками действий,
+// у правого края стола): после ответа рука остаётся на столе, рамка горит
+// цветом вердикта до перехода.
 //
 // Статистика (всего рук / верных / ошибок / шкала % верных) — справа от стола
 // при активной тренировке; вне тренировки там же всегда видна матрица
@@ -36,22 +38,22 @@ var trainingActiveNodeId = null;
 var matrixToggleMode = false;
 var currentDeal = null; // { rank1, rank2, type, row, col, cards } — текущая рука
 var currentRoll = null; // ГСЧ 1..100 для текущей раздачи (фиксируется на неё)
-// Подсветка рамки стола после ответа (см. flashTableBorder ниже):
+// Ответ на текущую раздачу уже дан: кнопки действий заблокированы,
+// показана кнопка «Следующая рука» (новая рука — только по ней).
+var answerGiven = false;
+// Подсветка рамки стола после ответа (см. showTableVerdict ниже):
 // класс 'trainer-table-flash-ok' / 'trainer-table-flash-err' либо null.
+// Горит, пока не нажата «Следующая рука».
 var tableFlashClass = null;
-var tableFlashTimer = null;
 
 export function resetTrainingState() {
     trainingActiveNodeId = null;
     matrixToggleMode = false;
     currentDeal = null;
     currentRoll = null;
+    answerGiven = false;
     // Подсветка рамки после ответа сессии не принадлежит — гасим сразу.
     tableFlashClass = null;
-    if (tableFlashTimer) {
-        clearTimeout(tableFlashTimer);
-        tableFlashTimer = null;
-    }
 }
 
 // Финиш открытой сессии тренировки — как кнопка «Закончить тренировку»:
@@ -99,22 +101,16 @@ function dealNewHand(node) {
 }
 
 // ===== ПОДСВЕТКА РАМКИ СТОЛА ПОСЛЕ ОТВЕТА =====
-// На 1 секунду рамка .trainer-table-surface меняет цвет: зелёная — верный
-// ответ, красная — ошибка (классы — см. styles/components.css). Стол
-// перерисовывается на каждый ответ (renderTrainerTable), поэтому класс
-// живёт в состоянии и применяется к новому столу, а снимается по таймеру.
-function flashTableBorder(correct) {
+// Рамка .trainer-table-surface горит цветом вердикта: зелёная — верный
+// ответ, красная — ошибка (классы — см. styles/components.css). Горит с
+// ответа и ДО нажатия «Следующая рука» (без автоперехода к новой руке).
+// Стол перерисовывается на каждый ответ (renderTrainerTable), поэтому класс
+// живёт в состоянии и применяется к новому столу; гасится раздачей новой
+// руки (dealNextHand) и сбросом сессии (resetTrainingState).
+function showTableVerdict(correct) {
     tableFlashClass = correct ? 'trainer-table-flash-ok' : 'trainer-table-flash-err';
-    if (tableFlashTimer) clearTimeout(tableFlashTimer);
-    tableFlashTimer = setTimeout(function() {
-        tableFlashClass = null;
-        tableFlashTimer = null;
-        var surface = document.querySelector('#trainerPage .table-panel .trainer-table-surface');
-        if (surface) surface.classList.remove('trainer-table-flash-ok', 'trainer-table-flash-err');
-    }, 1000);
     // Применяем сразу: renderTrainerTable к этому моменту уже отрисовал стол.
-    // Сначала снимаем оба класса — при быстрых ответах рендер успевает
-    // применить подсветку прошлого вердикта (см. renderTrainerTable).
+    // Сначала снимаем оба класса — на случай повторного применения.
     var surfaceEl = document.querySelector('#trainerPage .table-panel .trainer-table-surface');
     if (surfaceEl) {
         surfaceEl.classList.remove('trainer-table-flash-ok', 'trainer-table-flash-err');
@@ -122,10 +118,12 @@ function flashTableBorder(correct) {
     }
 }
 
-// Ответ на текущую раздачу: оценка по броску ГСЧ → статистика → новая рука.
-// actionName — подпись нажатой кнопки (для истории рук).
+// Ответ на текущую раздачу: оценка по броску ГСЧ → статистика. Новая рука
+// НЕ раздаётся автоматически: рука остаётся на столе до кнопки
+// «Следующая рука» (dealNextHand). actionName — подпись нажатой кнопки
+// (для истории рук).
 function submitAnswer(node, actionId, actionName) {
-    if (!currentDeal || currentRoll === null) return;
+    if (!currentDeal || currentRoll === null || answerGiven) return;
     var correctId = getCorrectAnswer(node, currentDeal.row, currentDeal.col, currentRoll);
     var correct = actionId === correctId;
     // История рук: карты раздачи + выбранное действие (+ вердикт).
@@ -133,10 +131,21 @@ function submitAnswer(node, actionId, actionName) {
         cards: currentDeal.cards.map(function(c) { return { rank: c.rank, suit: c.suit }; }),
         action: actionName
     }, { row: currentDeal.row, col: currentDeal.col });
-    dealNewHand(node);
+    // Рука «отвечена»: кнопки действий блокируются (см. renderTrainerTable),
+    // появляется кнопка «Следующая рука».
+    answerGiven = true;
     renderTrainerTable();
-    // Рамка стола на 1 секунду подсвечивается цветом вердикта.
-    flashTableBorder(correct);
+    // Рамка стола горит цветом вердикта до нажатия «Следующая рука».
+    showTableVerdict(correct);
+}
+
+// Следующая рука — ТОЛЬКО по кнопке «Следующая рука» (без автоперехода).
+// Сбрасывает состояние ответа и гасит рамку вердикта.
+function dealNextHand(node) {
+    dealNewHand(node);
+    answerGiven = false;
+    tableFlashClass = null;
+    renderTrainerTable();
 }
 
 // SVG «палочка со звёздами» — кнопка «Начать тренировку».
@@ -184,6 +193,11 @@ var TOGGLE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
     '<circle cx="16" cy="12" r="5" fill="currentColor"/>' +
     '</svg>';
 
+// SVG «стрелка вправо» — кнопка «Следующая рука».
+var NEXT_ARROW_SVG = '<svg class="trainer-next-hand-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M4 12h16M14 6l6 6-6 6"/>' +
+    '</svg>';
+
 // ===== ЗАЛИВКА ЯЧЕЙКИ ИЗ СНАПШОТА =====
 // Эталонная заливка App.colors.applyCellFill / App.colors.getCellFillSegments
 // (color-manager.js) — та же, что в редакторе. Цвета компонентов мульти-
@@ -216,7 +230,7 @@ export function renderTrainerTable() {
 
     var tableDiv = document.createElement('div');
     tableDiv.className = 'trainer-table-surface';
-    // Подсветка рамки после ответа (см. flashTableBorder) переживает
+    // Подсветка рамки после ответа (см. showTableVerdict) переживает
     // перерисовку — применяем класс к новому столу.
     if (tableFlashClass) tableDiv.classList.add(tableFlashClass);
     var lbl = document.createElement('div'); lbl.className = 'trainer-table-label'; lbl.textContent = 'POKER TABLE'; tableDiv.appendChild(lbl);
@@ -250,9 +264,12 @@ export function renderTrainerTable() {
         acts.forEach(function(a) {
             var b = document.createElement('button'); b.className = 'trainer-action-btn'; b.textContent = a.name;
             b.style.borderColor = a.color; b.style.color = '#a9afb5';
-            b.addEventListener('mouseenter', function() { b.style.background = a.color + '18'; });
+            b.addEventListener('mouseenter', function() { if (!b.disabled) b.style.background = a.color + '18'; });
             b.addEventListener('mouseleave', function() { b.style.background = 'transparent'; });
             b.addEventListener('click', function() { submitAnswer(activeNode, a.id, a.name); });
+            // Ответ уже дан: кнопки действий блокируются (второй ответ
+            // невозможен) до нажатия «Следующая рука».
+            if (answerGiven) b.disabled = true;
             btnRow.appendChild(b);
         });
     } else {
@@ -266,6 +283,17 @@ export function renderTrainerTable() {
         btnRow.appendChild(sb);
     }
     leftCol.appendChild(btnRow);
+    // Кнопка «Следующая рука» — ТОЛЬКО после ответа (до ответа не видна),
+    // под кнопками действий, у правого края стола (493px = ширина
+    // .trainer-table-surface). Новая рука раздаётся только по ней.
+    if (isTrainingActive && answerGiven) {
+        var nextRow = document.createElement('div'); nextRow.className = 'trainer-next-hand-row';
+        var nb = document.createElement('button'); nb.className = 'trainer-next-hand-btn';
+        nb.innerHTML = '<span>' + App.i18n.t('trainer.nextHand') + '</span>' + NEXT_ARROW_SVG;
+        nb.addEventListener('click', function() { dealNextHand(activeNode); });
+        nextRow.appendChild(nb);
+        leftCol.appendChild(nextRow);
+    }
     content.appendChild(leftCol);
     // --- Статистика: при активной тренировке (зона матрицы, справа от стола) ---
     if (isTrainingActive) {

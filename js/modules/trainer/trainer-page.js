@@ -33,6 +33,25 @@ const DOTS_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3
 
 // (selectedNodeId удалён: активный узел теперь в trainer-store, персистентно в БД)
 
+// ===== ПЕРЕВОД ПРИ СМЕНЕ ЯЗЫКА =====
+// Тексты тренажёра (кнопки, ГСЧ, статистика, история, пункты меню) рендерятся
+// через App.i18n.t() на момент отрисовки — статический механизм [data-i18n]
+// (i18n.js applyLanguage) их не видит. Поэтому при смене языка вкладка
+// перерисовывается целиком (паттерн js/stats.js: событие 'languagechange').
+// Состояние сессии тренировки живёт в trainer-table.js и переживает
+// перерисовку — тренировка не прерывается.
+// ВАЖНО: i18n.js шлёт 'languagechange' при КАЖДОМ applyLanguage (в том числе
+// от MutationObserver на любое изменение DOM), поэтому перерисовываем только
+// при реальной смене языка — сравнение с renderedLang (обновляется в
+// renderTrainerPage, т.е. хранит язык последней отрисовки).
+let renderedLang = App.i18n.getLanguage();
+
+document.addEventListener('languagechange', function(e) {
+    const lang = (e && e.detail && e.detail.language) || App.i18n.getLanguage();
+    if (lang === renderedLang) return;
+    renderTrainerPage();
+});
+
 // ===== POPUP-МЕНЮ УЗЛА (один пункт — «Удалить из тренировки») =====
 // Логика открытия/закрытия повторяет buildTreeNodeActions (tree-render.js):
 // fixed-позиция у правого края панели, анимации menu-entering/menu-closing,
@@ -191,6 +210,8 @@ function buildNodeItem(node) {
 export function renderTrainerPage() {
     const container = document.getElementById('trainerTree');
     if (!container) return;
+    // Язык этой отрисовки (см. подписку 'languagechange' выше).
+    renderedLang = App.i18n.getLanguage();
     container.innerHTML = '';
 
     const nodes = getTrainerNodes();
