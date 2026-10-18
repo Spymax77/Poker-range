@@ -33,15 +33,13 @@
     justify-self: end;
 }
 
-/* Кнопки вкладок — центральная колонка шапки. Зазор 30px сохраняет прежний
-   интервал между кнопками (раньше он задавался gap-ом flex-шапки). */
+/* Кнопки вкладок — центральная колонка шапки. */
 .tab-buttons {
     grid-column: 2;
     grid-row: 1;
     justify-self: center;
     display: flex;
     align-items: center;
-    gap: 30px;
 }
 .toolbar-more-wrapper {
     position: relative;
@@ -820,6 +818,49 @@
     font-size: 13px;
     line-height: normal;
     color: #dedede;
+}
+
+/* Появление/закрытие попапа «Показать диапазон»: мягкое проявление снизу
+   с лёгким наездом и обратное затухание. Класс .enter добавляется при
+   открытии кнопкой (см. trainer-table.js), .closing — при закрытии кнопкой
+   «Закрыть» перед уборкой попапа из DOM. */
+@keyframes trainer-range-popup-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes trainer-range-popup-out {
+    from {
+        opacity: 1;
+        transform: none;
+    }
+    to {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+    }
+}
+
+.trainer-range-popup.enter {
+    animation: trainer-range-popup-in 0.22s ease-out;
+}
+
+.trainer-range-popup.closing {
+    animation: trainer-range-popup-out 0.18s ease-in forwards;
+    pointer-events: none;
+}
+
+/* Без анимаций для тех, кто попросил их уменьшить в системе. */
+@media (prefers-reduced-motion: reduce) {
+    .trainer-range-popup.enter,
+    .trainer-range-popup.closing {
+        animation: none;
+    }
 }
 
 /* ===== СТРОКА ВЕРДИКТА (под кнопками после ответа) ===== */
@@ -3677,15 +3718,17 @@ body.dragging .tree-item.active .tree-actions-popup {
     flex-direction: column;
 }
 
-/* В редакторе сокращённая статистика (prim-блоки) стоит между матрицей и
-   блоком статистики и должна быть посередине этого зазора: равные отступы
+/* В редакторе и GTO сокращённая статистика (prim-блоки) стоит между матрицей
+   и блоком статистики и должна быть посередине этого зазора: равные отступы
    8px сверху и снизу (групповое правило выше даёт 6px, а .stats-table--details —
    10px, из-за чего блок визуально смещался вверх). */
-#constructorStatsContainer {
+#constructorStatsContainer,
+#gtoStatsContainer {
     margin-top: 8px;
 }
 
-#constructorStatsContainer .stats-table--details {
+#constructorStatsContainer .stats-table--details,
+#gtoStatsContainer .stats-table--details {
     margin-top: 8px;
 }
 

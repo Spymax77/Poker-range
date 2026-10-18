@@ -519,7 +519,14 @@ export function renderTrainerTable() {
         var nextRow = document.createElement('div'); nextRow.className = 'trainer-next-hand-row';
         var showBtn = document.createElement('button'); showBtn.className = 'trainer-next-hand-btn';
         showBtn.textContent = App.i18n.t('trainer.showRange');
-        showBtn.addEventListener('click', function() { rangePopupOpen = true; renderTrainerTable(); });
+        showBtn.addEventListener('click', function() {
+            rangePopupOpen = true;
+            renderTrainerTable();
+            // Плавное появление — только при открытии кнопкой: при других
+            // перерендерах попап пересоздаётся уже видимым, без анимации.
+            var p = document.querySelector('#trainerPage .trainer-range-popup');
+            if (p) p.classList.add('enter');
+        });
         nextRow.appendChild(showBtn);
         var nb = document.createElement('button'); nb.className = 'trainer-next-hand-btn';
         nb.innerHTML = '<span>' + App.i18n.t('trainer.nextHand') + '</span>' + NEXT_ARROW_SVG;
@@ -553,7 +560,16 @@ export function renderTrainerTable() {
         closeRow.appendChild(infoCol);
         var closeBtn = document.createElement('button'); closeBtn.className = 'training-plate-close';
         closeBtn.textContent = App.i18n.t('trainer.close');
-        closeBtn.addEventListener('click', function() { rangePopupOpen = false; renderTrainerTable(); });
+        closeBtn.addEventListener('click', function() {
+            // Плавное закрытие: затухание, затем уборка попапа. setTimeout —
+            // чтобы закрытие сработало и при отключённых анимациях.
+            if (popup.classList.contains('closing')) return;
+            popup.classList.add('closing');
+            setTimeout(function() {
+                rangePopupOpen = false;
+                renderTrainerTable();
+            }, 200);
+        });
         closeRow.appendChild(closeBtn);
         popup.appendChild(closeRow);
         leftCol.appendChild(popup);
