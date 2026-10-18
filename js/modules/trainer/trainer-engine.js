@@ -203,36 +203,46 @@ export function buildTrainerSnapshot(nodeId, toggles) {
     };
 }
 
-// ===== ОЦЕНКА ОТВЕТА ПО БРОСКУ ГСЧ (1..100) =====
-// Мульти-профиль ячейки всегда состоит из простых цветов (компонентов) и,
-// возможно, «без цвета» = фолд. Корзины берутся из App.colors.getPositions —
-// тех же границ, которыми рисуется заливка (App.colors.applyCellFill):
-//   компонент i занимает (positions[i-1], positions[i]],
-//   остаток до 100 (positions[last] < 100) — фолд.
-// Пример: рейз 25% + фолд 75% → roll 1..25 = верный «рейз», 26..100 = «фолд».
-// Простой цвет (или незакрашенная ячейка) — корзина одна: действие / фолд.
-// Возвращает id действия (простого цвета) либо FOLD_ACTION.
+// ===== ОЦЕНКА ОТВЕТА =====
+// Верный ответ — ЛЮБОЕ действие из ячейки (без «корзин» и броска ГСЧ):
+//   - простой цвет — ячейка одного действия;
+//   - мульти-профиль ячейки всегда состоит из простых цветов (компонентов) и,
+//     возможно, «без цвета» = фолд. Верны все компоненты с НЕНУЛЕВОЙ долей
+//     (границы — App.colors.getPositions, те же, которыми рисуется заливка
+//     App.colors.applyCellFill) и фолд, если остаток до 100 положителен
+//     (positions[last] < 100);
+//   - незакрашенная ячейка — только фолд.
+// Пример: рейз 50% + фолд 50% → верны и «рейз», и «фолд».
+// Возвращает МАССИВ id действий (id простых цветов) и/или FOLD_ACTION.
 
 export const FOLD_ACTION = 'fold';
 
-export function getCorrectAnswer(node, row, col, roll) {
-    if (!node || !node.matrix || !node.matrix[row]) return FOLD_ACTION;
+export function getCorrectActions(node, row, col) {
+    if (!node || !node.matrix || !node.matrix[row]) return [FOLD_ACTION];
     const profileId = node.matrix[row][col];
     const profile = (node.colors || []).find(function(c) { return c.id === profileId; }) || null;
-    if (!profile) return FOLD_ACTION; // незакрашенная ячейка — всегда фолд
+    if (!profile) return [FOLD_ACTION]; // незакрашенная ячейка — всегда фолд
 
     // Простой цвет: ячейка целиком одного действия.
     if (profile.type === 'simple' || (!profile.type && profile.color)) {
-        return profile.id;
+        return [profile.id];
     }
 
-    // Мульти-профиль: корзины компонентов, остаток до 100 — фолд.
+    // Мульти-профиль: компоненты с ненулевой долей + фолд (остаток до 100).
     const components = profile.components || [];
     const positions = App.colors.getPositions(profile); // как у заливки
+    const actions = [];
+    let prev = 0;
     for (let i = 0; i < components.length; i++) {
-        if (roll <= (positions[i] || 0)) {
-            return components[i].colorId;
+        const pos = positions[i] || 0;
+        const id = components[i].colorId;
+        if (pos > prev && id !== undefined && id !== null && actions.indexOf(id) === -1) {
+            actions.push(id);
         }
+        prev = pos;
     }
-    return FOLD_ACTION;
+    if ((positions[components.length - 1] || 0) < 100 && actions.indexOf(FOLD_ACTION) === -1) {
+        actions.push(FOLD_ACTION);
+    }
+    return actions.length ? actions : [FOLD_ACTION];
 }
