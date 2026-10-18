@@ -1,21 +1,21 @@
 // ===== trainer-ui.js — панель настройки тренировки в редакторе =====
 // По кнопке «шапочка выпускника» (trainingModeBtn) в правой панели вместо
 // цветов показывается отражение основной матрицы текущего диапазона
-// (см. trainer-engine). Логики «правильных»/«неправильных» ячеек нет.
+// (см. trainer-engine).
 // Слой данных отражения — участие руки в тренировке: участвующие ячейки
 // показываются светло-серыми (тёмный шрифт), не участвующие — обычными,
 // недоступные (subrange-disabled) — disabled и кликам не подлежат. Участие
 // по умолчанию генерируется динамически из основной матрицы (см.
 // trainer-engine.buildTrainingMatrix: закрашенные + пустые соседи
-// закрашенных + все пары и одномастные тузы); тоглы кликом и групповое
-// выделение скольжением живут только до переключения диапазона — состояние
-// не сохраняется (как хранить — отдельная задача).
+// закрашенных + линии пар и одномастных тузов от закрашенных); тоглы
+// кликом и групповое выделение скольжением живут только до переключения
+// диапазона — состояние не сохраняется (как хранить — отдельная задача).
 // Плашка «Генерировать автоматически» держит индикатор в синхроне с тоглами:
 // зелёный — тоглы не редактировались с последней генерации (состояние по
 // умолчанию), серый — пользователь правил тоглы. Клик генерирует дефолт
 // заново (тоглы к умолчанию + индикатор зелёный), правка любого тогла
-// гасит индикатор. Под отражением — плашка «Начать тренировку» (вместо
-// блока статистики).
+// гасит индикатор. Кнопка «Добавить в тренажёр» (trainingStartBtn) уводит
+// снимок диапазона в тренажёр и открывает вкладку «Тренажёр» (см. ниже).
 
 import { buildTrainingMatrix, buildTrainerSnapshot } from './trainer-engine.js';
 
@@ -197,8 +197,9 @@ function setVisible(visible, persist) {
 
     if (panel) panel.style.display = visible ? 'block' : 'none';
     if (startBtn) startBtn.style.display = visible ? 'flex' : 'none';
-    // Статистика (constructorStatsContainer) в тренировке видима — display
-    // возвращаем в '' (включится CSS display: flex), как и вне тренировки.
+    // Палитра и профили в тренировке скрыты — их место занимает панель
+    // настройки; при выходе display = '' возвращает правила из стилей.
+    // Блок статистики не трогаем — он виден и в тренировке.
     if (palette) palette.style.display = visible ? 'none' : '';
     if (profiles) profiles.style.display = visible ? 'none' : '';
 
@@ -255,19 +256,23 @@ export function initTrainingPanel() {
             const toggles = (setupState.togglesNodeId === nodeId)
                 ? setupState.toggles : null;
             const snapshot = buildTrainerSnapshot(nodeId, toggles);
-            // Проверка на пустой диапазон: нет ни одной участвующей руки
-            // (ничего не закрашено или все закрашенные ячейки недоступны).
-            // Пустой узел в тренажёре не добавляем: генератор раздачи не
-            // найдёт рук и тренировка «зависнет» на пустом столе без карт
-            // и ГСЧ с неработающими кнопками действий.
-            const hasHands = snapshot.participation.some(function(row) {
-                return row.some(Boolean);
+            // Проверка на пустой диапазон — по МАТРИЦЕ ЦВЕТОВЫХ ПРОФИЛЕЙ
+            // (snapshot.matrix — закраска основной матрицы), а не по матрице
+            // участия с тоглами (participation): тоглами можно выделить
+            // ячейки вручную, но это не делает диапазон непустым. Если в
+            // диапазоне нет ни одной закрашенной ячейки — он пустой:
+            // показываем сообщение, что добавление невозможно, в тренажёр
+            // не добавляем и на вкладку не переходим.
+            const hasPainted = snapshot.matrix.some(function(row) {
+                return row.some(function(pid) {
+                    return pid !== null && pid !== undefined;
+                });
             });
-            if (!hasHands) {
+            if (!hasPainted) {
                 App.modals.showFloatingModal(App.i18n.t('trainer.addEmpty'));
                 return;
             }
-            App.trainer.addRange({
+            const added = App.trainer.addRange({
                 sourceNodeId: nodeId,
                 name: sourceNode ? sourceNode.name : '',
                 colors: snapshot.colors,
@@ -279,6 +284,14 @@ export function initTrainingPanel() {
                 // не рисуется (см. trainer-engine.buildTrainerSnapshot).
                 availability: snapshot.availability
             });
+            // Переход на вкладку «Тренажёр» — строго после проверки и только
+            // при успешном добавлении: при пустом диапазоне сюда не доходим
+            // (return выше) — ни добавления, ни перехода нет. Добавленный узел
+            // уже активен (addTrainerNode, trainer-store.js) и подсвечен в
+            // списке слева (renderTrainerPage).
+            if (added) {
+                App.navigation.switchTab('trainer');
+            }
         });
     }
 
