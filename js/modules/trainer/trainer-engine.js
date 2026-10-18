@@ -6,7 +6,11 @@
 // диапазона, перерисовка пары) и нигде не сохраняется (как хранить и где —
 // отдельная будущая задача):
 //   - закрашенная в основной матрице в любой пропорции ячейка участвует
-//     по умолчанию, незакрашенная — нет;
+//     по умолчанию;
+//   - пустая ячейка участвует, если соседствует с закрашенной (4 соседа:
+//     вправо-влево, вверх-вниз, по диагонали — не соседи), либо это пара
+//     (AA..22), либо одномастный туз (AKs..A2s) — пары и тузы участвуют
+//     всегда, даже пустыми и вдали от закрашенных;
 //   - недоступная ячейка не участвует и кликам не подлежит;
 //   - клик-тоглы поверх участи по умолчанию живут только до переключения
 //     диапазона (см. trainer-ui).
@@ -20,8 +24,10 @@ const GRID_SIZE = 13;
 //   { disabled, participates, availability },
 // где disabled — ячейка действительно недоступна (доступность 0%, как
 // .hand-cell.subrange-disabled в основной матрице: grid-renderer.js),
-// participates — рука участвует в тренировке по умолчанию (закрашена в
-// основной матрице в любой пропорции и не недоступна),
+// participates — рука участвует в тренировке по умолчанию: закрашена в
+// основной матрице в любой пропорции, либо пустая рядом с закрашенной
+// (4 соседа: вправо-влево, вверх-вниз), либо пара (AA..22), либо одномастный туз (AKs..A2s) —
+// и не недоступна,
 // availability — процент доступности ячейки 0..100 (каскадно, recursive
 // = true): готовые данные под будущий оверлей частичной доступности
 // (перекрывающий блок .cell-overlay, grid-renderer.js) — см. комментарий
@@ -31,6 +37,32 @@ export function buildTrainingMatrix(nodeId) {
     const matrix = nodeId ? App.editor.cellStorage[App.grid.getTableId(nodeId)] : null;
     const node = nodeId ? App.nodes.getNode(nodeId) : null;
     const isSubrange = !!node && node.type === 'subrange';
+
+    // Маска закрашенности (профиль назначен в любой пропорции) — считается
+    // один раз на всю матрицу: нужна и для признака «закрашена», и для поиска
+    // пустых соседей закрашенных ячеек (правило участия ниже).
+    const painted = [];
+    for (let r = 0; r < GRID_SIZE; r++) {
+        const pRow = [];
+        for (let c = 0; c < GRID_SIZE; c++) {
+            pRow.push(!!matrix && matrix[r][c] !== null && matrix[r][c] !== undefined);
+        }
+        painted.push(pRow);
+    }
+
+    // Соседство с закрашенной: 4 направления (вправо-влево, вверх-вниз) с
+    // проверкой границ матрицы. По диагонали — не соседи.
+    function hasPaintedNeighbor(r, c) {
+        const around = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        for (let i = 0; i < around.length; i++) {
+            const nr = r + around[i][0];
+            const nc = c + around[i][1];
+            if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
+            if (painted[nr][nc]) return true;
+        }
+        return false;
+    }
+
     const result = [];
     for (let r = 0; r < GRID_SIZE; r++) {
         const row = [];
@@ -43,12 +75,24 @@ export function buildTrainingMatrix(nodeId) {
                 ? App.stats.getCellAvailabilityPercent(nodeId, r, c, true, App.editor)
                 : 100;
             const disabled = availability <= 0;
-            // Участие по умолчанию: закрашена в любой пропорции (профиль
-            // назначен) и не недоступна.
-            const painted = !!matrix && matrix[r][c] !== null && matrix[r][c] !== undefined;
+            // Участие по умолчанию — объединение правил:
+            //   - закрашена в любой пропорции (профиль назначен) — как раньше;
+            //   - пустая, но соседствует с закрашенной (4 соседа) — «край»
+            //     диапазона вокруг закрашенных ячеек;
+            //   - все пары (диагональ r === c: AA..22) и все одномастные тузы
+            //     (строка 0, столбцы 1–12: AKs..A2s) — участвуют всегда, даже
+            //     пустыми и вдали от закрашенных.
+            // Недоступная ячейка не участвует никогда: правило пар/тузов/соседей
+            // попадает и на disabled-ячейки, маска !disabled держит инвариант
+            // «disabled ⇒ не участвует» (тоглами такие ячейки тоже не
+            // выделяются — см. trainer-ui).
+            const isPair = r === c;
+            const isSuitedAce = r === 0 && c > 0;
+            const participates = (painted[r][c] || hasPaintedNeighbor(r, c) || isPair || isSuitedAce)
+                && !disabled;
             row.push({
                 disabled: disabled,
-                participates: painted && !disabled,
+                participates: participates,
                 availability: availability
             });
         }
