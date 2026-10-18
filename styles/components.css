@@ -645,6 +645,16 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
+/* Подсветка рамки стола на 1 секунду после ответа (см. flashTableBorder
+   в trainer-table.js): зелёная — верный ответ, красная — ошибка. */
+.trainer-table-surface.trainer-table-flash-ok {
+    border-color: #78A659;
+}
+
+.trainer-table-surface.trainer-table-flash-err {
+    border-color: #E55757;
+}
+
 /* Метка «POKER TABLE» — flexbox-центрирование */
 .trainer-table-label {
     position: absolute;
@@ -815,29 +825,6 @@
     background: #3a3d45;
     color: #dedede;
     border-color: #5a5d66;
-}
-
-/* Кнопка «Показать диапазон» — стиль как у «Начать тренировку».
-   Селектор с .trainer-grid-btn.toolbar-btn чтобы перебить стили .toolbar-btn. */
-.trainer-grid-btn.toolbar-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 40px;
-    width: 40px;
-    padding: 0;
-    background: #303239;
-    border: none;
-    border-radius: 4px;
-    color: #dedede;
-    cursor: pointer;
-    transition: background 0.15s ease;
-    flex-shrink: 0;
-}
-
-.trainer-grid-btn.toolbar-btn:hover {
-    background: #3a3d45;
-    color: #dedede;
 }
 
 /* ===== ГСЧ ТРЕНАЖЁРА (между столом и кнопками действий) ===== */
@@ -1110,19 +1097,6 @@
 .trainer-hand-dot.ok {
     background: #79a65a;
 }
-
-.trainer-grid-btn.toolbar-btn.active {
-    background: #3a3d45;
-    color: #dedede;
-}
-
-.trainer-grid-btn-icon {
-    width: 24px;
-    height: 24px;
-}
-
-/* Тултип кнопки «Показать диапазон» — использует .toolbar-btn[data-tooltip]
-   из редактора (кастомный тултип с ::after). Отдельные стили не нужны. */
 
 /* ===== КАРТЫ НА СТОЛЕ (позиция HERO) ===== */
 

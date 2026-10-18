@@ -22,8 +22,9 @@
 // этой корзине, ответ пишется в статистику узла (trainer-stats), затем
 // автоматически раздаётся следующая рука.
 //
-// Статистика (всего рук / верных / ошибок / шкала % верных) — справа от стола,
-// в колонке, где по кнопке «Показать диапазон» рисуется матрица.
+// Статистика (всего рук / верных / ошибок / шкала % верных) — справа от стола
+// при активной тренировке; вне тренировки там же всегда видна матрица
+// диапазона.
 
 import { getTrainerNodes, getActiveNodeId } from './trainer-store.js';
 import { generateDeal, renderCards } from './trainer-cards.js';
@@ -32,17 +33,25 @@ import { recordAnswer, renderStats, renderHands, flushStats } from './trainer-st
 
 // --- Состояние ---
 var trainingActiveNodeId = null;
-var matrixVisible = false;
 var matrixToggleMode = false;
 var currentDeal = null; // { rank1, rank2, type, row, col, cards } — текущая рука
 var currentRoll = null; // ГСЧ 1..100 для текущей раздачи (фиксируется на неё)
+// Подсветка рамки стола после ответа (см. flashTableBorder ниже):
+// класс 'trainer-table-flash-ok' / 'trainer-table-flash-err' либо null.
+var tableFlashClass = null;
+var tableFlashTimer = null;
 
 export function resetTrainingState() {
     trainingActiveNodeId = null;
-    matrixVisible = false;
     matrixToggleMode = false;
     currentDeal = null;
     currentRoll = null;
+    // Подсветка рамки после ответа сессии не принадлежит — гасим сразу.
+    tableFlashClass = null;
+    if (tableFlashTimer) {
+        clearTimeout(tableFlashTimer);
+        tableFlashTimer = null;
+    }
 }
 
 // Финиш открытой сессии тренировки — как кнопка «Закончить тренировку»:
@@ -89,6 +98,30 @@ function dealNewHand(node) {
     currentRoll = currentDeal ? App.rng.next() : null;
 }
 
+// ===== ПОДСВЕТКА РАМКИ СТОЛА ПОСЛЕ ОТВЕТА =====
+// На 1 секунду рамка .trainer-table-surface меняет цвет: зелёная — верный
+// ответ, красная — ошибка (классы — см. styles/components.css). Стол
+// перерисовывается на каждый ответ (renderTrainerTable), поэтому класс
+// живёт в состоянии и применяется к новому столу, а снимается по таймеру.
+function flashTableBorder(correct) {
+    tableFlashClass = correct ? 'trainer-table-flash-ok' : 'trainer-table-flash-err';
+    if (tableFlashTimer) clearTimeout(tableFlashTimer);
+    tableFlashTimer = setTimeout(function() {
+        tableFlashClass = null;
+        tableFlashTimer = null;
+        var surface = document.querySelector('#trainerPage .table-panel .trainer-table-surface');
+        if (surface) surface.classList.remove('trainer-table-flash-ok', 'trainer-table-flash-err');
+    }, 1000);
+    // Применяем сразу: renderTrainerTable к этому моменту уже отрисовал стол.
+    // Сначала снимаем оба класса — при быстрых ответах рендер успевает
+    // применить подсветку прошлого вердикта (см. renderTrainerTable).
+    var surfaceEl = document.querySelector('#trainerPage .table-panel .trainer-table-surface');
+    if (surfaceEl) {
+        surfaceEl.classList.remove('trainer-table-flash-ok', 'trainer-table-flash-err');
+        surfaceEl.classList.add(tableFlashClass);
+    }
+}
+
 // Ответ на текущую раздачу: оценка по броску ГСЧ → статистика → новая рука.
 // actionName — подпись нажатой кнопки (для истории рук).
 function submitAnswer(node, actionId, actionName) {
@@ -102,6 +135,8 @@ function submitAnswer(node, actionId, actionName) {
     }, { row: currentDeal.row, col: currentDeal.col });
     dealNewHand(node);
     renderTrainerTable();
+    // Рамка стола на 1 секунду подсвечивается цветом вердикта.
+    flashTableBorder(correct);
 }
 
 // SVG «палочка со звёздами» — кнопка «Начать тренировку».
@@ -135,15 +170,6 @@ var WAND_SVG = '<svg class="trainer-start-btn-icon" viewBox="0 0 512 512" fill="
     '<path d="M412.831,205.639l0.466-0.149c4.723-4.574,17.669-8.939,27.122-14.943c10.224-6.473,14.876-17.498,9.844-25.73' +
     'c-5.274-8.574-17.118-8.216-22.291-0.782c0.808-9.021-8.041-16.91-17.592-13.729c-9.143,3.069-12.67,14.496-8.998,26.035' +
     'c3.39,10.674,10.504,22.34,11.174,28.88L412.831,205.639z"/>' +
-    '</svg>';
-
-// SVG «4 квадрата» — кнопка «Показать диапазон» (Lucide layout-grid, контур —
-// в едином стиле с иконками тулбаров; было: залитые квадраты).
-var GRID_SVG = '<svg class="trainer-grid-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-    '<rect width="7" height="7" x="3" y="3" rx="1"/>' +
-    '<rect width="7" height="7" x="14" y="3" rx="1"/>' +
-    '<rect width="7" height="7" x="14" y="14" rx="1"/>' +
-    '<rect width="7" height="7" x="3" y="14" rx="1"/>' +
     '</svg>';
 
 // SVG «палитра» — режим «показ в цвете».
@@ -190,6 +216,9 @@ export function renderTrainerTable() {
 
     var tableDiv = document.createElement('div');
     tableDiv.className = 'trainer-table-surface';
+    // Подсветка рамки после ответа (см. flashTableBorder) переживает
+    // перерисовку — применяем класс к новому столу.
+    if (tableFlashClass) tableDiv.classList.add(tableFlashClass);
     var lbl = document.createElement('div'); lbl.className = 'trainer-table-label'; lbl.textContent = 'POKER TABLE'; tableDiv.appendChild(lbl);
     var chip = document.createElement('div'); chip.className = 'trainer-player-chip'; chip.textContent = 'HERO'; tableDiv.appendChild(chip);
 
@@ -231,20 +260,14 @@ export function renderTrainerTable() {
         sb.innerHTML = WAND_SVG + '<span>' + App.i18n.t('trainer.startTraining') + '</span>';
         sb.addEventListener('click', function() {
             trainingActiveNodeId = activeId;
-            matrixVisible = false;
             dealNewHand(activeNode); // первая раздача + первый бросок ГСЧ
             renderTrainerTable();
         });
         btnRow.appendChild(sb);
-        var gridBtn = document.createElement('button'); gridBtn.className = 'trainer-grid-btn toolbar-btn' + (matrixVisible ? ' active' : '');
-        gridBtn.innerHTML = GRID_SVG;
-        gridBtn.setAttribute('data-tooltip', App.i18n.t('trainer.showRange'));
-        gridBtn.addEventListener('click', function() { matrixVisible = !matrixVisible; renderTrainerTable(); });
-        btnRow.appendChild(gridBtn);
     }
     leftCol.appendChild(btnRow);
     content.appendChild(leftCol);
-    // --- Правая колонка: при тренировке — статистика (зона матрицы) ---
+    // --- Статистика: при активной тренировке (зона матрицы, справа от стола) ---
     if (isTrainingActive) {
         var statsCol = document.createElement('div');
         statsCol.className = 'trainer-stats-col';
@@ -264,13 +287,14 @@ export function renderTrainerTable() {
         renderHands(statsCol, activeNode.id);
         content.appendChild(statsCol);
     }
-    // --- Правая колонка: матрица (если видима) ---
+    // --- Матрица диапазона: видна всегда вне активной тренировки (во время
+    // тренировки эту зону занимает статистика) ---
     // activeNode.availability (проценты доступности ячеек) в узле уже
     // хранится (см. trainer-engine.buildTrainerSnapshot), но оверлей
     // частичной доступности (перекрывающий блок .cell-overlay,
     // grid-renderer.js) здесь пока НЕ рисуется — данные готовы под
     // будущую реализацию.
-    if (matrixVisible) {
+    if (!isTrainingActive) {
         var rightCol = document.createElement('div');
         rightCol.className = 'trainer-matrix-col';
 
