@@ -561,12 +561,15 @@ export function renderTrainerTable() {
         var closeBtn = document.createElement('button'); closeBtn.className = 'training-plate-close';
         closeBtn.textContent = App.i18n.t('trainer.close');
         closeBtn.addEventListener('click', function() {
-            // Плавное закрытие: затухание, затем уборка попапа. setTimeout —
-            // чтобы закрытие сработало и при отключённых анимациях.
+            // Плавное закрытие: затухание, затем уборка попапа. Флаг
+            // сбрасывается СРАЗУ, до анимации: пока он true, любой
+            // renderTrainerTable в эти 200мс (ответ на руку, смена языка)
+            // пересоздал бы попап заново — свежий, без .closing, и он бы
+            // «моргнул» перед исчезновением.
             if (popup.classList.contains('closing')) return;
+            rangePopupOpen = false;
             popup.classList.add('closing');
             setTimeout(function() {
-                rangePopupOpen = false;
                 renderTrainerTable();
             }, 200);
         });
