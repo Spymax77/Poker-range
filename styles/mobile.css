@@ -1182,3 +1182,112 @@
         font-size: clamp(8px, 1.35vw, 11px);
     }
 }
+
+/* ===== ТРЕНАЖЁР НА ТЕЛЕФОНЕ: СТОЛ И МАТРИЦА ПОМЕЩАЮТСЯ В ЭКРАН =====
+   До этих правил стол тренажёра был фиксированным (493×240, см.
+   .trainer-table-surface в styles/components.css), и на узких экранах блок
+   стола не влезал в поле страницы (в отличие от редактора и GTO, где матрица
+   уже «резиновая»). Компоновка повторяет мобильную логику остальных вкладок:
+   - стол и правая колонка (матрица диапазона / статистика тренировки) идут
+     в столбик, страница прокручивается документом;
+   - овал стола — «резиновый» с сохранением пропорции 493:240 (aspect-ratio);
+     фишка HERO и карты (position: absolute) остаются своего фиксированного
+     читаемого размера;
+   - матрица 13×13 (под столом и в попапе «Показать диапазон») — как на GTO:
+     repeat(13, minmax(0, 1fr)) + aspect-ratio: 1, шрифт ячеек clamp'ом;
+   - строки, отцентрованные по ширине стола (кнопки действий, «Следующая
+     рука», вердикт), растягиваются по ширине колонки и переносятся.
+   Портрет и альбом, десктоп (окно >= 850px) не затрагиваются. */
+@media (max-width: 849px) {
+    /* Страница тренажёра растёт по контенту и прокручивается документом, как
+       остальные вкладки: overflow: hidden из styles/base.css
+       (#trainerPage.active-page) срезал бы стол и кнопки, не влезающие в
+       высоту экрана. Скроллбар — как у GTO/Редактора/Просмотра — скрыт. */
+    #trainerPage.active-page {
+        overflow: visible;
+        scrollbar-width: none;
+    }
+
+    #trainerPage.active-page::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Боковые поля панели — как у GTO (#gtoPage .table-panel выше): базовое
+       #trainerPage .table-panel { padding-left: 40px } из styles/base.css
+       отодвигало бы стол от края экрана. */
+    #trainerPage .table-panel {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    /* Стол и правая колонка — в столбик, без фиксированных ширин. */
+    #trainerPage .trainer-content-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 24px;
+    }
+
+    #trainerPage .trainer-table-col,
+    #trainerPage .trainer-matrix-col,
+    #trainerPage .trainer-stats-col {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    /* Овал стола: ширина — по полю (не шире десктопных 493px), высота — по
+       пропорции 493:240. Скругление 120px подстраивается под высоту
+       автоматически (радиусы пересчитываются пропорционально) и остаётся
+       «капсулой». */
+    #trainerPage .trainer-table-surface {
+        width: 100%;
+        max-width: 493px;
+        height: auto;
+        aspect-ratio: 493 / 240;
+    }
+
+    /* Ряд кнопок действий (4 × 110px) переносится на несколько строк. */
+    #trainerPage .trainer-action-buttons {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    /* Строки, которые на десктопе отцентрованы по ширине стола (493px):
+       кнопки после ответа и строка вердикта. */
+    #trainerPage .trainer-next-hand-row,
+    #trainerPage .trainer-verdict-row {
+        width: 100%;
+    }
+
+    /* Матрица 13×13 (под столом и в попапе «Показать диапазон») — резиновая,
+       как на GTO (#gtoPage .matrix-wrapper .hand-cell). */
+    #trainerPage .hands-grid {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        grid-template-columns: repeat(13, minmax(0, 1fr));
+    }
+
+    #trainerPage .hands-grid .hand-cell {
+        width: 100%;
+        height: auto;
+        min-width: 0;
+        min-height: 0;
+        aspect-ratio: 1;
+        font-size: clamp(8px, 2.6vw, 13px);
+        line-height: 1.1;
+    }
+
+    /* Попап «Показать диапазон» — по ширине стола (не шире десктопных 493px,
+       вровень с овалом); матрица в нём резиновая (правила выше), строки
+       легенды и руки переносятся на узких экранах. */
+    #trainerPage .trainer-range-popup {
+        width: 100%;
+        max-width: 493px;
+    }
+
+    #trainerPage .trainer-range-legend,
+    #trainerPage .trainer-range-popup-hand {
+        flex-wrap: wrap;
+    }
+}
