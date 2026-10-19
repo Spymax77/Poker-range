@@ -31,7 +31,12 @@
 import { getTrainerNodes, getActiveNodeId } from './trainer-store.js';
 import { generateDeal, renderCards } from './trainer-cards.js';
 import { getCorrectActions, FOLD_ACTION } from './trainer-engine.js';
-import { recordAnswer, renderStats, renderHands, flushStats } from './trainer-stats.js';
+import { recordAnswer, renderStats, renderHands, flushStats, resetStats } from './trainer-stats.js';
+// Циклическая связка trainer-page ↔ trainer-table безопасна: renderTrainerPage —
+// export function (hoisted), вызывается только в обработчике клика, то есть
+// после инициализации модулей. Нужна для кнопки «Сбросить статистику» — это
+// тот же обработчик, что в меню «⋮» узла слева (trainer-page.js buildNodeActions).
+import { renderTrainerPage } from './trainer-page.js';
 
 // Имя действия Fold — единая константа (не переводится: покерный термин,
 // одинаков в русском и английском интерфейсе). Используется в кнопке
@@ -583,6 +588,19 @@ export function renderTrainerTable() {
         var statsCol = document.createElement('div');
         statsCol.className = 'trainer-stats-col';
         renderStats(statsCol, activeNode.id);
+        // Кнопка «Сбросить статистику» — ТОТ ЖЕ обработчик, что в меню «⋮»
+        // узла слева (trainer-page.js buildNodeActions): сброс статистики узла
+        // (память + запись в БД сразу, см. resetStats в trainer-stats) и
+        // перерисовка страницы. Стоит ПЕРЕД «Закончить тренировку» (по просьбе).
+        var resetBtn = document.createElement('button');
+        resetBtn.className = 'trainer-end-btn';
+        resetBtn.textContent = App.i18n.t('trainer.resetStats');
+        resetBtn.addEventListener('click', function() {
+            resetStats(activeNode.id);
+            renderTrainerPage();
+        });
+        statsCol.appendChild(resetBtn);
+
         // Кнопка «Закончить тренировку» — текстом (без плашки) ниже шкалы.
         // Единственное место записи статистики в БД за тренировку: ответы
         // копились в памяти (trainer-stats), здесь уходит один запрос.
