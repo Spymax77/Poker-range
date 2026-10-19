@@ -842,7 +842,13 @@
         grid-template-columns: repeat(13, minmax(0, 1fr));
     }
 
-    #constructorPage .matrix-wrapper .hand-cell {
+    /* Ячейки основной матрицы и её копии в режиме тренировки. Классы у копии
+       свои (.training-cell вместо .hand-cell — чтобы кисть и hover-эффекты
+       редактора на отражение не действовали), поэтому геометрию и шрифт
+       прописываем для обоих селекторов: без этого копия оставалась
+       десктопной (37px, высота 493px) и не совпадала с основной матрицей. */
+    #constructorPage .matrix-wrapper .hand-cell,
+    #constructorPage .matrix-wrapper .training-cell {
         width: 100%;
         height: auto;
         min-width: 0;
@@ -852,6 +858,23 @@
         line-height: 1.1;
         touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Панель «Диапазон на тренировке» (правая колонка). Две правки против
+       десктопных стилей из styles/components.css:
+       1) margin-top: -30px там компенсирует padding-top: 30px у
+          .profiles-panel, а на мобильном этот padding = 16px — из-за
+          несовпадения матрица справа выходила на 14px ВЫШЕ основной
+          матрицы слева (заголовок «Диапазон на тренировке» вровень с
+          .range-title-wrapper, дальше 28px до матрицы — как слева);
+       2) width: fit-content на десктопе приравнивает панель к матрице
+          493px, но с резиновыми ячейками max-content панели стал бы
+          определяться текстом ячеек и панель сузилась уже матрицы — на
+          мобильном ширина колонки целиком. */
+    #constructorPage .training-setup-panel {
+        margin-top: -16px;
+        width: 100%;
+        max-width: 100%;
     }
 }
 
@@ -891,7 +914,8 @@
    нажатия ячейки, не увеличивая общую ширину 13-колоночной матрицы. */
 @media (max-width: 360px) {
     #gtoPage .matrix-wrapper .hand-cell,
-    #constructorPage .matrix-wrapper .hand-cell {
+    #constructorPage .matrix-wrapper .hand-cell,
+    #constructorPage .matrix-wrapper .training-cell {
         font-size: clamp(7px, 2.8vw, 10px);
     }
 }
@@ -1178,6 +1202,7 @@
        диапазон 8–11px — пропорция «шрифт/ячейка» как на десктопе. --- */
     #gtoPage .matrix-wrapper .hand-cell,
     #constructorPage .matrix-wrapper .hand-cell,
+    #constructorPage .matrix-wrapper .training-cell,
     #workPage .matrix1-wrapper .hand-cell {
         font-size: clamp(8px, 1.35vw, 11px);
     }
@@ -1289,5 +1314,55 @@
     #trainerPage .trainer-range-legend,
     #trainerPage .trainer-range-popup-hand {
         flex-wrap: wrap;
+    }
+}
+
+/* ===== ТРЕНАЖЁР В АЛЬБОМНОЙ ОРИЕНТАЦИИ: СТОЛ СЛЕВА, МАТРИЦА СПРАВА =====
+   Портретные правила выше (блок @media (max-width: 849px)) ставят
+   .trainer-content-wrapper в столбик и растягивают колонки на всю ширину — на
+   телефоне в альбоме это давало «стол на весь экран, матрица под ним», тогда
+   как в редакторе/GTO/Просмотре (landscape-блок выше, см. комментарий над ним)
+   ряд колонок сохраняется. Здесь для тренажёра возвращается та же раскладка
+   «левая половина — стол, правая — матрица»:
+   - ряд колонок с зазором 12px — как у редактора/GTO/Просмотра в этом же
+     режиме (десктопные 66px половину экрана съедают);
+   - колонки flex: 1 1 0 + max-width: 50% — ровно половина при любой ширине
+     экрана. Блок стоит ПОСЛЕ портретного блока тренажёра намеренно: селекторы
+     того же приоритета (#ID .class), и выигрывает более позднее правило;
+   - левая колонка — стол (овал по ширине колонки, пропорция 493:240
+     сохраняется), правая — матрица вне тренировки или статистика во время
+     неё (.trainer-stats-col включён, чтобы альбом не ломался и в тренировке);
+   - шрифт ячеек матрицы от половинной ширины экрана clamp'ом (8–11px) — как
+     у редактора/GTO/Просмотра: портретные 2.6vw/13px великоваты, когда
+     ячейка вдвое уже.
+   Портрет и десктоп (окно >= 850px) не затрагиваются. */
+@media (max-width: 849px) and (orientation: landscape) {
+    #trainerPage .trainer-content-wrapper {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    #trainerPage .trainer-table-col,
+    #trainerPage .trainer-matrix-col,
+    #trainerPage .trainer-stats-col {
+        flex: 1 1 0;
+        width: auto;
+        max-width: 50%;
+        min-width: 0;
+    }
+
+    /* Овал стола и попап «Показать диапазон» — строго по своей (половинной)
+       колонке, вровень с ней. Портретные max-width: 493px на ширинах <= 849px
+       не срабатывают (колонка <= 424px), 100% фиксирует привязку к колонке. */
+    #trainerPage .trainer-table-surface,
+    #trainerPage .trainer-range-popup {
+        max-width: 100%;
+    }
+
+    /* Матрица 13×13 (под столом и в попапе «Показать диапазон») — шрифт
+       ячеек от половины экрана, как у редактора/GTO/Просмотра выше. */
+    #trainerPage .hands-grid .hand-cell {
+        font-size: clamp(8px, 1.35vw, 11px);
     }
 }
