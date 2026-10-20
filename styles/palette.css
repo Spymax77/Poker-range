@@ -213,7 +213,7 @@
     content: attr(data-tooltip);
     position: absolute;
     top: calc(100% + 8px);
-    left: 0;
+    left: var(--tt-shift, 0px);     /* база — левый край кнопки; сдвиг считает js/tooltip-clamp.js */
     white-space: nowrap;
     background: #2d2f34;
     color: #e5eaf0;

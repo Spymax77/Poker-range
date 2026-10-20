@@ -3283,13 +3283,19 @@ body.dragging .tree-item.active .tree-actions-popup {
 .comments-area textarea:focus {
     background: #2c2f36;
 }
-/* ===== КАСТОМНЫЙ ТУЛТИП ===== */
+/* ===== КАСТОМНЫЙ ТУЛТИП =====
+   Горизонтальную позицию зажимает в границах экрана js/tooltip-clamp.js и
+   отдаёт её через CSS-переменную --tt-shift (сдвиг от базовой позиции, px).
+   Без неё nowrap-тултип у кнопок правого края вылезал за экран: на мобильном
+   Chrome расширял layout-вьюпорт (innerWidth 360 → 393 = ровно вылезание),
+   и визуальный вьюпорт панорамировался вбок — сайт «уезжал». Кламп работает
+   и на десктопе (для узких окон). Подробности — в шапке tooltip-clamp.js. */
 
 .toolbar-btn[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
     bottom: calc(100% + 8px);
-    left: 50%;
+    left: calc(50% + var(--tt-shift, 0px));
     transform: translateX(-50%) scale3d(0.3, 0.3, 1);
     transform-origin: 50% 0%;
     white-space: nowrap;
@@ -3334,7 +3340,7 @@ body.dragging .tree-item.active .tree-actions-popup {
 }
 /* ===== ТУЛТИП ПЕРВОЙ КНОПКИ В ДЕРЕВЕ — не уходит за левый край ===== */
 .tree-toolbar .toolbar-btn:first-child[data-tooltip]::after {
-    left: 0;
+    left: var(--tt-shift, 0px);   /* база — левый край кнопки; сдвиг считает js/tooltip-clamp.js */
     transform: scale3d(0.3, 0.3, 1);
     transform-origin: 0 0;
 }
@@ -3354,7 +3360,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     content: attr(data-tooltip);
     position: absolute;
     top: calc(100% + 8px);          /* ← снизу от иконки */
-    left: 0;                        /* ← левый край тултипа на левом крае иконки */
+    left: var(--tt-shift, 0px);     /* ← база — левый край иконки; сдвиг считает js/tooltip-clamp.js */
     white-space: nowrap;
     background: #2d2f34;
     color: #e5eaf0;
@@ -3464,7 +3470,7 @@ body.dragging .tree-item.active .tree-actions-popup {
     content: attr(data-tooltip);
     position: absolute;
     bottom: calc(100% + 8px);
-    left: 50%;
+    left: calc(50% + var(--tt-shift, 0px));   /* зажимает js/tooltip-clamp.js */
     transform: translateX(-50%) scale3d(0.3, 0.3, 1);
     transform-origin: 50% 0%;
     white-space: nowrap;
