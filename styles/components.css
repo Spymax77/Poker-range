@@ -577,6 +577,34 @@
     gap: 6px;
 
 }
+
+/* ===== ОТСТУП МЕЖДУ ИКОНКОЙ И НАЗВАНИЕМ УЗЛА =====
+   Базовый gap у .tree-item-name (6px) меньше, чем gap у .tree-item (8px —
+   стрелка → иконка), из-за чего название прилипало к иконке. На десктопе
+   отодвигаем до 13px (10px + 3px — согласовано тестом по инъекции).
+   Мобильные ширины (<= 849px) НЕ затрагиваются: там остаются штатные
+   5px/5px из styles/mobile.css. */
+@media (min-width: 850px) {
+    #constructorTree .tree-item-name,
+    #gtoTree .tree-item-name {
+        gap: 13px;
+    }
+}
+
+/* ===== СДВИГ ДЕРЕВА ЛЕВЕЕ НА 5PX =====
+   Левый отступ строк задаёт только padding-left у .tree-item (15px) — панель
+   и контейнер своего паддинга не имеют. На десктопе ставим 10px: содержимое
+   строк (стрелка/иконка/название) всех уровней вложенности уходит на 5px
+   левее через раскладку. Контейнер НЕ сдвигается — не вылезает за край панели,
+   hover-фоны остаются на всю ширину, position: relative у строки (нужен
+   popup-меню узла) и самому popup ничего не ломает.
+   Мобильные ширины (<= 849px) не затрагиваются — там остаётся штатные 15px. */
+@media (min-width: 850px) {
+    #constructorTree .tree-item,
+    #gtoTree .tree-item {
+        padding-left: 10px;
+    }
+}
 .tree-actions {
     display: flex;
     gap: 6px;
@@ -599,6 +627,21 @@
     width: 20px;
     height: 20px;
     flex-shrink: 0;
+}
+
+/* Контурные иконки узлов (Lucide folder / grid-2x2) в дереве редактора и GTO.
+   Базовое .tree-item svg { fill: #dedede } (0,1,1) перебивает presentation-
+   attribute fill="none" на самом SVG — CSS побеждает атрибут, без этого
+   правила контур заливается (тот же приём, что у #trainerTree ниже).
+   stroke: currentColor наследует #dedede от .tree-item — цвет ШТРИХА совпадает
+   с прежней ЗАЛИВКОЙ иконок. */
+#constructorTree .tree-item-name svg,
+#gtoTree .tree-item-name svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 #constructorTree, #gtoTree, #trainerTree {
@@ -1719,8 +1762,7 @@
     outline: none;
 }
 
-.toolbar-btn .icon,
-.toolbar-btn .plus-icon {
+.toolbar-btn .icon {
     display: block;
     width: 22px;
     height: 22px;
@@ -1728,8 +1770,7 @@
     transition: fill 0.15s ease;
 }
 
-.toolbar-btn:hover .icon,
-.toolbar-btn:hover .plus-icon {
+.toolbar-btn:hover .icon {
     fill: #dedede;
 }
 
@@ -1737,14 +1778,8 @@
     background: #3a3d45;
 }
 
-.toolbar-btn.active .icon,
-.toolbar-btn.active .plus-icon {
+.toolbar-btn.active .icon {
     fill: #D4AF37;
-}
-
-.toolbar-btn .plus-icon {
-    width: 14px;
-    height: 14px;
 }
 
 /* ===== КОНТУРНЫЕ ИКОНКИ ДЕРЕВА (Lucide-стиль, stroke 2px) =====
@@ -1753,20 +1788,17 @@
    базовой .toolbar-btn .icon (0,2,0), поэтому fill: none пробивается без
    !important. Цвет теперь по ШТРИХУ: обычный #8a8a8a, hover #dedede,
    active #D4AF37 (золото) — как было по заливке. */
-.tree-toolbar .toolbar-btn .icon,
-.tree-toolbar .toolbar-btn .plus-icon {
+.tree-toolbar .toolbar-btn .icon {
     fill: none;
     stroke: #8a8a8a;
     transition: stroke 0.15s ease;
 }
 
-.tree-toolbar .toolbar-btn:hover .icon,
-.tree-toolbar .toolbar-btn:hover .plus-icon {
+.tree-toolbar .toolbar-btn:hover .icon {
     stroke: #dedede;
 }
 
-.tree-toolbar .toolbar-btn.active .icon,
-.tree-toolbar .toolbar-btn.active .plus-icon {
+.tree-toolbar .toolbar-btn.active .icon {
     stroke: #D4AF37;
 }
 

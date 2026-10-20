@@ -145,27 +145,32 @@ function buildTreeNodeName(node, editable) {
     return nameSpan;
 }
 
-// SVG-иконка узла: папка / диапазон / поддиапазон.
+// SVG-иконка узла: папка / диапазон / поддиапазон — контурные Lucide
+// (folder, grid-2x2), тот же стиль, что у иконок tree-toolbar: stroke 2px,
+// скруглённые концы, цвет по ШТРИХУ (currentColor → #dedede от .tree-item).
+// Заливку гасит CSS-правило для #constructorTree/#gtoTree .tree-item-name svg
+// в components.css — базовый fill: #dedede у .tree-item svg перебивает
+// presentation-attribute fill="none" (такой же приём применён у #trainerTree).
+// Поддиапазон: две клетки по диагонали (правый верх + левый низ) залиты
+// цветом выбранного компонента родителя — как и раньше, до контурного стиля.
 function buildTreeNodeIconSvg(node) {
+    const svgOpen = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
+    // Сетка 2x2: рамка 18x18 со скруглением и крест по центру.
+    const grid2x2 = '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18"/><path d="M3 12h18"/>';
     if (node.type === 'folder') {
-        return `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+        return `${svgOpen}<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`;
     }
     if (node.type === 'range') {
-        return `<svg width="20" height="20" viewBox="0 0 24 24">
-    <rect x="3" y="3" width="8" height="8" fill="currentColor"/>
-    <rect x="13" y="3" width="8" height="8" fill="currentColor"/>
-    <rect x="3" y="13" width="8" height="8" fill="currentColor"/>
-    <rect x="13" y="13" width="8" height="8" fill="currentColor"/>
-</svg>`;
+        return `${svgOpen}${grid2x2}</svg>`;
     }
-    // Поддиапазон: квадраты красятся цветом выбранного компонента родителя
     const color = App.tree.getSubrangeColor(node);
-    return `<svg width="20" height="20" viewBox="0 0 24 24">
-        <rect x="3" y="3" width="8" height="8" rx="1"/>
-        <rect x="13.5" y="3.5" width="7" height="7" rx="1" ${color ? `fill="${App.nodes.escapeHtml(color)}" stroke="${App.nodes.escapeHtml(color)}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
-        <rect x="3.5" y="13.5" width="7" height="7" rx="1" ${color ? `fill="${App.nodes.escapeHtml(color)}" stroke="${App.nodes.escapeHtml(color)}"` : `fill="none" stroke="var(--text-primary)"`} stroke-width="1"/>
-        <rect x="13" y="13" width="8" height="8" rx="1"/>
-    </svg>`;
+    if (!color) return `${svgOpen}${grid2x2}</svg>`;
+    const safeColor = App.nodes.escapeHtml(color);
+    // Клетки идут ПОД контуром сетки, внешний угол закруглён по радиусу 2 —
+    // совпадает с рамкой. stroke="none": штрих рисует только контур сетки.
+    const cellBottomLeft = `<path fill="${safeColor}" stroke="none" d="M12 21H5a2 2 0 0 1-2-2v-7h9z"/>`;
+    const cellTopRight = `<path fill="${safeColor}" stroke="none" d="M12 3h7a2 2 0 0 1 2 2v7h-9z"/>`;
+    return `${svgOpen}${cellBottomLeft}${cellTopRight}${grid2x2}</svg>`;
 }
 
 // Кнопка меню и popup-меню узла (все пункты управления узлом).
