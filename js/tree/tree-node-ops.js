@@ -112,11 +112,18 @@ App.tree.deleteNode = function(nodeId) {
             return false;
         }
 
-        const allRangesInTree = App.state.nodes.filter(n => n.type === 'range' || n.type === 'subrange');
+        // Поддиапазоны в расчёт «останутся ли диапазоны» не берутся: они
+        // существуют только как дети диапазона и удаляются вместе с ним.
+        // Проверяем только сами диапазоны (range) — после удаления папки
+        // в дереве (в других папках или в корне) должен остаться хотя бы
+        // один диапазон. Для ПРАВИЛА 2 (заполненные) поддиапазоны учтены.
         const rangesInFolder = getAllRangesInFolder(node.id);
+        const rangeNodesInFolder = rangesInFolder.filter(n => n.type === 'range');
+        const allRangesInTree = App.state.nodes.filter(n => n.type === 'range');
 
-        // ПРАВИЛО 1: единственный диапазон во всём дереве
-        if (rangesInFolder.length > 0 && rangesInFolder.length === allRangesInTree.length) {
+        // ПРАВИЛО 1: все диапазоны дерева находятся внутри удаляемой папки —
+        // после удаления в дереве не останется ни одного диапазона
+        if (rangeNodesInFolder.length > 0 && rangeNodesInFolder.length === allRangesInTree.length) {
             App.modals.showFloatingModal(App.i18n.t('tree.deleteFolderSingleRangeError'));
             return;
         }
@@ -145,8 +152,10 @@ App.tree.deleteNode = function(nodeId) {
     }
 
     // ===== СТАРАЯ ПРОВЕРКА ДЛЯ ДИАПАЗОНОВ =====
-    const allRanges = App.state.nodes.filter(n => n.type === 'range' || n.type === 'subrange');
-    if (allRanges.length <= 1 && (node.type === 'range' || node.type === 'subrange')) {
+    // Поддиапазоны в расчёт не берутся (они — дети диапазона и удаляются
+    // вместе с ним): блокируем удаление только последнего диапазона (range).
+    const allRanges = App.state.nodes.filter(n => n.type === 'range');
+    if (allRanges.length <= 1 && node.type === 'range') {
         App.modals.showFloatingModal(App.i18n.t('tree.deleteSingleRangeError'));
         return;
     }
