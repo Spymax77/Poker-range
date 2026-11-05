@@ -641,8 +641,16 @@
         // Перенос GTO должен сохранить не только структуру, но и все созданные
         // матрицы. Обычный App.persistence.persistAll() сохраняет по таймеру только структуру
         // (skipTables=true), поэтому после F5 таблицы могли быть пустыми.
+        // Результат сохранения проверяем явно: toast успеха показываем ТОЛЬКО
+        // при подтверждённой записи всех ключей. При частичном провале
+        // (retry-очередь storage.js дозаписывает данные позже) — отдельное
+        // сообщение, чтобы не обещать того, чего на сервере ещё нет.
+        let saveSucceeded = true;
         if (typeof App.persistence.flushPersist === 'function') {
-            await App.persistence.flushPersist();
+            const results = await App.persistence.flushPersist();
+            saveSucceeded = !results || results.every(function(result) {
+                return result && result.success !== false;
+            });
         } else {
             App.persistence.persistAll();
         }
@@ -651,7 +659,7 @@
         // (корневой папки). Если корней несколько — перечисляем все через « / ».
         // Показываем как «призрачное» уведомление: само растворяется, ОК не нужен.
         const rootName = rootNodes.map(n => n.name).join(' / ');
-        App.modals.showToast(App.i18n.t('backup.gtoAdded', { name: rootName }));
+        App.modals.showToast(App.i18n.t(saveSucceeded ? 'backup.gtoAdded' : 'backup.gtoAddedPartial', { name: rootName }));
     }
 
     function initGtoAddToEditorButton() {

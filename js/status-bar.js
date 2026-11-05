@@ -24,6 +24,14 @@ App.events.on('storage:error', function() {
     const status = document.getElementById('saveStatus');
     if (status) { status.textContent = App.i18n.t('status.error'); status.className = 'save-status error'; }
 });
+// Ошибка записи с планируемым повтором (retry-очередь storage.js активна) —
+// показываем «повторная попытка», а не пугающую «Ошибка синхронизации»:
+// данные будут дозаписаны автоматически. Финальная «Ошибка синхронизации»
+// остаётся за событиями БЕЗ повтора (сбой загрузки и т.п.).
+App.events.on('storage:retrying', function() {
+    const status = document.getElementById('saveStatus');
+    if (status) { status.textContent = App.i18n.t('status.retrying'); status.className = 'save-status retrying'; }
+});
 
 App.status.onLanguageChange = function() {
     const status = document.getElementById('saveStatus');
@@ -35,6 +43,8 @@ App.status.onLanguageChange = function() {
         status.textContent = App.i18n.t('status.synced');
     } else if (status && status.classList.contains('error')) {
         status.textContent = App.i18n.t('status.error');
+    } else if (status && status.classList.contains('retrying')) {
+        status.textContent = App.i18n.t('status.retrying');
     }
 };
 document.addEventListener('languagechange', App.status.onLanguageChange);

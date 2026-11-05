@@ -95,6 +95,7 @@
             'status.saving': 'Сохранение...',
             'status.synced': 'Синхронизировано',
             'status.error': 'Ошибка синхронизации',
+            'status.retrying': 'Синхронизация... повторная попытка',
 
             'tabs.showPanelHide': 'Скрыть панель вкладок',
             'tabs.openMenuClose': 'Закрыть меню вкладок',
@@ -209,6 +210,7 @@
             'backup.importError': 'Ошибка импорта: {error}',
             'backup.noGtoData': 'Нет данных GTO для добавления',
             'backup.gtoAdded': '«{name}» скопирован в редактор',
+            'backup.gtoAddedPartial': '«{name}» скопирован в редактор. Часть данных сохраняется повторно…',
             'backup.export': 'Экспорт',
             'backup.import': 'Импорт',
 
@@ -353,6 +355,7 @@
             'status.saving': 'Saving...',
             'status.synced': 'Synchronized',
             'status.error': 'Synchronization error',
+            'status.retrying': 'Synchronizing... retrying',
 
             'tabs.showPanelHide': 'Hide tabs panel',
             'tabs.openMenuClose': 'Close tabs menu',
@@ -467,6 +470,7 @@
             'backup.importError': 'Import error: {error}',
             'backup.noGtoData': 'No GTO data to add',
             'backup.gtoAdded': '"{name}" copied to the editor',
+            'backup.gtoAddedPartial': '"{name}" copied to the editor. Some data is being re-sent…',
             'backup.export': 'Export',
             'backup.import': 'Import',
 

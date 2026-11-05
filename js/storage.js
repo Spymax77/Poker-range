@@ -35,6 +35,45 @@
         });
     }
 
+    // ===== ПУЛ ПАРАЛЛЕЛЬНЫХ ЗАПИСЕЙ =====
+    // Chrome обрывает часть запросов (TypeError: Failed to fetch), когда
+    // одновременно уходят десятки/сотни POST-запросов на запись (лимит
+    // суммарных тел keepalive-запросов 64 КБ и пул соединений на хост).
+    // При переносе/сохранении большого дерева это давало массовые обрывы,
+    // «Ошибка синхронизации» и бесконечный retry. Очередь ограничивает
+    // одновременные записи MAX_CONCURRENT_SAVES штуками: обрывы исчезают,
+    // а суммарное время сохранения остаётся малым (~2 с на 200 таблиц).
+    // Порядок FIFO сохраняется: структура/цвета уходят раньше таблиц
+    // (порядок постановки в очередь задаёт persistAllNow).
+    var MAX_CONCURRENT_SAVES = 5;
+    var activeSaves = 0;
+    var saveQueue = [];
+
+    function enqueueSave(task) {
+        return new Promise(function(resolve) {
+            saveQueue.push(function() {
+                // Обёртка ОБЯЗАНА вернуть промис задачи: drainSaveQueue
+                // отслеживает его завершение (.finally) для освобождения
+                // слота пула — иначе слоты блокируются и очередь виснет.
+                var request = task();
+                resolve(request);
+                return request;
+            });
+            drainSaveQueue();
+        });
+    }
+
+    function drainSaveQueue() {
+        while (activeSaves < MAX_CONCURRENT_SAVES && saveQueue.length > 0) {
+            var run = saveQueue.shift();
+            activeSaves++;
+            run().finally(function() {
+                activeSaves--;
+                drainSaveQueue();
+            });
+        }
+    }
+
     function emit(event, data) {
         if (window.App && App.events) App.events.emit(event, data);
     }
@@ -101,56 +140,67 @@
     function saveRemote(key, rawValue, isRetry) {
         if (requiresAuth()) return authRequiredResult();
 
-        // keepalive: запрос переживает выгрузку страницы (F5 / закрытие
-        // вкладки) — иначе запись, стартовавшая перед выгрузкой, молча
-        // теряется. Ограничение браузера: тело keepalive-запроса ≤ 64 КБ;
-        // для больших payload — обычный fetch (лучше риск потери при
-        // выгрузке, чем гарантированный отказ сохранения).
-        const request = fetch(API_URL + '?action=save', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: key, value: rawValue }),
-            keepalive: rawValue.length <= 60 * 1024
-        }).then(function(response) {
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            return response.json();
-        }).then(function(result) {
-            if (!result.success) throw new Error(result.message || 'Ошибка API');
-            if (pendingWrites.get(key) === request) pendingWrites.delete(key);
-            if (pendingWrites.size === 0) emit('storage:saved');
-            return result;
-        }).catch(function(error) {
-            if (pendingWrites.get(key) === request) pendingWrites.delete(key);
-            console.error('Ошибка сохранения данных "' + key + '":', error);
-            emit('storage:error', error);
-            if (!isRetry) scheduleRetry(key, rawValue);
-            return { success: false, error: error };
+        // Вся запись идёт через пул параллельности (см. enqueueSave):
+        // сотни одновременных запросов при сохранении большого дерева
+        // обрывались браузером (Failed to fetch) и «роняли» синхронизацию.
+        return enqueueSave(function() {
+            // keepalive: запрос переживает выгрузку страницы (F5 / закрытие
+            // вкладки) — иначе запись, стартовавшая перед выгрузкой, молча
+            // теряется. Ограничение браузера: тело keepalive-запроса ≤ 64 КБ;
+            // для больших payload — обычный fetch (лучше риск потери при
+            // выгрузке, чем гарантированный отказ сохранения).
+            const request = fetch(API_URL + '?action=save', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: key, value: rawValue }),
+                keepalive: rawValue.length <= 60 * 1024
+            }).then(function(response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            }).then(function(result) {
+                if (!result.success) throw new Error(result.message || 'Ошибка API');
+                if (pendingWrites.get(key) === request) pendingWrites.delete(key);
+                if (pendingWrites.size === 0) emit('storage:saved');
+                return result;
+            }).catch(function(error) {
+                if (pendingWrites.get(key) === request) pendingWrites.delete(key);
+                console.error('Ошибка сохранения данных "' + key + '":', error);
+                // Запись уходит в retry-очередь (scheduleRetry/processRetryQueue) —
+                // это «повторная попытка», а не финальная ошибка синхронизации.
+                emit('storage:retrying', error);
+                if (!isRetry) scheduleRetry(key, rawValue);
+                return { success: false, error: error };
+            });
+            pendingWrites.set(key, request);
+            return request;
         });
-        pendingWrites.set(key, request);
-        return request;
     }
 
     function removeRemote(key, isRetry) {
         if (requiresAuth()) return authRequiredResult();
 
-        return fetch(API_URL + '?action=remove', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: key }),
-            keepalive: true
-        }).then(function(response) {
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            return response.json();
-        }).then(function(result) {
-            if (!result.success) throw new Error(result.message || 'Ошибка API');
-            return result;
-        }).catch(function(error) {
-            console.error('Ошибка удаления данных "' + key + '":', error);
-            emit('storage:error', error);
-            if (!isRetry) scheduleRetry(key, null, 'remove');
-            return { success: false, error: error };
+        // Удаление — тоже запись: через тот же пул параллельности.
+        return enqueueSave(function() {
+            return fetch(API_URL + '?action=remove', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: key }),
+                keepalive: true
+            }).then(function(response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            }).then(function(result) {
+                if (!result.success) throw new Error(result.message || 'Ошибка API');
+                return result;
+            }).catch(function(error) {
+                console.error('Ошибка удаления данных "' + key + '":', error);
+                // Удаление уходит в retry-очередь — показываем «повторная попытка».
+                emit('storage:retrying', error);
+                if (!isRetry) scheduleRetry(key, null, 'remove');
+                return { success: false, error: error };
+            });
         });
     }
 

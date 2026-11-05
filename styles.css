@@ -14,7 +14,8 @@
 }
 
 .save-status.saving,
-.save-status.loading { color: #d4af37; }
+.save-status.loading,
+.save-status.retrying { color: #d4af37; }
 .save-status.saved {
     color: #79a65a;
     animation: pulseSaved 1.2s ease-out;
